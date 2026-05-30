@@ -22,7 +22,7 @@ export async function POST(request: Request) {
 
   try {
     const response = await client.responses.create({
-      model: "gpt-5.4-mini",
+      model: "gpt-5-mini",
       instructions:
         "You are PatternLift, an interview prep coach focused on LeetCode pattern recognition. Be specific, concise, and educational. Never provide a full solution. Focus on pattern choice, clue interpretation, and the first concrete move. Keep each field to 1-3 sentences.",
       input: [
