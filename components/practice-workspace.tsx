@@ -1,27 +1,43 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  patternOptions,
-  reflectionExamples,
-  reflectionPrompts
-} from "@/lib/product";
+import { patternOptions } from "@/lib/product";
 
 type PatternId = (typeof patternOptions)[number]["id"];
 
 const defaultPrompt =
   "Example: Given an array of positive integers, find the length of the shortest contiguous subarray whose sum is at least target.";
 
+const clueChoices = [
+  "contiguous subarray",
+  "longest or shortest range",
+  "sorted input",
+  "level-order traversal",
+  "top k ranking",
+  "repeated best choice",
+  "overlapping subproblems",
+  "need to shrink after expanding"
+] as const;
+
+const firstStepChoices = [
+  "Track left and right pointers",
+  "Maintain a running sum or frequency state",
+  "Use a queue for level order expansion",
+  "Go deeper recursively before trying alternatives",
+  "Push candidates into a heap",
+  "Define a DP state and recurrence"
+] as const;
+
 export function PracticeWorkspace() {
   const [problemText, setProblemText] = useState(defaultPrompt);
-  const [selectedPattern, setSelectedPattern] = useState<PatternId>(
-    patternOptions[0].id
-  );
-  const [answers, setAnswers] = useState<string[]>(["", "", ""]);
-  const [hasSubmitted, setHasSubmitted] = useState(false);
+  const [selectedPattern, setSelectedPattern] = useState<PatternId | null>(null);
+  const [selectedClues, setSelectedClues] = useState<string[]>([]);
+  const [selectedFirstStep, setSelectedFirstStep] = useState<string | null>(null);
+  const [hasEvaluated, setHasEvaluated] = useState(false);
 
   const activePattern = useMemo(
-    () => patternOptions.find((pattern) => pattern.id === selectedPattern)!,
+    () =>
+      patternOptions.find((pattern) => pattern.id === selectedPattern) ?? null,
     [selectedPattern]
   );
 
@@ -30,146 +46,121 @@ export function PracticeWorkspace() {
 
     const signals = [
       normalized.includes("substring") || normalized.includes("subarray")
-        ? "This prompt signals a contiguous range."
+        ? "This looks like a contiguous range problem."
         : null,
       normalized.includes("shortest") || normalized.includes("longest")
-        ? "Optimization language often points to a reusable pattern instead of brute force."
+        ? "Optimization language suggests a reusable pattern rather than brute force."
         : null,
       normalized.includes("tree") || normalized.includes("graph")
-        ? "A traversal pattern may matter here."
+        ? "A traversal pattern may be involved."
         : null,
       normalized.includes("top k") || normalized.includes("kth")
-        ? "Ranking language often suggests a heap or binary search angle."
+        ? "Ranking language may point toward heap-based thinking."
         : null
     ].filter(Boolean) as string[];
 
     return signals.length > 0
       ? signals
       : [
-          "Start by asking whether the input structure or constraint rules out brute force.",
-          "Then decide whether the problem is about a range, a traversal, or repeated best-choice updates."
+          "Look for whether the problem is about a range, a traversal, or repeated best-choice updates."
         ];
   }, [problemText]);
 
-  const answerQuality = useMemo(() => {
-    return answers.map((answer, index) => {
-      if (!hasSubmitted) {
-        return null;
-      }
+  const matchedClues = useMemo(() => {
+    if (!activePattern) {
+      return 0;
+    }
 
-      const trimmed = answer.trim();
+    return selectedClues.filter((clue) =>
+      activePattern.clues.some((patternClue) =>
+        patternClue.toLowerCase().includes(clue.split(" ")[0])
+      )
+    ).length;
+  }, [activePattern, selectedClues]);
 
-      if (trimmed.length < 12) {
-        return {
-          tone: "border-ember/35 bg-ember/10 text-black",
-          label: "Needs more detail",
-          body: "Push yourself to name a concrete clue or action instead of a vague instinct."
-        };
-      }
+  const firstStepMatches = useMemo(() => {
+    if (!activePattern || !selectedFirstStep) {
+      return false;
+    }
 
-      if (index === 0 && !mentionsPatternSignal(trimmed)) {
-        return {
-          tone: "border-ember/35 bg-ember/10 text-black",
-          label: "Add a sharper clue",
-          body: "Try naming a signal from the prompt such as contiguous range, optimization language, or level-order traversal."
-        };
-      }
+    return activePattern.firstSteps.some((step) =>
+      step.toLowerCase().includes(firstStepKeyword(selectedFirstStep))
+    );
+  }, [activePattern, selectedFirstStep]);
 
-      if (index === 1 && !mentionsComparison(trimmed)) {
-        return {
-          tone: "border-lake/35 bg-lake/10 text-black",
-          label: "Good start, push the contrast further",
-          body: "Name the nearby pattern explicitly and say what breaks the tie in favor of your choice."
-        };
-      }
-
-      if (index === 2 && !mentionsAction(trimmed)) {
-        return {
-          tone: "border-lake/35 bg-lake/10 text-black",
-          label: "Add an execution step",
-          body: "Describe the first state, pointer move, traversal step, or recurrence you would actually try."
-        };
-      }
-
-      return {
-        tone: "border-fern/35 bg-fern/10 text-black",
-        label: "Solid reasoning",
-        body: "This reflection is specific enough to be useful during review."
-      };
-    });
-  }, [answers, hasSubmitted]);
-
-  const submissionSummary = useMemo(() => {
-    if (!hasSubmitted) {
+  const feedback = useMemo(() => {
+    if (!hasEvaluated || !activePattern) {
       return null;
     }
 
-    const completedCount = answers.filter((answer) => answer.trim().length >= 12).length;
-    const qualityCount = answerQuality.filter(
-      (item) => item?.label === "Solid reasoning"
-    ).length;
-
-    if (completedCount < 2) {
+    if (selectedClues.length === 0) {
       return {
         tone: "border-ember/35 bg-ember/10 text-black",
-        title: "Slow down and make the reasoning visible.",
-        body: "PatternLift works best when the learner commits to a real guess before hints. Add more concrete thought to at least two prompts."
+        title: "Pick a clue before moving on.",
+        body: "Pattern recognition gets much stronger when you tie your guess to visible signals in the prompt."
       };
     }
 
-    if (qualityCount === answers.length) {
+    if (matchedClues === 0) {
       return {
-        tone: "border-fern/35 bg-fern/10 text-black",
-        title: "This is the right kind of attempt.",
-        body: "You named the pattern, compared it to a nearby alternative, and described an actual first step. That is the learning loop we want."
+        tone: "border-ember/35 bg-ember/10 text-black",
+        title: "Your pattern and clues are not lining up yet.",
+        body: "Try choosing a clue that directly supports this pattern, or switch to a pattern that better matches what you noticed."
+      };
+    }
+
+    if (!selectedFirstStep) {
+      return {
+        tone: "border-lake/35 bg-lake/10 text-black",
+        title: "Good pattern instinct. Now commit to a first move.",
+        body: "The next useful habit is turning the pattern into a concrete action before asking for help."
+      };
+    }
+
+    if (!firstStepMatches) {
+      return {
+        tone: "border-lake/35 bg-lake/10 text-black",
+        title: "You are close, but the first step does not quite fit.",
+        body: "Your chosen pattern may be reasonable, but the initial action sounds more like a neighboring approach."
       };
     }
 
     return {
-      tone: "border-lake/35 bg-lake/10 text-black",
-      title: "Good attempt, but there is room to sharpen it.",
-      body: "Your reasoning is moving in the right direction. Tighten the clue you noticed and make the first solving action more explicit."
+      tone: "border-fern/35 bg-fern/10 text-black",
+      title: "Nice. This feels like a real attempt.",
+      body: "You picked a pattern, tied it to visible clues, and turned it into a concrete first step. That is exactly the behavior PatternLift should reinforce."
     };
-  }, [answerQuality, answers, hasSubmitted]);
+  }, [
+    activePattern,
+    firstStepMatches,
+    hasEvaluated,
+    matchedClues,
+    selectedClues.length,
+    selectedFirstStep
+  ]);
 
-  function updateAnswer(index: number, value: string) {
-    setAnswers((current) =>
-      current.map((entry, entryIndex) => (entryIndex === index ? value : entry))
+  function toggleClue(clue: string) {
+    setSelectedClues((current) =>
+      current.includes(clue)
+        ? current.filter((entry) => entry !== clue)
+        : [...current, clue]
     );
   }
 
   function evaluateAttempt() {
-    setHasSubmitted(true);
+    setHasEvaluated(true);
   }
 
   return (
     <section className="grid gap-6 lg:grid-cols-[1.08fr_0.92fr]">
       <div className="rounded-lg border border-black/10 bg-white/75 p-6 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-ember">
-              Practice Workspace
-            </p>
-            <h2 className="mt-2 text-2xl font-semibold text-ink">
-              Try a problem the way you actually would.
-            </h2>
-          </div>
-          <label className="text-sm text-black/68">
-            Predicted pattern
-            <select
-              value={selectedPattern}
-              onChange={(event) =>
-                setSelectedPattern(event.target.value as PatternId)
-              }
-              className="mt-2 block min-w-56 rounded-lg border border-black/10 bg-mist px-3 py-2 text-sm text-ink outline-none transition focus:border-black/35"
-            >
-              {patternOptions.map((pattern) => (
-                <option key={pattern.id} value={pattern.id}>
-                  {pattern.label}
-                </option>
-              ))}
-            </select>
-          </label>
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-wide text-ember">
+            Practice Workspace
+          </p>
+          <h2 className="mt-2 text-2xl font-semibold text-ink">
+            Work through the pattern in a lighter way.
+          </h2>
         </div>
 
         <label className="mt-6 block text-sm font-medium text-ink">
@@ -182,20 +173,97 @@ export function PracticeWorkspace() {
           />
         </label>
 
-        <div className="mt-6 rounded-lg border border-black/10 bg-mist p-4">
-          <p className="text-sm font-semibold text-ink">Coach read on your choice</p>
-          <p className="mt-2 text-sm leading-6 text-black/72">
-            {activePattern.coachPrompt}
+        <div className="mt-6">
+          <p className="text-sm font-semibold text-ink">
+            1. Which pattern would you try first?
           </p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {activePattern.clues.map((clue) => (
-              <span
-                key={clue}
-                className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/68"
-              >
-                {clue}
-              </span>
-            ))}
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {patternOptions.map((pattern) => {
+              const isSelected = pattern.id === selectedPattern;
+
+              return (
+                <button
+                  key={pattern.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedPattern(pattern.id);
+                    setHasEvaluated(false);
+                  }}
+                  className={`rounded-lg border p-4 text-left transition ${
+                    isSelected
+                      ? "border-black bg-ink text-white"
+                      : "border-black/10 bg-mist text-ink hover:border-black/30"
+                  }`}
+                >
+                  <p className="text-sm font-semibold">{pattern.label}</p>
+                  <p
+                    className={`mt-2 text-sm leading-6 ${
+                      isSelected ? "text-white/78" : "text-black/64"
+                    }`}
+                  >
+                    {pattern.coachPrompt}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="mt-6">
+          <p className="text-sm font-semibold text-ink">
+            2. What clue did you notice?
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {clueChoices.map((clue) => {
+              const isSelected = selectedClues.includes(clue);
+
+              return (
+                <button
+                  key={clue}
+                  type="button"
+                  onClick={() => {
+                    toggleClue(clue);
+                    setHasEvaluated(false);
+                  }}
+                  className={`rounded-full border px-3 py-2 text-sm transition ${
+                    isSelected
+                      ? "border-black bg-ink text-white"
+                      : "border-black/10 bg-white text-black/72 hover:border-black/30"
+                  }`}
+                >
+                  {clue}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="mt-6">
+          <p className="text-sm font-semibold text-ink">
+            3. What would your first step be?
+          </p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {firstStepChoices.map((step) => {
+              const isSelected = selectedFirstStep === step;
+
+              return (
+                <button
+                  key={step}
+                  type="button"
+                  onClick={() => {
+                    setSelectedFirstStep(step);
+                    setHasEvaluated(false);
+                  }}
+                  className={`rounded-lg border p-4 text-left text-sm leading-6 transition ${
+                    isSelected
+                      ? "border-black bg-ink text-white"
+                      : "border-black/10 bg-mist text-black/72 hover:border-black/30"
+                  }`}
+                >
+                  {step}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -205,53 +273,20 @@ export function PracticeWorkspace() {
             onClick={evaluateAttempt}
             className="rounded-lg bg-ink px-4 py-2 text-sm font-medium text-white transition hover:bg-black"
           >
-            Evaluate attempt
+            Check my reasoning
           </button>
           <p className="text-sm text-black/62">
-            Commit to a pattern and reasoning before you ask for more help.
+            Quick choices first, then feedback.
           </p>
         </div>
       </div>
 
       <div className="rounded-lg border border-black/10 bg-ink p-6 text-white shadow-sm">
         <p className="text-sm font-semibold uppercase tracking-wide text-lake">
-          Structured Reflection
+          Coach Feedback
         </p>
-        <div className="mt-4 space-y-3">
-          {reflectionPrompts.map((prompt, index) => {
-            const feedback = answerQuality[index];
 
-            return (
-              <div
-                key={prompt}
-                className="rounded-lg border border-white/12 bg-white/8 p-4"
-              >
-                <p className="text-xs font-semibold uppercase tracking-wide text-fern">
-                  Prompt {index + 1}
-                </p>
-                <p className="mt-2 text-sm leading-6 text-white/82">{prompt}</p>
-                <textarea
-                  value={answers[index]}
-                  onChange={(event) => updateAnswer(index, event.target.value)}
-                  rows={3}
-                  placeholder={reflectionExamples[index]}
-                  className="mt-3 w-full rounded-lg border border-white/12 bg-black/16 px-4 py-3 text-sm leading-6 text-white outline-none transition placeholder:text-white/28 focus:border-white/28"
-                />
-
-                {feedback ? (
-                  <div className={`mt-3 rounded-lg border p-3 ${feedback.tone}`}>
-                    <p className="text-sm font-semibold">{feedback.label}</p>
-                    <p className="mt-1 text-sm leading-6 text-black/72">
-                      {feedback.body}
-                    </p>
-                  </div>
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="mt-6 rounded-lg border border-white/12 bg-white/8 p-4">
+        <div className="mt-4 rounded-lg border border-white/12 bg-white/8 p-4">
           <p className="text-sm font-semibold text-white">Detected signals</p>
           <ul className="mt-3 space-y-2 text-sm leading-6 text-white/78">
             {quickRead.map((signal) => (
@@ -260,64 +295,76 @@ export function PracticeWorkspace() {
           </ul>
         </div>
 
-        {submissionSummary ? (
-          <div className={`mt-6 rounded-lg border p-4 ${submissionSummary.tone}`}>
-            <p className="text-sm font-semibold">{submissionSummary.title}</p>
-            <p className="mt-2 text-sm leading-6 text-black/72">
-              {submissionSummary.body}
+        {activePattern ? (
+          <div className="mt-4 rounded-lg border border-white/12 bg-white/8 p-4">
+            <p className="text-sm font-semibold text-white">Pattern cues</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {activePattern.clues.map((clue) => (
+                <span
+                  key={clue}
+                  className="rounded-full border border-white/12 bg-black/18 px-3 py-1 text-xs font-medium text-white/76"
+                >
+                  {clue}
+                </span>
+              ))}
+            </div>
+            <div className="mt-4 space-y-2 text-sm leading-6 text-white/78">
+              {activePattern.firstSteps.map((step) => (
+                <p key={step}>{step}</p>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="mt-4 rounded-lg border border-dashed border-white/18 p-4">
+            <p className="text-sm leading-6 text-white/64">
+              Pick a pattern first, then PatternLift can coach the clue and the
+              first move.
             </p>
           </div>
-        ) : null}
+        )}
+
+        {feedback ? (
+          <div className={`mt-4 rounded-lg border p-4 ${feedback.tone}`}>
+            <p className="text-sm font-semibold">{feedback.title}</p>
+            <p className="mt-2 text-sm leading-6 text-black/72">
+              {feedback.body}
+            </p>
+          </div>
+        ) : (
+          <div className="mt-4 rounded-lg border border-dashed border-white/18 p-4">
+            <p className="text-sm leading-6 text-white/64">
+              Choose a pattern, a clue, and a first step. Then check your
+              reasoning to see whether the pieces line up.
+            </p>
+          </div>
+        )}
       </div>
     </section>
   );
 }
 
-function mentionsPatternSignal(answer: string) {
-  const lowered = answer.toLowerCase();
+function firstStepKeyword(step: string) {
+  const lowered = step.toLowerCase();
 
-  return [
-    "contiguous",
-    "substring",
-    "subarray",
-    "window",
-    "sorted",
-    "level",
-    "shortest",
-    "longest",
-    "top k",
-    "graph",
-    "tree"
-  ].some((signal) => lowered.includes(signal));
-}
+  if (lowered.includes("pointer")) {
+    return "pointer";
+  }
 
-function mentionsComparison(answer: string) {
-  const lowered = answer.toLowerCase();
+  if (lowered.includes("sum") || lowered.includes("frequency")) {
+    return "sum";
+  }
 
-  return [
-    "confuse",
-    "instead",
-    "rather than",
-    "versus",
-    "vs",
-    "compared",
-    "because"
-  ].some((signal) => lowered.includes(signal));
-}
+  if (lowered.includes("queue")) {
+    return "queue";
+  }
 
-function mentionsAction(answer: string) {
-  const lowered = answer.toLowerCase();
+  if (lowered.includes("recursively")) {
+    return "branch";
+  }
 
-  return [
-    "start",
-    "track",
-    "move",
-    "scan",
-    "queue",
-    "stack",
-    "state",
-    "pointer",
-    "sum",
-    "visit"
-  ].some((signal) => lowered.includes(signal));
+  if (lowered.includes("heap")) {
+    return "heap";
+  }
+
+  return "state";
 }

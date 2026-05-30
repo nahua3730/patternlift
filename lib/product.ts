@@ -74,6 +74,11 @@ export const patternOptions = [
   {
     id: "sliding-window",
     label: "Sliding Window",
+    firstSteps: [
+      "Track a left and right pointer over a contiguous range",
+      "Maintain a running condition while expanding the window",
+      "Shrink from the left when the rule is already satisfied"
+    ],
     clues: [
       "contiguous array or substring",
       "valid range that grows and shrinks",
@@ -85,6 +90,11 @@ export const patternOptions = [
   {
     id: "two-pointers",
     label: "Two Pointers",
+    firstSteps: [
+      "Place one pointer at each end or at neighboring positions",
+      "Move pointers based on direct comparisons or a target value",
+      "Use ordering to decide which pointer should move next"
+    ],
     clues: [
       "sorted input",
       "pair or triplet relationship",
@@ -96,6 +106,11 @@ export const patternOptions = [
   {
     id: "bfs",
     label: "Breadth-First Search",
+    firstSteps: [
+      "Initialize a queue with the starting node or state",
+      "Expand neighbors level by level",
+      "Track visited nodes so the same state is not reprocessed"
+    ],
     clues: [
       "level order exploration",
       "shortest unweighted path",
@@ -107,6 +122,11 @@ export const patternOptions = [
   {
     id: "dfs",
     label: "Depth-First Search",
+    firstSteps: [
+      "Go down one branch recursively or with a stack",
+      "Track path state while exploring alternatives",
+      "Backtrack after finishing the current branch"
+    ],
     clues: [
       "explore one branch fully",
       "backtracking or subtree reasoning",
@@ -118,6 +138,11 @@ export const patternOptions = [
   {
     id: "heap",
     label: "Heap / Priority Queue",
+    firstSteps: [
+      "Push candidate values into a min-heap or max-heap",
+      "Pop the current best item when you need the next answer",
+      "Keep heap size bounded if you only care about top k"
+    ],
     clues: [
       "top k items",
       "repeatedly need current smallest or largest",
@@ -129,6 +154,11 @@ export const patternOptions = [
   {
     id: "dynamic-programming",
     label: "Dynamic Programming",
+    firstSteps: [
+      "Define the state that captures the smaller subproblem",
+      "Write a recurrence from previous states to the current one",
+      "Store results to avoid recomputing overlapping work"
+    ],
     clues: [
       "overlapping subproblems",
       "best answer built from smaller states",
@@ -137,16 +167,4 @@ export const patternOptions = [
     coachPrompt:
       "Ask whether a state and recurrence can capture repeated work or an optimal substructure."
   }
-] as const;
-
-export const reflectionPrompts = [
-  "What clue in the prompt makes this pattern plausible?",
-  "What nearby pattern might you confuse it with?",
-  "What would your first step be before writing code?"
-] as const;
-
-export const reflectionExamples = [
-  "The phrase shortest contiguous subarray makes me think about a valid window I can shrink.",
-  "I might confuse this with two pointers because both use left and right indices.",
-  "I would start with a running sum and move the left edge whenever the condition stays satisfied."
 ] as const;
