@@ -21,55 +21,6 @@ export const productFeatures = [
   }
 ] as const;
 
-export const demoProblem = {
-  title: "Longest Substring Without Repeating Characters",
-  difficulty: "Medium",
-  prompt:
-    "Given a string s, find the length of the longest substring without repeating characters.",
-  cues: [
-    "The answer depends on a contiguous part of the string.",
-    "You need to grow and shrink a range while preserving a condition.",
-    "Repeated characters tell you when the current range has become invalid."
-  ],
-  options: [
-    {
-      id: "sliding-window",
-      label: "Sliding Window",
-      summary:
-        "Track a moving substring and adjust the left edge when a duplicate breaks the rule.",
-      isCorrect: true
-    },
-    {
-      id: "two-pointers",
-      label: "Two Pointers",
-      summary:
-        "This sounds close, but the key idea is maintaining a valid window under a changing constraint.",
-      isCorrect: false
-    },
-    {
-      id: "hashmap",
-      label: "Hash Map",
-      summary:
-        "A hash map helps implement the solution, but it is not the main solving pattern by itself.",
-      isCorrect: false
-    },
-    {
-      id: "dynamic-programming",
-      label: "Dynamic Programming",
-      summary:
-        "There is no overlapping state recurrence driving the solution here.",
-      isCorrect: false
-    }
-  ],
-  hints: [
-    "Start by asking whether the problem cares about a contiguous region or scattered positions.",
-    "If adding one more character breaks the rule, what could you move to restore validity without restarting?",
-    "Keep a left pointer, scan with a right pointer, and track the characters inside the current substring."
-  ],
-  takeaway:
-    "PatternLift should help you tell the difference between a broad tool like hash maps and a strategy like sliding window."
-} as const;
-
 export const patternOptions = [
   {
     id: "sliding-window",
@@ -166,5 +117,68 @@ export const patternOptions = [
     ],
     coachPrompt:
       "Ask whether a state and recurrence can capture repeated work or an optimal substructure."
+  }
+] as const;
+
+export const sampleProblems = [
+  {
+    id: "shortest-subarray-target",
+    title: "Shortest Subarray At Least Target",
+    difficulty: "Medium",
+    prompt:
+      "Given an array of positive integers and a target, find the length of the shortest contiguous subarray whose sum is at least target.",
+    targetPatternId: "sliding-window",
+    recommendedClues: [
+      "contiguous subarray",
+      "longest or shortest range",
+      "need to shrink after expanding"
+    ],
+    recommendedFirstStep: "Track left and right pointers",
+    reviewQuestion:
+      "Which signal tells you this should shrink from the left instead of restarting from scratch?",
+    contrastPatternId: "two-pointers"
+  },
+  {
+    id: "binary-tree-level-order",
+    title: "Binary Tree Level Order Traversal",
+    difficulty: "Medium",
+    prompt:
+      "Given the root of a binary tree, return the values of the nodes level by level from left to right.",
+    targetPatternId: "bfs",
+    recommendedClues: ["level-order traversal"],
+    recommendedFirstStep: "Use a queue for level order expansion",
+    reviewQuestion:
+      "What part of the prompt makes breadth-first search a better fit than depth-first search here?",
+    contrastPatternId: "dfs"
+  },
+  {
+    id: "top-k-frequent-elements",
+    title: "Top K Frequent Elements",
+    difficulty: "Medium",
+    prompt:
+      "Given an integer array and an integer k, return the k most frequent elements.",
+    targetPatternId: "heap",
+    recommendedClues: ["top k ranking", "repeated best choice"],
+    recommendedFirstStep: "Push candidates into a heap",
+    reviewQuestion:
+      "Why is a heap a more natural first move than sorting the full array each time?",
+    contrastPatternId: "dynamic-programming"
+  }
+] as const;
+
+export const starterHistory = [
+  {
+    id: "attempt-1",
+    problemTitle: "Longest Substring Without Repeating Characters",
+    selectedPatternLabel: "Sliding Window",
+    outcome: "solid",
+    insight: "Strong pattern match after noticing contiguous substring plus validity constraint."
+  },
+  {
+    id: "attempt-2",
+    problemTitle: "Binary Tree Level Order Traversal",
+    selectedPatternLabel: "Depth-First Search",
+    outcome: "confused",
+    insight: "Confused DFS with BFS because traversal was recognized but level-order detail was missed."
   }
 ] as const;
