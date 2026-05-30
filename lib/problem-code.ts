@@ -3,8 +3,11 @@ export type SupportedLanguage =
   | "typescript"
   | "python"
   | "ruby"
+  | "c"
   | "java"
-  | "cpp";
+  | "cpp"
+  | "swift"
+  | "go";
 
 export type ValueType =
   | "int"
@@ -69,6 +72,20 @@ function buildRubyStarterCode(functionName: string, params: string[], notes: str
     .join("\n")}\nend`;
 }
 
+function buildCStarterCode(
+  functionName: string,
+  params: { name: string; type: ValueType }[],
+  returnType: ValueType,
+  notes: string[]
+) {
+  const signature = toCFunctionSignature(functionName, params, returnType);
+  const fallback = cDefaultReturn(returnType);
+
+  return `#include <stdbool.h>\n#include <stdlib.h>\n#include <string.h>\n\n${signature} {\n${notes
+    .map((note) => `  // ${note}`)
+    .join("\n")}\n\n  ${fallback}\n}`;
+}
+
 function buildJavaStarterCode(
   functionName: string,
   params: { name: string; type: ValueType }[],
@@ -99,6 +116,38 @@ function buildCppStarterCode(
   return `#include <iostream>\n#include <string>\n#include <vector>\nusing namespace std;\n\nclass Solution {\npublic:\n  ${toCppType(returnType)} ${functionName}(${signature}) {\n${notes
     .map((note) => `    // ${note}`)
     .join("\n")}\n\n    ${fallback}\n  }\n};`;
+}
+
+function buildSwiftStarterCode(
+  functionName: string,
+  params: { name: string; type: ValueType }[],
+  returnType: ValueType,
+  notes: string[]
+) {
+  const fallback = swiftDefaultReturn(returnType);
+  const labeledParams = params
+    .map((param, index) => `${index === 0 ? "_" : "_"} ${param.name}: ${toSwiftType(param.type)}`)
+    .join(", ");
+
+  return `func ${functionName}(${labeledParams}) -> ${toSwiftType(returnType)} {\n${notes
+    .map((note) => `  // ${note}`)
+    .join("\n")}\n\n  ${fallback}\n}`;
+}
+
+function buildGoStarterCode(
+  functionName: string,
+  params: { name: string; type: ValueType }[],
+  returnType: ValueType,
+  notes: string[]
+) {
+  const signature = params
+    .map((param) => `${param.name} ${toGoType(param.type)}`)
+    .join(", ");
+  const fallback = goDefaultReturn(returnType);
+
+  return `func ${functionName}(${signature}) ${toGoType(returnType)} {\n${notes
+    .map((note) => `\t// ${note}`)
+    .join("\n")}\n\n\t${fallback}\n}`;
 }
 
 export function getStarterCode(
@@ -136,6 +185,20 @@ export function getStarterCode(
     return defaultRubyStarter(title);
   }
 
+  if (language === "c") {
+    if (config?.signature && supportsCLanguage(config.signature)) {
+      const notes = extractNotesFromStarter(config.starterCode);
+      return buildCStarterCode(
+        config.functionName,
+        config.signature.params,
+        config.signature.returnType,
+        notes
+      );
+    }
+
+    return "// C runner is not available for this problem yet.";
+  }
+
   if (language === "java") {
     if (config?.signature) {
       const notes = extractNotesFromStarter(config.starterCode);
@@ -164,13 +227,44 @@ export function getStarterCode(
     return "// C++ runner is not available for this problem yet.";
   }
 
+  if (language === "swift") {
+    if (config?.signature) {
+      const notes = extractNotesFromStarter(config.starterCode);
+      return buildSwiftStarterCode(
+        config.functionName,
+        config.signature.params,
+        config.signature.returnType,
+        notes
+      );
+    }
+
+    return "// Swift runner is not available for this problem yet.";
+  }
+
+  if (language === "go") {
+    if (config?.signature) {
+      const notes = extractNotesFromStarter(config.starterCode);
+      return buildGoStarterCode(
+        config.functionName,
+        config.signature.params,
+        config.signature.returnType,
+        notes
+      );
+    }
+
+    return "// Go runner is not available for this problem yet.";
+  }
+
   return config?.starterCode ?? defaultJavaScriptStarter(title);
 }
 
 export function getAvailableLanguages(config: ProblemCodeConfig | undefined): SupportedLanguage[] {
   const base: SupportedLanguage[] = ["javascript", "typescript", "python", "ruby"];
   if (config?.signature) {
-    base.push("java", "cpp");
+    if (supportsCLanguage(config.signature)) {
+      base.push("c");
+    }
+    base.push("java", "cpp", "swift", "go");
   }
   return base;
 }
@@ -231,6 +325,23 @@ function toJavaType(type: ValueType) {
   }
 }
 
+function toCType(type: ValueType) {
+  switch (type) {
+    case "int":
+      return "int";
+    case "bool":
+      return "bool";
+    case "string":
+      return "char*";
+    case "intArray":
+      return "int*";
+    case "stringArray":
+      return "char**";
+    default:
+      return null;
+  }
+}
+
 function toCppType(type: ValueType) {
   switch (type) {
     case "int":
@@ -250,6 +361,85 @@ function toCppType(type: ValueType) {
     case "nestedIntArray":
       return "vector<vector<int>>";
   }
+}
+
+function toSwiftType(type: ValueType) {
+  switch (type) {
+    case "int":
+      return "Int";
+    case "bool":
+      return "Bool";
+    case "string":
+      return "String";
+    case "intArray":
+      return "[Int]";
+    case "stringArray":
+      return "[String]";
+    case "intMatrix":
+    case "pointArray":
+    case "nestedIntArray":
+      return "[[Int]]";
+    case "charMatrix":
+      return "[[Character]]";
+  }
+}
+
+function toGoType(type: ValueType) {
+  switch (type) {
+    case "int":
+      return "int";
+    case "bool":
+      return "bool";
+    case "string":
+      return "string";
+    case "intArray":
+      return "[]int";
+    case "stringArray":
+      return "[]string";
+    case "intMatrix":
+    case "pointArray":
+    case "nestedIntArray":
+      return "[][]int";
+    case "charMatrix":
+      return "[][]byte";
+  }
+}
+
+function supportsCLanguage(signature: NonNullable<ProblemCodeConfig["signature"]>) {
+  const supportedParamTypes = new Set<ValueType>([
+    "int",
+    "bool",
+    "string",
+    "intArray",
+    "stringArray"
+  ]);
+  const supportedReturnTypes = new Set<ValueType>(["int", "bool", "string"]);
+
+  return (
+    signature.params.every((param) => supportedParamTypes.has(param.type)) &&
+    supportedReturnTypes.has(signature.returnType)
+  );
+}
+
+function toCFunctionSignature(
+  functionName: string,
+  params: { name: string; type: ValueType }[],
+  returnType: ValueType
+) {
+  const expandedParams = params.flatMap((param) => {
+    const baseType = toCType(param.type);
+    if (!baseType) {
+      return [];
+    }
+
+    if (param.type === "intArray" || param.type === "stringArray") {
+      return [`${baseType} ${param.name}`, `int ${param.name}_len`];
+    }
+
+    return [`${baseType} ${param.name}`];
+  });
+
+  return `${toCType(returnType)} ${functionName}(${expandedParams.join(", ")})`;
 }
 
 function javaDefaultReturn(type: ValueType) {
@@ -291,6 +481,55 @@ function cppDefaultReturn(type: ValueType) {
     case "charMatrix":
     case "nestedIntArray":
       return "return {};";
+  }
+}
+
+function cDefaultReturn(type: ValueType) {
+  switch (type) {
+    case "int":
+      return "return 0;";
+    case "bool":
+      return "return false;";
+    case "string":
+      return 'return "";';
+    default:
+      return "return 0;";
+  }
+}
+
+function swiftDefaultReturn(type: ValueType) {
+  switch (type) {
+    case "int":
+      return "return 0";
+    case "bool":
+      return "return false";
+    case "string":
+      return 'return ""';
+    case "intArray":
+    case "stringArray":
+    case "intMatrix":
+    case "charMatrix":
+    case "pointArray":
+    case "nestedIntArray":
+      return "return []";
+  }
+}
+
+function goDefaultReturn(type: ValueType) {
+  switch (type) {
+    case "int":
+      return "return 0";
+    case "bool":
+      return "return false";
+    case "string":
+      return 'return ""';
+    case "intArray":
+    case "stringArray":
+    case "intMatrix":
+    case "charMatrix":
+    case "pointArray":
+    case "nestedIntArray":
+      return "return nil";
   }
 }
 

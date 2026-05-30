@@ -47,11 +47,17 @@ export async function POST(request: Request) {
           ? await runTypeScript(body.code, body.functionName, examples)
           : body.language === "ruby"
             ? await runRuby(body.code, body.functionName, examples)
+            : body.language === "c"
+              ? await runC(body.code, body.functionName, body.signature, examples)
             : body.language === "java"
               ? await runJava(body.code, body.functionName, body.signature, examples)
               : body.language === "cpp"
                 ? await runCpp(body.code, body.functionName, body.signature, examples)
-            : await runJavaScript(body.code, body.functionName, examples);
+                : body.language === "swift"
+                  ? await runSwift(body.code, body.functionName, body.signature, examples)
+                  : body.language === "go"
+                    ? await runGo(body.code, body.functionName, body.signature, examples)
+                    : await runJavaScript(body.code, body.functionName, examples);
 
     return NextResponse.json({ results: runResults });
   } catch (error) {
@@ -249,6 +255,94 @@ puts JSON.generate(results)
     }[];
   } finally {
     await fs.rm(filePath, { force: true });
+  }
+}
+
+async function runC(
+  code: string,
+  functionName: string,
+  signature: RunCodeRequest["signature"],
+  examples: { label: string; args: unknown[]; expected: unknown }[]
+) {
+  if (!signature) {
+    throw new Error("C runner is not available for this problem yet.");
+  }
+
+  const tempDir = join(tmpdir(), `patternlift-${randomUUID()}`);
+  const filePath = join(tempDir, "runner.c");
+  const binPath = join(tempDir, "runner");
+  await fs.mkdir(tempDir, { recursive: true });
+
+  const script = `#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+${code}
+
+void printEscapedString(const char* value) {
+  if (value == NULL) {
+    printf("null");
+    return;
+  }
+
+  printf("\\"");
+  for (const char* current = value; *current != '\\0'; current++) {
+    if (*current == '\\\\') printf("\\\\\\\\");
+    else if (*current == '\\"') printf("\\\\\\"");
+    else if (*current == '\\n') printf("\\\\n");
+    else putchar(*current);
+  }
+  printf("\\"");
+}
+
+void printJsonInt(int value) { printf("%d", value); }
+void printJsonBool(bool value) { printf(value ? "true" : "false"); }
+void printJsonString(const char* value) { printEscapedString(value); }
+
+int main(void) {
+  printf("[");
+${examples
+  .map((example, index) => {
+    const args = buildCArgumentList(example.args, signature.params);
+    const resultType = toCResultType(signature.returnType);
+    return `  ${resultType} result${index} = ${functionName}(${args});
+  if (${index} > 0) printf(",");
+  printf("{\\"label\\":\\"${escapeForSource(example.label)}\\",\\"actual\\":");
+  ${buildCPrintStatement(`result${index}`, signature.returnType)}
+  printf(",\\"expected\\":");
+  ${buildCPrintStatement(buildCLiteral(example.expected, signature.returnType), signature.returnType)}
+  printf("}");`;
+  })
+  .join("\n")}
+  printf("]");
+  return 0;
+}
+`;
+
+  await fs.writeFile(filePath, script, "utf8");
+
+  try {
+    await execFileAsync("clang", [filePath, "-o", binPath], {
+      timeout: 8000,
+      maxBuffer: 1024 * 1024
+    });
+    const { stdout, stderr } = await execFileAsync(binPath, [], {
+      timeout: 8000,
+      maxBuffer: 1024 * 1024
+    });
+
+    if (stderr) {
+      throw new Error(stderr.trim());
+    }
+
+    return JSON.parse(stdout.trim()) as {
+      label: string;
+      actual: unknown;
+      expected: unknown;
+    }[];
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true });
   }
 }
 
@@ -521,6 +615,187 @@ ${examples
   }
 }
 
+async function runSwift(
+  code: string,
+  functionName: string,
+  signature: RunCodeRequest["signature"],
+  examples: { label: string; args: unknown[]; expected: unknown }[]
+) {
+  if (!signature) {
+    throw new Error("Swift runner is not available for this problem yet.");
+  }
+
+  const tempDir = join(tmpdir(), `patternlift-${randomUUID()}`);
+  const filePath = join(tempDir, "Runner.swift");
+  const binPath = join(tempDir, "runner");
+  await fs.mkdir(tempDir, { recursive: true });
+
+  const script = `import Foundation
+
+${code}
+
+func toJsonCompatible(_ value: Any, type: String) -> Any {
+  switch type {
+  case "int", "bool", "string":
+    return value
+  case "intArray":
+    return value as! [Int]
+  case "stringArray":
+    return value as! [String]
+  case "intMatrix", "pointArray", "nestedIntArray":
+    return value as! [[Int]]
+  case "charMatrix":
+    return (value as! [[Character]]).map { row in row.map { String($0) } }
+  default:
+    return NSNull()
+  }
+}
+
+let results: [[String: Any]] = [
+${examples
+  .map((example) => {
+    const args = signature.params
+      .map((param, paramIndex) => buildSwiftLiteral(example.args[paramIndex], param.type))
+      .join(", ");
+    return `  [
+    "label": "${escapeForSource(example.label)}",
+    "actual": toJsonCompatible(${functionName}(${args}), type: "${signature.returnType}"),
+    "expected": toJsonCompatible(${buildSwiftLiteral(example.expected, signature.returnType)}, type: "${signature.returnType}")
+  ]`;
+  })
+  .join(",\n")}
+]
+
+let data = try JSONSerialization.data(withJSONObject: results, options: [])
+print(String(data: data, encoding: .utf8)!)
+`;
+
+  await fs.writeFile(filePath, script, "utf8");
+
+  try {
+    await execFileAsync("swiftc", [filePath, "-o", binPath], {
+      timeout: 8000,
+      maxBuffer: 1024 * 1024
+    });
+    const { stdout, stderr } = await execFileAsync(binPath, [], {
+      timeout: 8000,
+      maxBuffer: 1024 * 1024
+    });
+
+    if (stderr) {
+      throw new Error(stderr.trim());
+    }
+
+    return JSON.parse(stdout.trim()) as {
+      label: string;
+      actual: unknown;
+      expected: unknown;
+    }[];
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }
+}
+
+async function runGo(
+  code: string,
+  functionName: string,
+  signature: RunCodeRequest["signature"],
+  examples: { label: string; args: unknown[]; expected: unknown }[]
+) {
+  if (!signature) {
+    throw new Error("Go runner is not available for this problem yet.");
+  }
+
+  const tempDir = join(tmpdir(), `patternlift-${randomUUID()}`);
+  const filePath = join(tempDir, "runner.go");
+  await fs.mkdir(tempDir, { recursive: true });
+
+  const script = `package main
+
+import (
+  "encoding/json"
+  "fmt"
+)
+
+${code}
+
+func toJSONCompatible(value any, kind string) any {
+  switch kind {
+  case "int", "bool", "string":
+    return value
+  case "intArray":
+    return value.([]int)
+  case "stringArray":
+    return value.([]string)
+  case "intMatrix", "pointArray", "nestedIntArray":
+    return value.([][]int)
+  case "charMatrix":
+    rows := value.([][]byte)
+    converted := make([][]string, len(rows))
+    for i, row := range rows {
+      converted[i] = make([]string, len(row))
+      for j, ch := range row {
+        converted[i][j] = string(ch)
+      }
+    }
+    return converted
+  default:
+    return nil
+  }
+}
+
+type runResult struct {
+  Label string \`json:"label"\`
+  Actual any \`json:"actual"\`
+  Expected any \`json:"expected"\`
+}
+
+func main() {
+  results := []runResult{
+${examples
+  .map((example) => {
+    const args = signature.params
+      .map((param, paramIndex) => buildGoLiteral(example.args[paramIndex], param.type))
+      .join(", ");
+    return `    {
+      Label: "${escapeForSource(example.label)}",
+      Actual: toJSONCompatible(${functionName}(${args}), "${signature.returnType}"),
+      Expected: toJSONCompatible(${buildGoLiteral(example.expected, signature.returnType)}, "${signature.returnType}"),
+    },`;
+  })
+  .join("\n")}
+  }
+
+  payload, err := json.Marshal(results)
+  if err != nil {
+    panic(err)
+  }
+  fmt.Print(string(payload))
+}
+`;
+
+  await fs.writeFile(filePath, script, "utf8");
+
+  try {
+    const { stdout, stderr } = await execFileAsync("go", ["run", filePath], {
+      timeout: 8000,
+      maxBuffer: 1024 * 1024
+    });
+
+    if (stderr) {
+      throw new Error(stderr.trim());
+    }
+
+    return JSON.parse(stdout.trim()) as {
+      label: string;
+      actual: unknown;
+      expected: unknown;
+    }[];
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }
+}
+
 function buildJavaLiteral(value: unknown, type: ValueType): string {
   switch (type) {
     case "int":
@@ -570,6 +845,121 @@ function buildCppLiteral(value: unknown, type: ValueType): string {
     case "charMatrix":
       return `{${(value as string[][])
         .map((row) => `{${row.map((char) => `'${escapeForSource(char)}'`).join(", ")}}`)
+        .join(", ")}}`;
+  }
+}
+
+function buildCArgumentList(
+  args: unknown[],
+  params: { name: string; type: ValueType }[]
+) {
+  return params
+    .flatMap((param, index) => {
+      const value = args[index];
+      if (param.type === "intArray") {
+        const arrayValue = value as number[];
+        return [buildCLiteral(arrayValue, param.type), String(arrayValue.length)];
+      }
+
+      if (param.type === "stringArray") {
+        const arrayValue = value as string[];
+        return [buildCLiteral(arrayValue, param.type), String(arrayValue.length)];
+      }
+
+      return [buildCLiteral(value, param.type)];
+    })
+    .join(", ");
+}
+
+function buildCLiteral(value: unknown, type: ValueType): string {
+  switch (type) {
+    case "int":
+      return String(value);
+    case "bool":
+      return value ? "true" : "false";
+    case "string":
+      return `"${escapeForSource(String(value))}"`;
+    case "intArray":
+      return `(int[]){${(value as number[]).join(", ")}}`;
+    case "stringArray":
+      return `(char*[]){${(value as string[]).map((item) => `"${escapeForSource(item)}"`).join(", ")}}`;
+    default:
+      throw new Error(`C runner does not support type ${type}.`);
+  }
+}
+
+function buildCPrintStatement(expression: string, type: ValueType) {
+  switch (type) {
+    case "int":
+      return `printJsonInt(${expression});`;
+    case "bool":
+      return `printJsonBool(${expression});`;
+    case "string":
+      return `printJsonString(${expression});`;
+    default:
+      throw new Error(`C runner does not support return type ${type}.`);
+  }
+}
+
+function toCResultType(type: ValueType) {
+  switch (type) {
+    case "int":
+      return "int";
+    case "bool":
+      return "bool";
+    case "string":
+      return "char*";
+    default:
+      throw new Error(`C runner does not support return type ${type}.`);
+  }
+}
+
+function buildSwiftLiteral(value: unknown, type: ValueType): string {
+  switch (type) {
+    case "int":
+      return String(value);
+    case "bool":
+      return value ? "true" : "false";
+    case "string":
+      return `"${escapeForSource(String(value))}"`;
+    case "intArray":
+      return `[${(value as number[]).join(", ")}]`;
+    case "stringArray":
+      return `[${(value as string[]).map((item) => `"${escapeForSource(item)}"`).join(", ")}]`;
+    case "intMatrix":
+    case "pointArray":
+    case "nestedIntArray":
+      return `[${(value as number[][])
+        .map((row) => `[${row.join(", ")}]`)
+        .join(", ")}]`;
+    case "charMatrix":
+      return `[${(value as string[][])
+        .map((row) => `[${row.map((char) => `"${escapeForSource(char)}"`).join(", ")}]`)
+        .join(", ")}]`;
+  }
+}
+
+function buildGoLiteral(value: unknown, type: ValueType): string {
+  switch (type) {
+    case "int":
+      return String(value);
+    case "bool":
+      return value ? "true" : "false";
+    case "string":
+      return `"${escapeForSource(String(value))}"`;
+    case "intArray":
+      return `[]int{${(value as number[]).join(", ")}}`;
+    case "stringArray":
+      return `[]string{${(value as string[]).map((item) => `"${escapeForSource(item)}"`).join(", ")}}`;
+    case "intMatrix":
+    case "pointArray":
+    case "nestedIntArray":
+      return `[][]int{${(value as number[][])
+        .map((row) => `[]int{${row.join(", ")}}`)
+        .join(", ")}}`;
+    case "charMatrix":
+      return `[][]byte{${(value as string[][])
+        .map((row) => `[]byte{${row.map((char) => `'${escapeForSource(char)}'`).join(", ")}}`)
         .join(", ")}}`;
   }
 }
