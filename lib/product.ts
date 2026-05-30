@@ -144,3 +144,9 @@ export const reflectionPrompts = [
   "What nearby pattern might you confuse it with?",
   "What would your first step be before writing code?"
 ] as const;
+
+export const reflectionExamples = [
+  "The phrase shortest contiguous subarray makes me think about a valid window I can shrink.",
+  "I might confuse this with two pointers because both use left and right indices.",
+  "I would start with a running sum and move the left edge whenever the condition stays satisfied."
+] as const;
