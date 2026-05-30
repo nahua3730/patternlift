@@ -184,7 +184,7 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
 
   return (
     <section className="grid gap-6 lg:grid-cols-[1.12fr_0.88fr]">
-      <div className="rounded-lg border border-black/10 bg-white/75 p-6 shadow-sm">
+      <div className="uiverse-panel p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm font-semibold uppercase tracking-wide text-ember">
@@ -200,7 +200,7 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
             <select
               value={problemId}
               onChange={(event) => setProblemId(event.target.value)}
-              className="mt-2 block min-w-64 rounded-lg border border-black/10 bg-mist px-3 py-2 text-sm text-ink outline-none transition focus:border-black/35"
+              className="uiverse-field mt-2 block min-w-64 px-3 py-2 text-sm text-ink"
             >
               {sampleProblems.map((problem) => (
                 <option key={problem.id} value={problem.id}>
@@ -233,7 +233,7 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
               setFeedback(null);
             }}
             rows={6}
-            className="mt-3 w-full rounded-lg border border-black/10 bg-mist px-4 py-3 text-sm leading-6 text-ink outline-none transition focus:border-black/35"
+            className="uiverse-field mt-3 w-full px-4 py-3 text-sm leading-6 text-ink"
           />
         </label>
 
@@ -253,10 +253,10 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
                     setSelectedPattern(pattern.id);
                     setFeedback(null);
                   }}
-                  className={`rounded-lg border p-4 text-left transition ${
+                  className={`uiverse-choice p-4 text-left transition ${
                     isSelected
-                      ? "border-black bg-ink text-white"
-                      : "border-black/10 bg-mist text-ink hover:border-black/30"
+                      ? "uiverse-choice-active text-white"
+                      : "text-ink"
                   }`}
                 >
                   <p className="text-sm font-semibold">{pattern.label}</p>
@@ -286,10 +286,10 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
                   key={clue}
                   type="button"
                   onClick={() => toggleClue(clue)}
-                  className={`rounded-full border px-3 py-2 text-sm transition ${
+                  className={`uiverse-chip px-3 py-2 text-sm transition ${
                     isSelected
-                      ? "border-black bg-ink text-white"
-                      : "border-black/10 bg-white text-black/72 hover:border-black/30"
+                      ? "uiverse-chip-active text-white"
+                      : "text-black/72"
                   }`}
                 >
                   {clue}
@@ -315,10 +315,10 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
                     setSelectedFirstStep(step);
                     setFeedback(null);
                   }}
-                  className={`rounded-lg border p-4 text-left text-sm leading-6 transition ${
+                  className={`uiverse-choice p-4 text-left text-sm leading-6 transition ${
                     isSelected
-                      ? "border-black bg-ink text-white"
-                      : "border-black/10 bg-mist text-black/72 hover:border-black/30"
+                      ? "uiverse-choice-active text-white"
+                      : "text-black/72"
                   }`}
                 >
                   {step}
@@ -332,21 +332,21 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
           <button
             type="button"
             onClick={evaluateAttempt}
-            className="rounded-lg bg-ink px-4 py-2 text-sm font-medium text-white transition hover:bg-black"
+            className="uiverse-button px-4 py-2 text-sm font-medium"
           >
             Score this attempt
           </button>
           <button
             type="button"
             onClick={() => setHintLevel((current) => Math.min(current + 1, 3))}
-            className="rounded-lg border border-black/10 bg-white px-4 py-2 text-sm font-medium text-black/72 transition hover:border-black/28"
+            className="uiverse-button-secondary px-4 py-2 text-sm font-medium"
           >
             Reveal next hint
           </button>
         </div>
       </div>
 
-      <div className="rounded-lg border border-black/10 bg-ink p-6 text-white shadow-sm">
+      <div className="uiverse-panel-dark p-6 text-white shadow-sm">
         <p className="text-sm font-semibold uppercase tracking-wide text-lake">
           Coach
         </p>

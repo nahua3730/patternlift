@@ -106,7 +106,7 @@ export function PatternLiftApp() {
     <main className="min-h-screen px-6 py-8 sm:px-8">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
         <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="rounded-lg border border-black/10 bg-white/75 p-6 shadow-sm">
+          <div className="uiverse-panel p-6">
             <p className="text-sm font-semibold uppercase tracking-wide text-ember">
               PatternLift
             </p>
@@ -121,7 +121,7 @@ export function PatternLiftApp() {
             </p>
           </div>
 
-          <div className="rounded-lg border border-black/10 bg-ink p-6 text-white shadow-sm">
+          <div className="uiverse-panel-dark p-6 text-white shadow-sm">
             <p className="text-sm font-semibold uppercase tracking-wide text-lake">
               Today
             </p>
