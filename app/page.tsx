@@ -1,5 +1,5 @@
-import { DashboardView } from "@/components/state-views";
+import { PracticePageView } from "@/components/state-views";
 
 export default function HomePage() {
-  return <DashboardView />;
+  return <PracticePageView />;
 }

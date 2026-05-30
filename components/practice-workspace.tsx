@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { CoachRequest, CoachResponse } from "@/lib/coach";
 import { patternOptions, sampleProblems } from "@/lib/product";
 import { getSuggestedTechniques } from "@/lib/techniques";
 
 type PatternId = (typeof patternOptions)[number]["id"];
-type AttemptResult = {
+
+export type AttemptResult = {
   problemId: string;
   problemTitle: string;
   selectedPatternLabel: string;
@@ -14,6 +15,7 @@ type AttemptResult = {
   correctPatternLabel: string;
   selectedClues: string[];
   selectedFirstStep: string | null;
+  learnerNote: string;
   outcome: "solid" | "partial" | "confused";
   score: number;
   feedbackTitle: string;
@@ -53,6 +55,7 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
   const [selectedPattern, setSelectedPattern] = useState<PatternId | null>(null);
   const [selectedClues, setSelectedClues] = useState<string[]>([]);
   const [selectedFirstStep, setSelectedFirstStep] = useState<string | null>(null);
+  const [learnerNote, setLearnerNote] = useState("");
   const [hintLevel, setHintLevel] = useState(0);
   const [feedback, setFeedback] = useState<AttemptResult | null>(null);
   const [aiCoach, setAiCoach] = useState<CoachResponse | null>(null);
@@ -65,29 +68,29 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
   );
 
   const activePattern = useMemo(
-    () =>
-      patternOptions.find((pattern) => pattern.id === selectedPattern) ?? null,
+    () => patternOptions.find((pattern) => pattern.id === selectedPattern) ?? null,
     [selectedPattern]
   );
 
   const correctPattern = useMemo(
-    () =>
-      patternOptions.find((pattern) => pattern.id === activeProblem.targetPatternId)!,
+    () => patternOptions.find((pattern) => pattern.id === activeProblem.targetPatternId)!,
     [activeProblem.targetPatternId]
   );
 
-  const contrastPatternLabel = useMemo(
+  const contrastPattern = useMemo(
     () =>
-      patternOptions.find((pattern) => pattern.id === activeProblem.contrastPatternId)
-        ?.label ?? "Neighboring pattern",
+      patternOptions.find((pattern) => pattern.id === activeProblem.contrastPatternId) ?? null,
     [activeProblem.contrastPatternId]
   );
+
+  const contrastPatternLabel = contrastPattern?.label ?? "Neighboring pattern";
 
   useEffect(() => {
     setProblemText(activeProblem.prompt);
     setSelectedPattern(null);
     setSelectedClues([]);
     setSelectedFirstStep(null);
+    setLearnerNote("");
     setHintLevel(0);
     setFeedback(null);
     setAiCoach(null);
@@ -100,30 +103,30 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
 
     const signals = [
       normalized.includes("substring") || normalized.includes("subarray")
-        ? "This prompt signals a contiguous range."
+        ? "This prompt is talking about a contiguous range, so reuse matters."
         : null,
       normalized.includes("shortest") || normalized.includes("longest")
-        ? "Optimization language often points to a reusable pattern."
+        ? "Optimization language usually means the same structure should keep getting refined."
         : null,
       normalized.includes("tree") || normalized.includes("graph")
-        ? "A traversal pattern may be the main frame."
+        ? "This smells like traversal, so the real question is whether depth or levels matter more."
         : null,
       normalized.includes("top k") || normalized.includes("k most")
-        ? "Ranking language often suggests a heap-based approach."
+        ? "Ranking language is a strong clue that repeated best-candidate access may matter."
         : null
     ].filter(Boolean) as string[];
 
     return signals.length > 0
       ? signals
       : [
-          "Look for whether the problem is about a range, a traversal, or repeated best-choice updates."
+          "Before naming a pattern, ask whether this is mainly about a range, a traversal, or repeated best-choice updates."
         ];
   }, [problemText]);
 
   const hintTrail = useMemo(() => {
     const hints = [
-      `First signal: ${activeProblem.reviewQuestion}`,
-      `Contrast check: this is more ${correctPattern.label} than ${contrastPatternLabel}.`,
+      `Look at the signal hidden inside this prompt: ${activeProblem.reviewQuestion}`,
+      `Pattern contrast: this is more ${correctPattern.label} than ${contrastPatternLabel}.`,
       `Implementation nudge: ${correctPattern.firstSteps[0]}.`
     ];
 
@@ -133,12 +136,23 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
   const suggestedTechniques = useMemo(
     () =>
       getSuggestedTechniques({
-        primaryPatternId: activeProblem.targetPatternId,
+        primaryPatternId: selectedPattern ?? activeProblem.targetPatternId,
         contrastPatternId: activeProblem.contrastPatternId,
         problemPrompt: problemText
       }),
-    [activeProblem.contrastPatternId, activeProblem.targetPatternId, problemText]
+    [activeProblem.contrastPatternId, activeProblem.targetPatternId, problemText, selectedPattern]
   );
+
+  function resetFeedback() {
+    setFeedback(null);
+    setAiCoach(null);
+    setCoachError(null);
+  }
+
+  function updateProblemText(value: string) {
+    setProblemText(value);
+    resetFeedback();
+  }
 
   function toggleClue(clue: string) {
     setSelectedClues((current) =>
@@ -146,9 +160,7 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
         ? current.filter((entry) => entry !== clue)
         : [...current, clue]
     );
-    setFeedback(null);
-    setAiCoach(null);
-    setCoachError(null);
+    resetFeedback();
   }
 
   async function evaluateAttempt() {
@@ -169,17 +181,17 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
 
     const feedbackTitle =
       outcome === "solid"
-        ? "Nice. This is a strong interview-style attempt."
+        ? "Nice. Your reasoning is starting in the right neighborhood."
         : outcome === "partial"
-          ? "You are circling the right idea."
-          : "The pattern and the clues are fighting each other.";
+          ? "You are close, but one distinction still needs to click."
+          : "Good moment to slow down and re-anchor on the strongest signal.";
 
     const feedbackBody =
       outcome === "solid"
-        ? `You matched the problem to ${correctPattern.label}, noticed the most useful prompt cues, and chose a fitting first move.`
+        ? `You matched this to ${correctPattern.label}, noticed useful clues, and picked a first move that belongs to that pattern.`
         : outcome === "partial"
-          ? `There is something real in your instinct, but the best next step is to sharpen why this is ${correctPattern.label} rather than ${contrastPatternLabel}.`
-          : `Right now the app would coach you back to the signal words in the prompt before showing more hints. This problem wants ${correctPattern.label}.`;
+          ? `There is a real instinct here, but the sharper move is to explain why this is ${correctPattern.label} instead of ${contrastPatternLabel}.`
+          : `The prompt is trying to pull you toward ${correctPattern.label}. Before more code, I would go back to the exact words that imply that pattern.`;
 
     const result: AttemptResult = {
       problemId: activeProblem.id,
@@ -189,6 +201,7 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
       correctPatternLabel: correctPattern.label,
       selectedClues,
       selectedFirstStep,
+      learnerNote: learnerNote.trim(),
       outcome,
       score,
       feedbackTitle,
@@ -212,6 +225,7 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
       suggestedTechniqueTitles: suggestedTechniques.map((technique) => technique.title),
       selectedClues: result.selectedClues,
       selectedFirstStep: result.selectedFirstStep,
+      learnerNote: result.learnerNote,
       localOutcome: result.outcome,
       localScore: result.score,
       reviewQuestion: result.reviewQuestion
@@ -246,30 +260,24 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
     }
   }
 
-  return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-5">
-      <ConversationBlock
-        speaker="Coach"
-        title="Let’s work through one interview problem together."
-      >
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="space-y-2">
-            <p className="text-sm leading-6 text-black/72">
-              Pick a problem, commit to a pattern, and I’ll help you sharpen
-              the clue you noticed and the first move you should make.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <span className="rounded-full border border-black/10 bg-mist px-3 py-1 text-xs font-medium text-black/66">
-                {activeProblem.difficulty}
-              </span>
-              <span className="rounded-full border border-black/10 bg-mist px-3 py-1 text-xs font-medium text-black/66">
-                Common confusion: {contrastPatternLabel}
-              </span>
-            </div>
-          </div>
+  const canEvaluate =
+    problemText.trim().length > 0 && selectedPattern && selectedClues.length > 0 && selectedFirstStep;
 
+  return (
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
+      <ThreadMessage
+        speaker="coach"
+        title="Paste a problem and let’s work it like a live coaching thread."
+      >
+        <p className="text-sm leading-7 text-black/72">
+          We&apos;ll keep this lightweight. You give me the prompt, your instinct,
+          and the clue you noticed. I&apos;ll react with technique nudges, contrast
+          hints, and one next step instead of dumping a solution.
+        </p>
+
+        <div className="mt-5 flex flex-wrap items-end gap-3">
           <label className="text-sm text-black/68">
-            Problem
+            Sample problem
             <select
               value={problemId}
               onChange={(event) => setProblemId(event.target.value)}
@@ -282,197 +290,285 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
               ))}
             </select>
           </label>
+
+          <button
+            type="button"
+            onClick={() => {
+              setProblemId(activeProblem.id);
+              setProblemText(activeProblem.prompt);
+            }}
+            className="uiverse-button-secondary px-4 py-2 text-sm font-medium"
+          >
+            Reset prompt
+          </button>
         </div>
 
-        <div className="mt-4 rounded-lg border border-black/10 bg-mist p-5">
-          <p className="text-sm font-semibold text-ink">Problem</p>
+        <div className="mt-4 rounded-lg border border-black/10 bg-white/90 p-4">
+          <p className="text-sm font-semibold text-ink">Problem prompt</p>
           <textarea
             value={problemText}
-            onChange={(event) => {
-              setProblemText(event.target.value);
-              setFeedback(null);
-              setAiCoach(null);
-              setCoachError(null);
-            }}
-            rows={6}
+            onChange={(event) => updateProblemText(event.target.value)}
+            rows={7}
             className="uiverse-field mt-3 w-full px-4 py-3 text-sm leading-6 text-ink"
+            placeholder="Paste a LeetCode problem here."
           />
         </div>
-      </ConversationBlock>
+      </ThreadMessage>
 
-      <ConversationBlock
-        speaker="Coach"
-        title="Here’s what jumps out from the prompt first."
+      <ThreadMessage speaker="user" title={activeProblem.title}>
+        <p className="text-sm leading-7 text-black/78 whitespace-pre-wrap">{problemText}</p>
+      </ThreadMessage>
+
+      <ThreadMessage
+        speaker="coach"
+        title="Here’s what I notice before naming a pattern."
       >
-        <ul className="space-y-2 text-sm leading-6 text-black/74">
+        <ul className="space-y-2 text-sm leading-6 text-black/72">
           {quickRead.map((signal) => (
             <li key={signal}>{signal}</li>
           ))}
         </ul>
-      </ConversationBlock>
 
-      <ConversationBlock
-        speaker="Coach"
-        title="What pattern do you think this is?"
-      >
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {patternOptions.map((pattern) => {
-            const isSelected = pattern.id === selectedPattern;
+        <div className="mt-4 flex flex-wrap gap-2">
+          <span className="rounded-full border border-black/10 bg-mist px-3 py-1 text-xs font-medium text-black/66">
+            {activeProblem.difficulty}
+          </span>
+          <span className="rounded-full border border-black/10 bg-mist px-3 py-1 text-xs font-medium text-black/66">
+            Easy to confuse with {contrastPatternLabel}
+          </span>
+        </div>
+      </ThreadMessage>
 
-            return (
-              <button
-                key={pattern.id}
-                type="button"
-                onClick={() => {
-                  setSelectedPattern(pattern.id);
-                  setFeedback(null);
-                  setAiCoach(null);
-                  setCoachError(null);
-                }}
-                className={`uiverse-choice p-4 text-left transition ${
-                  isSelected ? "uiverse-choice-active text-white" : "text-ink"
-                }`}
-              >
-                <p className="text-sm font-semibold">{pattern.label}</p>
-                <p
-                  className={`mt-2 text-sm leading-6 ${
-                    isSelected ? "text-white/78" : "text-black/64"
+      <ThreadMessage
+        speaker="coach"
+        title="What pattern does your first instinct point to?"
+        controls={
+          <ChoiceGrid>
+            {patternOptions.map((pattern) => {
+              const isSelected = pattern.id === selectedPattern;
+
+              return (
+                <button
+                  key={pattern.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedPattern(pattern.id);
+                    resetFeedback();
+                  }}
+                  className={`uiverse-choice p-4 text-left transition ${
+                    isSelected ? "uiverse-choice-active text-white" : "text-ink"
                   }`}
                 >
-                  {pattern.coachPrompt}
-                </p>
-              </button>
-            );
-          })}
-        </div>
-      </ConversationBlock>
-
-      <ConversationBlock
-        speaker="Coach"
-        title="What clue made you think that?"
+                  <p className="text-sm font-semibold">{pattern.label}</p>
+                  <p
+                    className={`mt-2 text-sm leading-6 ${
+                      isSelected ? "text-white/78" : "text-black/64"
+                    }`}
+                  >
+                    {pattern.coachPrompt}
+                  </p>
+                </button>
+              );
+            })}
+          </ChoiceGrid>
+        }
       >
-        <div className="flex flex-wrap gap-2">
-          {clueChoices.map((clue) => {
-            const isSelected = selectedClues.includes(clue);
+        <p className="text-sm leading-6 text-black/72">
+          Don&apos;t worry about being perfect here. I care more about your first
+          read than whether you get it right immediately.
+        </p>
+      </ThreadMessage>
 
-            return (
-              <button
-                key={clue}
-                type="button"
-                onClick={() => toggleClue(clue)}
-                className={`uiverse-chip px-3 py-2 text-sm transition ${
-                  isSelected ? "uiverse-chip-active text-white" : "text-black/72"
-                }`}
-              >
-                {clue}
-              </button>
-            );
-          })}
-        </div>
-      </ConversationBlock>
-
-      <ConversationBlock
-        speaker="Coach"
-        title="What would your first concrete move be?"
-      >
-        <div className="grid gap-3 sm:grid-cols-2">
-          {firstStepChoices.map((step) => {
-            const isSelected = selectedFirstStep === step;
-
-            return (
-              <button
-                key={step}
-                type="button"
-                onClick={() => {
-                  setSelectedFirstStep(step);
-                  setFeedback(null);
-                  setAiCoach(null);
-                  setCoachError(null);
-                }}
-                className={`uiverse-choice p-4 text-left text-sm leading-6 transition ${
-                  isSelected ? "uiverse-choice-active text-white" : "text-black/72"
-                }`}
-              >
-                {step}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="mt-5 flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={evaluateAttempt}
-            className="uiverse-button px-4 py-2 text-sm font-medium"
-          >
-            {isCoachLoading ? "Coaching..." : "See coach response"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setHintLevel((current) => Math.min(current + 1, 3))}
-            className="uiverse-button-secondary px-4 py-2 text-sm font-medium"
-          >
-            Reveal next hint
-          </button>
-        </div>
-      </ConversationBlock>
-
-      {hintTrail.length > 0 ? (
-        <ConversationBlock speaker="Coach" title="Here are your hints so far.">
-          <div className="space-y-3">
-            {hintTrail.map((hint, index) => (
-              <div key={hint} className="rounded-lg border border-black/10 bg-white p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-fern">
-                  Hint {index + 1}
-                </p>
-                <p className="mt-2 text-sm leading-6 text-black/72">{hint}</p>
-              </div>
-            ))}
-          </div>
-        </ConversationBlock>
+      {activePattern ? (
+        <ThreadMessage speaker="user" title="My current guess">
+          <p className="text-sm font-semibold text-ink">{activePattern.label}</p>
+          <p className="mt-2 text-sm leading-6 text-black/72">
+            I&apos;m leaning this way because the prompt feels closest to this pattern.
+          </p>
+        </ThreadMessage>
       ) : null}
 
-      <ConversationBlock
-        speaker="Coach"
-        title="These techniques are worth keeping close for this problem."
-      >
-        <div className="space-y-3">
-          {suggestedTechniques.map((technique) => (
-            <div key={technique.id} className="rounded-lg border border-black/10 bg-white p-4">
-              <p className="text-sm font-semibold text-ink">{technique.title}</p>
-              <p className="mt-2 text-sm leading-6 text-black/72">
-                <span className="font-semibold text-ink">When to think:</span>{" "}
-                {technique.whenToThink}
-              </p>
-              <p className="mt-2 text-sm leading-6 text-black/72">
-                <span className="font-semibold text-ink">Starter question:</span>{" "}
-                {technique.starterQuestion}
-              </p>
-              <p className="mt-2 text-sm leading-6 text-black/68">
-                <span className="font-semibold text-ink">Common trap:</span>{" "}
-                {technique.commonTrap}
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {technique.quickTips.map((tip) => (
-                  <span
-                    key={tip}
-                    className="rounded-full border border-black/10 bg-mist px-3 py-1 text-xs font-medium text-black/68"
+      {activePattern ? (
+        <ThreadMessage
+          speaker="coach"
+          title={`Okay. What clue made ${activePattern.label} feel plausible to you?`}
+          controls={
+            <div className="flex flex-wrap gap-2">
+              {clueChoices.map((clue) => {
+                const isSelected = selectedClues.includes(clue);
+
+                return (
+                  <button
+                    key={clue}
+                    type="button"
+                    onClick={() => toggleClue(clue)}
+                    className={`uiverse-chip px-3 py-2 text-sm transition ${
+                      isSelected ? "uiverse-chip-active text-white" : "text-black/72"
+                    }`}
                   >
-                    {tip}
-                  </span>
-                ))}
-              </div>
+                    {clue}
+                  </button>
+                );
+              })}
             </div>
-          ))}
-        </div>
-      </ConversationBlock>
+          }
+        >
+          <p className="text-sm leading-6 text-black/72">
+            Pick one or two clues. We&apos;re trying to train what your eyes notice
+            first, not write an essay.
+          </p>
+        </ThreadMessage>
+      ) : null}
+
+      {selectedClues.length > 0 ? (
+        <ThreadMessage speaker="user" title="The clue I noticed">
+          <div className="flex flex-wrap gap-2">
+            {selectedClues.map((clue) => (
+              <span
+                key={clue}
+                className="rounded-full border border-black/10 bg-white/85 px-3 py-1 text-sm text-black/72"
+              >
+                {clue}
+              </span>
+            ))}
+          </div>
+        </ThreadMessage>
+      ) : null}
+
+      {selectedClues.length > 0 ? (
+        <ThreadMessage
+          speaker="coach"
+          title="Good. Hold onto these ideas while you choose the first move."
+          controls={
+            <ChoiceGrid columns="two">
+              {firstStepChoices.map((step) => {
+                const isSelected = selectedFirstStep === step;
+
+                return (
+                  <button
+                    key={step}
+                    type="button"
+                    onClick={() => {
+                      setSelectedFirstStep(step);
+                      resetFeedback();
+                    }}
+                    className={`uiverse-choice p-4 text-left text-sm leading-6 transition ${
+                      isSelected ? "uiverse-choice-active text-white" : "text-black/72"
+                    }`}
+                  >
+                    {step}
+                  </button>
+                );
+              })}
+            </ChoiceGrid>
+          }
+        >
+          <div className="space-y-3">
+            <p className="text-sm leading-6 text-black/72">
+              Here are the techniques I&apos;d keep nearby for this prompt.
+            </p>
+
+            <div className="space-y-3">
+              {suggestedTechniques.map((technique) => (
+                <div
+                  key={technique.id}
+                  className="rounded-lg border border-black/10 bg-white/90 p-4"
+                >
+                  <p className="text-sm font-semibold text-ink">{technique.title}</p>
+                  <p className="mt-2 text-sm leading-6 text-black/72">
+                    <span className="font-semibold text-ink">Starter question:</span>{" "}
+                    {technique.starterQuestion}
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-black/68">
+                    <span className="font-semibold text-ink">Trap:</span>{" "}
+                    {technique.commonTrap}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {technique.quickTips.slice(0, 2).map((tip) => (
+                      <span
+                        key={tip}
+                        className="rounded-full border border-black/10 bg-mist px-3 py-1 text-xs font-medium text-black/68"
+                      >
+                        {tip}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </ThreadMessage>
+      ) : null}
+
+      {selectedFirstStep ? (
+        <ThreadMessage speaker="user" title="My first move">
+          <p className="text-sm leading-7 text-black/78">{selectedFirstStep}</p>
+          <div className="mt-4 rounded-lg border border-black/10 bg-white/90 p-4">
+            <label className="block text-sm font-medium text-ink" htmlFor="learner-note">
+              Optional: what still feels fuzzy?
+            </label>
+            <textarea
+              id="learner-note"
+              value={learnerNote}
+              onChange={(event) => {
+                setLearnerNote(event.target.value);
+                resetFeedback();
+              }}
+              rows={3}
+              className="uiverse-field mt-3 w-full px-4 py-3 text-sm leading-6 text-ink"
+              placeholder="Example: I can tell this is range-based, but I’m not sure when the left pointer should move."
+            />
+          </div>
+        </ThreadMessage>
+      ) : null}
+
+      {selectedFirstStep ? (
+        <ThreadMessage
+          speaker="coach"
+          title="Want a nudge before I react to the whole attempt?"
+          controls={
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={evaluateAttempt}
+                disabled={!canEvaluate || isCoachLoading}
+                className="uiverse-button px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isCoachLoading ? "Coach is thinking..." : "Get coach response"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setHintLevel((current) => Math.min(current + 1, 3))}
+                className="uiverse-button-secondary px-4 py-2 text-sm font-medium"
+              >
+                Reveal next hint
+              </button>
+            </div>
+          }
+        >
+          <p className="text-sm leading-6 text-black/72">
+            If you want to stay in the struggle a little longer, reveal a hint.
+            If you want targeted feedback now, let me respond to the full thread.
+          </p>
+        </ThreadMessage>
+      ) : null}
+
+      {hintTrail.map((hint, index) => (
+        <ThreadMessage
+          key={hint}
+          speaker="coach"
+          title={`Hint ${index + 1}`}
+        >
+          <p className="text-sm leading-6 text-black/72">{hint}</p>
+        </ThreadMessage>
+      ))}
 
       {feedback ? (
-        <ConversationBlock speaker="Coach" title={feedback.feedbackTitle}>
+        <ThreadMessage speaker="coach" title={feedback.feedbackTitle}>
           <div className="rounded-lg border border-fern/25 bg-fern/10 p-4 text-black">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm leading-6 text-black/72">{feedback.feedbackBody}</p>
-              <span className="rounded-full border border-black/10 bg-white/60 px-3 py-1 text-xs font-semibold">
+              <span className="rounded-full border border-black/10 bg-white/70 px-3 py-1 text-xs font-semibold">
                 Score {feedback.score}
               </span>
             </div>
@@ -480,83 +576,119 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
               Review hook: {feedback.reviewQuestion}
             </p>
           </div>
-        </ConversationBlock>
+        </ThreadMessage>
       ) : null}
 
       {isCoachLoading ? (
-        <ConversationBlock speaker="Coach" title="Thinking through your attempt...">
+        <ThreadMessage speaker="coach" title="Thinking through your attempt...">
           <p className="text-sm leading-6 text-black/68">
             I&apos;m turning your choices into more specific coaching.
           </p>
-        </ConversationBlock>
+        </ThreadMessage>
       ) : null}
 
       {aiCoach ? (
-        <ConversationBlock speaker="Coach" title={aiCoach.headline}>
-          <div className="rounded-lg border border-lake/25 bg-lake/10 p-4 text-black">
+        <ThreadMessage speaker="coach" title={aiCoach.headline}>
+          <div className="space-y-4 rounded-lg border border-lake/25 bg-lake/10 p-4">
             <p className="text-sm leading-6 text-black/72">{aiCoach.diagnosis}</p>
-            <div className="mt-3 space-y-2 text-sm leading-6 text-black/68">
-              <p>
-                <span className="font-semibold text-ink">Clues:</span>{" "}
-                {aiCoach.clueFeedback}
-              </p>
-              <p>
-                <span className="font-semibold text-ink">First move:</span>{" "}
-                {aiCoach.firstStepFeedback}
-              </p>
-              <p>
-                <span className="font-semibold text-ink">Next hint:</span>{" "}
-                {aiCoach.nextHint}
-              </p>
-              <p>
-                <span className="font-semibold text-ink">Review:</span>{" "}
-                {aiCoach.reviewQuestion}
-              </p>
-              <p>
-                <span className="font-semibold text-ink">Coach note:</span>{" "}
-                {aiCoach.encouragement}
-              </p>
-            </div>
+
+            <CoachNote title="Clue read" body={aiCoach.clueFeedback} />
+            <CoachNote title="First move" body={aiCoach.firstStepFeedback} />
+            <CoachNote title="Next hint" body={aiCoach.nextHint} />
+            <CoachNote title="Review later" body={aiCoach.reviewQuestion} />
+
+            <p className="text-sm leading-6 text-black/68">{aiCoach.encouragement}</p>
           </div>
-        </ConversationBlock>
+        </ThreadMessage>
       ) : null}
 
       {coachError ? (
-        <ConversationBlock speaker="Coach" title="I couldn’t load the AI coach just now.">
-          <div className="rounded-lg border border-ember/25 bg-ember/10 p-4 text-black">
-            <p className="text-sm leading-6 text-black/72">{coachError}</p>
-          </div>
-        </ConversationBlock>
+        <ThreadMessage speaker="coach" title="AI coaching unavailable">
+          <p className="text-sm leading-6 text-red-700">{coachError}</p>
+        </ThreadMessage>
       ) : null}
     </div>
   );
 }
 
-function ConversationBlock({
+function ThreadMessage({
   speaker,
   title,
-  children
+  children,
+  controls
 }: {
-  speaker: string;
+  speaker: "coach" | "user";
   title: string;
-  children: React.ReactNode;
+  children: ReactNode;
+  controls?: ReactNode;
 }) {
+  const isCoach = speaker === "coach";
+
   return (
-    <section className="uiverse-panel p-6">
-      <div className="flex items-start gap-4">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-mist text-sm font-semibold text-ink">
-          {speaker.slice(0, 1)}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold uppercase tracking-wide text-lake">
-            {speaker}
-          </p>
-          <h2 className="mt-1 text-xl font-semibold text-ink">{title}</h2>
-          <div className="mt-4">{children}</div>
-        </div>
+    <section
+      className={`flex gap-3 ${isCoach ? "justify-start" : "justify-end"}`}
+    >
+      {isCoach ? <Avatar label="Coach" tone="coach" /> : null}
+
+      <div
+        className={`w-full max-w-3xl rounded-lg border p-5 shadow-sm ${
+          isCoach
+            ? "border-black/10 bg-white/80"
+            : "border-lake/20 bg-lake/10"
+        }`}
+      >
+        <p
+          className={`text-xs font-semibold uppercase tracking-wide ${
+            isCoach ? "text-lake" : "text-ember"
+          }`}
+        >
+          {isCoach ? "Coach" : "You"}
+        </p>
+        <h2 className="mt-1 text-lg font-semibold text-ink">{title}</h2>
+        <div className="mt-4">{children}</div>
+        {controls ? <div className="mt-5">{controls}</div> : null}
       </div>
+
+      {isCoach ? null : <Avatar label="You" tone="user" />}
     </section>
   );
 }
 
-export type { AttemptResult };
+function Avatar({ label, tone }: { label: string; tone: "coach" | "user" }) {
+  return (
+    <div
+      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
+        tone === "coach" ? "bg-mist text-ink" : "bg-lake/18 text-lake"
+      }`}
+    >
+      {label.slice(0, 1)}
+    </div>
+  );
+}
+
+function ChoiceGrid({
+  children,
+  columns = "three"
+}: {
+  children: ReactNode;
+  columns?: "two" | "three";
+}) {
+  return (
+    <div
+      className={`grid gap-3 ${
+        columns === "two" ? "sm:grid-cols-2" : "sm:grid-cols-2 xl:grid-cols-3"
+      }`}
+    >
+      {children}
+    </div>
+  );
+}
+
+function CoachNote({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="rounded-lg border border-white/65 bg-white/70 p-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-lake">{title}</p>
+      <p className="mt-2 text-sm leading-6 text-black/70">{body}</p>
+    </div>
+  );
+}

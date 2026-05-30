@@ -9,6 +9,7 @@ export type CoachRequest = {
   suggestedTechniqueTitles: string[];
   selectedClues: string[];
   selectedFirstStep: string | null;
+  learnerNote: string;
   localOutcome: AttemptOutcome;
   localScore: number;
   reviewQuestion: string;
