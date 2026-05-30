@@ -75,10 +75,12 @@ const editorLanguages: Array<{ id: SupportedLanguage; label: string }> = [
   { id: "python", label: "Python" },
   { id: "ruby", label: "Ruby" },
   { id: "c", label: "C" },
+  { id: "csharp", label: "C#" },
   { id: "java", label: "Java" },
   { id: "cpp", label: "C++" },
   { id: "swift", label: "Swift" },
-  { id: "go", label: "Go" }
+  { id: "go", label: "Go" },
+  { id: "kotlin", label: "Kotlin" }
 ];
 
 export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
@@ -101,10 +103,12 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
     python: "",
     ruby: "",
     c: "",
+    csharp: "",
     java: "",
     cpp: "",
     swift: "",
-    go: ""
+    go: "",
+    kotlin: ""
   });
   const [runResults, setRunResults] = useState<RunResult[] | null>(null);
   const [runnerError, setRunnerError] = useState<string | null>(null);
@@ -196,10 +200,12 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
       python: getStarterCode(activeCodeConfig, activeProblem.title, "python"),
       ruby: getStarterCode(activeCodeConfig, activeProblem.title, "ruby"),
       c: getStarterCode(activeCodeConfig, activeProblem.title, "c"),
+      csharp: getStarterCode(activeCodeConfig, activeProblem.title, "csharp"),
       java: getStarterCode(activeCodeConfig, activeProblem.title, "java"),
       cpp: getStarterCode(activeCodeConfig, activeProblem.title, "cpp"),
       swift: getStarterCode(activeCodeConfig, activeProblem.title, "swift"),
-      go: getStarterCode(activeCodeConfig, activeProblem.title, "go")
+      go: getStarterCode(activeCodeConfig, activeProblem.title, "go"),
+      kotlin: getStarterCode(activeCodeConfig, activeProblem.title, "kotlin")
     });
     setSelectedLanguage((current) =>
       availableLanguages.includes(current) ? current : availableLanguages[0]

@@ -4,10 +4,12 @@ export type SupportedLanguage =
   | "python"
   | "ruby"
   | "c"
+  | "csharp"
   | "java"
   | "cpp"
   | "swift"
-  | "go";
+  | "go"
+  | "kotlin";
 
 export type ValueType =
   | "int"
@@ -86,6 +88,22 @@ function buildCStarterCode(
     .join("\n")}\n\n  ${fallback}\n}`;
 }
 
+function buildCSharpStarterCode(
+  functionName: string,
+  params: { name: string; type: ValueType }[],
+  returnType: ValueType,
+  notes: string[]
+) {
+  const signature = params
+    .map((param) => `${toCSharpType(param.type)} ${param.name}`)
+    .join(", ");
+  const fallback = csharpDefaultReturn(returnType);
+
+  return `using System;\nusing System.Collections.Generic;\n\npublic class Solution {\n  public ${toCSharpType(returnType)} ${functionName}(${signature}) {\n${notes
+    .map((note) => `    // ${note}`)
+    .join("\n")}\n\n    ${fallback}\n  }\n}`;
+}
+
 function buildJavaStarterCode(
   functionName: string,
   params: { name: string; type: ValueType }[],
@@ -150,6 +168,22 @@ function buildGoStarterCode(
     .join("\n")}\n\n\t${fallback}\n}`;
 }
 
+function buildKotlinStarterCode(
+  functionName: string,
+  params: { name: string; type: ValueType }[],
+  returnType: ValueType,
+  notes: string[]
+) {
+  const signature = params
+    .map((param) => `${param.name}: ${toKotlinType(param.type)}`)
+    .join(", ");
+  const fallback = kotlinDefaultReturn(returnType);
+
+  return `class Solution {\n  fun ${functionName}(${signature}): ${toKotlinType(returnType)} {\n${notes
+    .map((note) => `    // ${note}`)
+    .join("\n")}\n\n    ${fallback}\n  }\n}`;
+}
+
 export function getStarterCode(
   config: ProblemCodeConfig | undefined,
   title: string,
@@ -197,6 +231,20 @@ export function getStarterCode(
     }
 
     return "// C runner is not available for this problem yet.";
+  }
+
+  if (language === "csharp") {
+    if (config?.signature) {
+      const notes = extractNotesFromStarter(config.starterCode);
+      return buildCSharpStarterCode(
+        config.functionName,
+        config.signature.params,
+        config.signature.returnType,
+        notes
+      );
+    }
+
+    return "// C# runner is not available for this problem yet.";
   }
 
   if (language === "java") {
@@ -255,6 +303,20 @@ export function getStarterCode(
     return "// Go runner is not available for this problem yet.";
   }
 
+  if (language === "kotlin") {
+    if (config?.signature) {
+      const notes = extractNotesFromStarter(config.starterCode);
+      return buildKotlinStarterCode(
+        config.functionName,
+        config.signature.params,
+        config.signature.returnType,
+        notes
+      );
+    }
+
+    return "// Kotlin runner is not available for this problem yet.";
+  }
+
   return config?.starterCode ?? defaultJavaScriptStarter(title);
 }
 
@@ -264,7 +326,7 @@ export function getAvailableLanguages(config: ProblemCodeConfig | undefined): Su
     if (supportsCLanguage(config.signature)) {
       base.push("c");
     }
-    base.push("java", "cpp", "swift", "go");
+    base.push("csharp", "java", "cpp", "swift", "go", "kotlin");
   }
   return base;
 }
@@ -342,6 +404,28 @@ function toCType(type: ValueType) {
   }
 }
 
+function toCSharpType(type: ValueType) {
+  switch (type) {
+    case "int":
+      return "int";
+    case "bool":
+      return "bool";
+    case "string":
+      return "string";
+    case "intArray":
+      return "int[]";
+    case "stringArray":
+      return "string[]";
+    case "intMatrix":
+    case "pointArray":
+      return "int[][]";
+    case "charMatrix":
+      return "char[][]";
+    case "nestedIntArray":
+      return "IList<IList<int>>";
+  }
+}
+
 function toCppType(type: ValueType) {
   switch (type) {
     case "int":
@@ -402,6 +486,28 @@ function toGoType(type: ValueType) {
       return "[][]int";
     case "charMatrix":
       return "[][]byte";
+  }
+}
+
+function toKotlinType(type: ValueType) {
+  switch (type) {
+    case "int":
+      return "Int";
+    case "bool":
+      return "Boolean";
+    case "string":
+      return "String";
+    case "intArray":
+      return "IntArray";
+    case "stringArray":
+      return "Array<String>";
+    case "intMatrix":
+    case "pointArray":
+      return "Array<IntArray>";
+    case "charMatrix":
+      return "Array<CharArray>";
+    case "nestedIntArray":
+      return "List<List<Int>>";
   }
 }
 
@@ -530,6 +636,50 @@ function goDefaultReturn(type: ValueType) {
     case "pointArray":
     case "nestedIntArray":
       return "return nil";
+  }
+}
+
+function csharpDefaultReturn(type: ValueType) {
+  switch (type) {
+    case "int":
+      return "return 0;";
+    case "bool":
+      return "return false;";
+    case "string":
+      return 'return "";';
+    case "intArray":
+      return "return Array.Empty<int>();";
+    case "stringArray":
+      return "return Array.Empty<string>();";
+    case "intMatrix":
+    case "pointArray":
+      return "return Array.Empty<int[]>();";
+    case "charMatrix":
+      return "return Array.Empty<char[]>();";
+    case "nestedIntArray":
+      return "return new List<IList<int>>();";
+  }
+}
+
+function kotlinDefaultReturn(type: ValueType) {
+  switch (type) {
+    case "int":
+      return "return 0";
+    case "bool":
+      return "return false";
+    case "string":
+      return "return \"\"";
+    case "intArray":
+      return "return intArrayOf()";
+    case "stringArray":
+      return "return emptyArray()";
+    case "intMatrix":
+    case "pointArray":
+      return "return emptyArray()";
+    case "charMatrix":
+      return "return emptyArray()";
+    case "nestedIntArray":
+      return "return emptyList()";
   }
 }
 

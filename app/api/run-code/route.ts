@@ -49,6 +49,8 @@ export async function POST(request: Request) {
             ? await runRuby(body.code, body.functionName, examples)
             : body.language === "c"
               ? await runC(body.code, body.functionName, body.signature, examples)
+              : body.language === "csharp"
+                ? await runCSharp(body.code, body.functionName, body.signature, examples)
             : body.language === "java"
               ? await runJava(body.code, body.functionName, body.signature, examples)
               : body.language === "cpp"
@@ -57,6 +59,8 @@ export async function POST(request: Request) {
                   ? await runSwift(body.code, body.functionName, body.signature, examples)
                   : body.language === "go"
                     ? await runGo(body.code, body.functionName, body.signature, examples)
+                    : body.language === "kotlin"
+                      ? await runKotlin(body.code, body.functionName, body.signature, examples)
                     : await runJavaScript(body.code, body.functionName, examples);
 
     return NextResponse.json({ results: runResults });
@@ -329,6 +333,175 @@ ${examples
     });
     const { stdout, stderr } = await execFileAsync(binPath, [], {
       timeout: 8000,
+      maxBuffer: 1024 * 1024
+    });
+
+    if (stderr) {
+      throw new Error(stderr.trim());
+    }
+
+    return JSON.parse(stdout.trim()) as {
+      label: string;
+      actual: unknown;
+      expected: unknown;
+    }[];
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }
+}
+
+async function runCSharp(
+  code: string,
+  functionName: string,
+  signature: RunCodeRequest["signature"],
+  examples: { label: string; args: unknown[]; expected: unknown }[]
+) {
+  if (!signature) {
+    throw new Error("C# runner is not available for this problem yet.");
+  }
+
+  const tempDir = join(tmpdir(), `patternlift-${randomUUID()}`);
+  const filePath = join(tempDir, "Program.cs");
+  const exePath = join(tempDir, "runner.exe");
+  await fs.mkdir(tempDir, { recursive: true });
+
+  const script = `using System;
+using System.Collections.Generic;
+using System.Text;
+
+${code}
+
+public class Program {
+  static string Escape(string value) {
+    var result = new StringBuilder();
+    foreach (var ch in value) {
+      if ((int)ch == 92) result.Append("\\\\\\\\");
+      else if ((int)ch == 34) { result.Append("\\\\"); result.Append((char)34); }
+      else if ((int)ch == 10) result.Append("\\\\n");
+      else result.Append(ch);
+    }
+    return result.ToString();
+  }
+
+  static string Quote(string value) {
+    var quote = ((char)34).ToString();
+    return quote + Escape(value) + quote;
+  }
+
+  static string IntArrayToJson(int[] values) {
+    var sb = new StringBuilder("[");
+    for (var i = 0; i < values.Length; i++) {
+      if (i > 0) sb.Append(",");
+      sb.Append(values[i]);
+    }
+    sb.Append("]");
+    return sb.ToString();
+  }
+
+  static string StringArrayToJson(string[] values) {
+    var sb = new StringBuilder("[");
+    for (var i = 0; i < values.Length; i++) {
+      if (i > 0) sb.Append(",");
+      sb.Append(Quote(values[i]));
+    }
+    sb.Append("]");
+    return sb.ToString();
+  }
+
+  static string IntMatrixToJson(int[][] values) {
+    var sb = new StringBuilder("[");
+    for (var i = 0; i < values.Length; i++) {
+      if (i > 0) sb.Append(",");
+      sb.Append(IntArrayToJson(values[i]));
+    }
+    sb.Append("]");
+    return sb.ToString();
+  }
+
+  static string CharMatrixToJson(char[][] values) {
+    var sb = new StringBuilder("[");
+    for (var i = 0; i < values.Length; i++) {
+      if (i > 0) sb.Append(",");
+      sb.Append("[");
+      for (var j = 0; j < values[i].Length; j++) {
+        if (j > 0) sb.Append(",");
+        sb.Append(Quote(values[i][j].ToString()));
+      }
+      sb.Append("]");
+    }
+    sb.Append("]");
+    return sb.ToString();
+  }
+
+  static string NestedIntListToJson(IList<IList<int>> values) {
+    var sb = new StringBuilder("[");
+    for (var i = 0; i < values.Count; i++) {
+      if (i > 0) sb.Append(",");
+      sb.Append("[");
+      for (var j = 0; j < values[i].Count; j++) {
+        if (j > 0) sb.Append(",");
+        sb.Append(values[i][j]);
+      }
+      sb.Append("]");
+    }
+    sb.Append("]");
+    return sb.ToString();
+  }
+
+  static string ToJson(object value, string type) {
+    switch (type) {
+      case "int":
+        return value.ToString();
+      case "bool":
+        return ((bool)value) ? "true" : "false";
+      case "string":
+        return Quote((string)value);
+      case "intArray":
+        return IntArrayToJson((int[])value);
+      case "stringArray":
+        return StringArrayToJson((string[])value);
+      case "intMatrix":
+      case "pointArray":
+        return IntMatrixToJson((int[][])value);
+      case "charMatrix":
+        return CharMatrixToJson((char[][])value);
+      case "nestedIntArray":
+        return NestedIntListToJson((IList<IList<int>>)value);
+      default:
+        throw new InvalidOperationException("Unsupported return type");
+    }
+  }
+
+  public static void Main() {
+    var solution = new Solution();
+    Console.Write("[");
+${examples
+  .map((example, index) => {
+    const args = signature.params
+      .map((param, paramIndex) => buildCSharpLiteral(example.args[paramIndex], param.type))
+      .join(", ");
+    return `    if (${index} > 0) Console.Write(",");
+    Console.Write("{\\"label\\":\\"${escapeForSource(example.label)}\\",\\"actual\\":" +
+      ToJson(solution.${functionName}(${args}), "${signature.returnType}") +
+      ",\\"expected\\":" +
+      ToJson(${buildCSharpLiteral(example.expected, signature.returnType)}, "${signature.returnType}") +
+      "}");`;
+  })
+  .join("\n")}
+    Console.Write("]");
+  }
+}
+`;
+
+  await fs.writeFile(filePath, script, "utf8");
+
+  try {
+    await execFileAsync("mcs", [filePath, "-out:" + exePath], {
+      timeout: 15000,
+      maxBuffer: 1024 * 1024
+    });
+    const { stdout, stderr } = await execFileAsync("mono", [exePath], {
+      timeout: 15000,
       maxBuffer: 1024 * 1024
     });
 
@@ -796,6 +969,96 @@ ${examples
   }
 }
 
+async function runKotlin(
+  code: string,
+  functionName: string,
+  signature: RunCodeRequest["signature"],
+  examples: { label: string; args: unknown[]; expected: unknown }[]
+) {
+  if (!signature) {
+    throw new Error("Kotlin runner is not available for this problem yet.");
+  }
+
+  const tempDir = join(tmpdir(), `patternlift-${randomUUID()}`);
+  const filePath = join(tempDir, "Runner.kt");
+  const jarPath = join(tempDir, "runner.jar");
+  await fs.mkdir(tempDir, { recursive: true });
+
+  const script = `class Result(val label: String, val actual: String, val expected: String)
+
+${code}
+
+fun escapeJson(value: String): String = buildString {
+  for (char in value) {
+    when (char) {
+      '\\\\' -> append("\\\\\\\\")
+      '\\"' -> append("\\\\\\"")
+      '\\n' -> append("\\\\n")
+      else -> append(char)
+    }
+  }
+}
+
+fun toJson(value: Any?, type: String): String = when (type) {
+  "int", "bool" -> value.toString()
+  "string" -> "\\"" + escapeJson(value as String) + "\\""
+  "intArray" -> (value as IntArray).joinToString(prefix = "[", postfix = "]")
+  "stringArray" -> (value as Array<String>).joinToString(prefix = "[", postfix = "]") { "\\"" + escapeJson(it) + "\\"" }
+  "intMatrix", "pointArray" -> (value as Array<IntArray>).joinToString(prefix = "[", postfix = "]") { row -> row.joinToString(prefix = "[", postfix = "]") }
+  "charMatrix" -> (value as Array<CharArray>).joinToString(prefix = "[", postfix = "]") { row -> row.joinToString(prefix = "[", postfix = "]") { "\\"" + escapeJson(it.toString()) + "\\"" } }
+  "nestedIntArray" -> (value as List<List<Int>>).joinToString(prefix = "[", postfix = "]") { row -> row.joinToString(prefix = "[", postfix = "]") }
+  else -> "null"
+}
+
+fun main() {
+  val solution = Solution()
+  val results = listOf(
+${examples
+  .map((example) => {
+    const args = signature.params
+      .map((param, paramIndex) => buildKotlinLiteral(example.args[paramIndex], param.type))
+      .join(", ");
+    return `    Result(
+      label = "${escapeForSource(example.label)}",
+      actual = toJson(solution.${functionName}(${args}), "${signature.returnType}"),
+      expected = toJson(${buildKotlinLiteral(example.expected, signature.returnType)}, "${signature.returnType}")
+    )`;
+  })
+  .join(",\n")}
+  )
+
+  println(results.joinToString(prefix = "[", postfix = "]") {
+    "{\\"label\\":\\"" + escapeJson(it.label) + "\\",\\"actual\\":" + it.actual + ",\\"expected\\":" + it.expected + "}"
+  })
+}
+`;
+
+  await fs.writeFile(filePath, script, "utf8");
+
+  try {
+    await execFileAsync("kotlinc", [filePath, "-include-runtime", "-d", jarPath], {
+      timeout: 15000,
+      maxBuffer: 1024 * 1024
+    });
+    const { stdout, stderr } = await execFileAsync("java", ["-jar", jarPath], {
+      timeout: 15000,
+      maxBuffer: 1024 * 1024
+    });
+
+    if (stderr) {
+      throw new Error(stderr.trim());
+    }
+
+    return JSON.parse(stdout.trim()) as {
+      label: string;
+      actual: unknown;
+      expected: unknown;
+    }[];
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }
+}
+
 function buildJavaLiteral(value: unknown, type: ValueType): string {
   switch (type) {
     case "int":
@@ -961,6 +1224,62 @@ function buildGoLiteral(value: unknown, type: ValueType): string {
       return `[][]byte{${(value as string[][])
         .map((row) => `[]byte{${row.map((char) => `'${escapeForSource(char)}'`).join(", ")}}`)
         .join(", ")}}`;
+  }
+}
+
+function buildCSharpLiteral(value: unknown, type: ValueType): string {
+  switch (type) {
+    case "int":
+      return String(value);
+    case "bool":
+      return value ? "true" : "false";
+    case "string":
+      return `"${escapeForSource(String(value))}"`;
+    case "intArray":
+      return `new int[] { ${(value as number[]).join(", ")} }`;
+    case "stringArray":
+      return `new string[] { ${(value as string[]).map((item) => `"${escapeForSource(item)}"`).join(", ")} }`;
+    case "intMatrix":
+    case "pointArray":
+      return `new int[][] { ${(value as number[][])
+        .map((row) => `new int[] { ${row.join(", ")} }`)
+        .join(", ")} }`;
+    case "charMatrix":
+      return `new char[][] { ${(value as string[][])
+        .map((row) => `new char[] { ${row.map((char) => `'${escapeForSource(char)}'`).join(", ")} }`)
+        .join(", ")} }`;
+    case "nestedIntArray":
+      return `new List<IList<int>> { ${(value as number[][])
+        .map((row) => `new List<int> { ${row.join(", ")} }`)
+        .join(", ")} }`;
+  }
+}
+
+function buildKotlinLiteral(value: unknown, type: ValueType): string {
+  switch (type) {
+    case "int":
+      return String(value);
+    case "bool":
+      return value ? "true" : "false";
+    case "string":
+      return `"${escapeForSource(String(value))}"`;
+    case "intArray":
+      return `intArrayOf(${(value as number[]).join(", ")})`;
+    case "stringArray":
+      return `arrayOf(${(value as string[]).map((item) => `"${escapeForSource(item)}"`).join(", ")})`;
+    case "intMatrix":
+    case "pointArray":
+      return `arrayOf(${(value as number[][])
+        .map((row) => `intArrayOf(${row.join(", ")})`)
+        .join(", ")})`;
+    case "charMatrix":
+      return `arrayOf(${(value as string[][])
+        .map((row) => `charArrayOf(${row.map((char) => `'${escapeForSource(char)}'`).join(", ")})`)
+        .join(", ")})`;
+    case "nestedIntArray":
+      return `listOf(${(value as number[][])
+        .map((row) => `listOf(${row.join(", ")})`)
+        .join(", ")})`;
   }
 }
 
