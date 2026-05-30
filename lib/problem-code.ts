@@ -20,7 +20,8 @@ export type ValueType =
   | "intMatrix"
   | "charMatrix"
   | "pointArray"
-  | "nestedIntArray";
+  | "nestedIntArray"
+  | "binaryTree";
 
 export type CompareMode =
   | "strict"
@@ -99,7 +100,7 @@ function buildCSharpStarterCode(
     .join(", ");
   const fallback = csharpDefaultReturn(returnType);
 
-  return `using System;\nusing System.Collections.Generic;\n\npublic class Solution {\n  public ${toCSharpType(returnType)} ${functionName}(${signature}) {\n${notes
+  return `using System;\nusing System.Collections.Generic;\n\n${buildCSharpHelpers(params)}public class Solution {\n  public ${toCSharpType(returnType)} ${functionName}(${signature}) {\n${notes
     .map((note) => `    // ${note}`)
     .join("\n")}\n\n    ${fallback}\n  }\n}`;
 }
@@ -115,7 +116,7 @@ function buildJavaStarterCode(
     .join(", ");
   const fallback = javaDefaultReturn(returnType);
 
-  return `import java.util.*;\n\nclass Solution {\n  public ${toJavaType(returnType)} ${functionName}(${signature}) {\n${notes
+  return `import java.util.*;\n\n${buildJavaHelpers(params)}class Solution {\n  public ${toJavaType(returnType)} ${functionName}(${signature}) {\n${notes
     .map((note) => `    // ${note}`)
     .join("\n")}\n\n    ${fallback}\n  }\n}`;
 }
@@ -131,7 +132,7 @@ function buildCppStarterCode(
     .join(", ");
   const fallback = cppDefaultReturn(returnType);
 
-  return `#include <iostream>\n#include <string>\n#include <vector>\nusing namespace std;\n\nclass Solution {\npublic:\n  ${toCppType(returnType)} ${functionName}(${signature}) {\n${notes
+  return `#include <iostream>\n#include <string>\n#include <vector>\nusing namespace std;\n\n${buildCppHelpers(params)}class Solution {\npublic:\n  ${toCppType(returnType)} ${functionName}(${signature}) {\n${notes
     .map((note) => `    // ${note}`)
     .join("\n")}\n\n    ${fallback}\n  }\n};`;
 }
@@ -147,7 +148,7 @@ function buildSwiftStarterCode(
     .map((param, index) => `${index === 0 ? "_" : "_"} ${param.name}: ${toSwiftType(param.type)}`)
     .join(", ");
 
-  return `func ${functionName}(${labeledParams}) -> ${toSwiftType(returnType)} {\n${notes
+  return `${buildSwiftHelpers(params)}func ${functionName}(${labeledParams}) -> ${toSwiftType(returnType)} {\n${notes
     .map((note) => `  // ${note}`)
     .join("\n")}\n\n  ${fallback}\n}`;
 }
@@ -163,7 +164,7 @@ function buildGoStarterCode(
     .join(", ");
   const fallback = goDefaultReturn(returnType);
 
-  return `func ${functionName}(${signature}) ${toGoType(returnType)} {\n${notes
+  return `${buildGoHelpers(params)}func ${functionName}(${signature}) ${toGoType(returnType)} {\n${notes
     .map((note) => `\t// ${note}`)
     .join("\n")}\n\n\t${fallback}\n}`;
 }
@@ -179,7 +180,7 @@ function buildKotlinStarterCode(
     .join(", ");
   const fallback = kotlinDefaultReturn(returnType);
 
-  return `class Solution {\n  fun ${functionName}(${signature}): ${toKotlinType(returnType)} {\n${notes
+  return `${buildKotlinHelpers(params)}class Solution {\n  fun ${functionName}(${signature}): ${toKotlinType(returnType)} {\n${notes
     .map((note) => `    // ${note}`)
     .join("\n")}\n\n    ${fallback}\n  }\n}`;
 }
@@ -384,6 +385,8 @@ function toJavaType(type: ValueType) {
       return type === "charMatrix" ? "char[][]" : "int[][]";
     case "nestedIntArray":
       return "List<List<Integer>>";
+    case "binaryTree":
+      return "TreeNode";
   }
 }
 
@@ -423,6 +426,8 @@ function toCSharpType(type: ValueType) {
       return "char[][]";
     case "nestedIntArray":
       return "IList<IList<int>>";
+    case "binaryTree":
+      return "TreeNode";
   }
 }
 
@@ -444,6 +449,8 @@ function toCppType(type: ValueType) {
       return type === "charMatrix" ? "vector<vector<char>>" : "vector<vector<int>>";
     case "nestedIntArray":
       return "vector<vector<int>>";
+    case "binaryTree":
+      return "TreeNode*";
   }
 }
 
@@ -465,6 +472,8 @@ function toSwiftType(type: ValueType) {
       return "[[Int]]";
     case "charMatrix":
       return "[[Character]]";
+    case "binaryTree":
+      return "TreeNode?";
   }
 }
 
@@ -486,6 +495,8 @@ function toGoType(type: ValueType) {
       return "[][]int";
     case "charMatrix":
       return "[][]byte";
+    case "binaryTree":
+      return "*TreeNode";
   }
 }
 
@@ -508,7 +519,43 @@ function toKotlinType(type: ValueType) {
       return "Array<CharArray>";
     case "nestedIntArray":
       return "List<List<Int>>";
+    case "binaryTree":
+      return "TreeNode?";
   }
+}
+
+function usesBinaryTree(params: { name: string; type: ValueType }[]) {
+  return params.some((param) => param.type === "binaryTree");
+}
+
+function buildJavaHelpers(params: { name: string; type: ValueType }[]) {
+  if (!usesBinaryTree(params)) return "";
+  return `class TreeNode {\n  int val;\n  TreeNode left;\n  TreeNode right;\n\n  TreeNode(int val) { this.val = val; }\n  TreeNode(int val, TreeNode left, TreeNode right) {\n    this.val = val;\n    this.left = left;\n    this.right = right;\n  }\n}\n\n`;
+}
+
+function buildCSharpHelpers(params: { name: string; type: ValueType }[]) {
+  if (!usesBinaryTree(params)) return "";
+  return `public class TreeNode {\n  public int val;\n  public TreeNode left;\n  public TreeNode right;\n\n  public TreeNode(int val = 0, TreeNode left = null, TreeNode right = null) {\n    this.val = val;\n    this.left = left;\n    this.right = right;\n  }\n}\n\n`;
+}
+
+function buildCppHelpers(params: { name: string; type: ValueType }[]) {
+  if (!usesBinaryTree(params)) return "";
+  return `struct TreeNode {\n  int val;\n  TreeNode* left;\n  TreeNode* right;\n  TreeNode(int value) : val(value), left(nullptr), right(nullptr) {}\n  TreeNode(int value, TreeNode* leftNode, TreeNode* rightNode) : val(value), left(leftNode), right(rightNode) {}\n};\n\n`;
+}
+
+function buildSwiftHelpers(params: { name: string; type: ValueType }[]) {
+  if (!usesBinaryTree(params)) return "";
+  return `final class TreeNode {\n  var val: Int\n  var left: TreeNode?\n  var right: TreeNode?\n\n  init(_ val: Int, _ left: TreeNode? = nil, _ right: TreeNode? = nil) {\n    self.val = val\n    self.left = left\n    self.right = right\n  }\n}\n\n`;
+}
+
+function buildGoHelpers(params: { name: string; type: ValueType }[]) {
+  if (!usesBinaryTree(params)) return "";
+  return `type TreeNode struct {\n\tVal int\n\tLeft *TreeNode\n\tRight *TreeNode\n}\n\n`;
+}
+
+function buildKotlinHelpers(params: { name: string; type: ValueType }[]) {
+  if (!usesBinaryTree(params)) return "";
+  return `class TreeNode(var \`val\`: Int, var left: TreeNode? = null, var right: TreeNode? = null)\n\n`;
 }
 
 function supportsCLanguage(signature: NonNullable<ProblemCodeConfig["signature"]>) {
@@ -889,6 +936,10 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
         "Return values grouped level by level."
       ]
     ),
+    signature: {
+      params: [{ name: "root", type: "binaryTree" }],
+      returnType: "nestedIntArray"
+    },
     examples: [
       {
         label: "Example 1",
@@ -908,6 +959,10 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
         "Return the number of nodes on the longest root-to-leaf path."
       ]
     ),
+    signature: {
+      params: [{ name: "root", type: "binaryTree" }],
+      returnType: "int"
+    },
     examples: [
       {
         label: "Example 1",
@@ -927,6 +982,13 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
         "Return true if the trees match in structure and values."
       ]
     ),
+    signature: {
+      params: [
+        { name: "p", type: "binaryTree" },
+        { name: "q", type: "binaryTree" }
+      ],
+      returnType: "bool"
+    },
     examples: [
       {
         label: "Example 1",

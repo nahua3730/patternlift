@@ -75,6 +75,29 @@ function evaluateExpression(expression: string) {
   return new Function(`return ${expression};`)();
 }
 
+function signatureUsesType(
+  signature: RunCodeRequest["signature"],
+  type: ValueType
+) {
+  return Boolean(signature?.params.some((param) => param.type === type));
+}
+
+function insertAfterHeader(
+  code: string,
+  prelude: string,
+  matcher: RegExp
+) {
+  if (!prelude) return code;
+  const matches = [...code.matchAll(matcher)];
+  if (matches.length === 0) {
+    return `${prelude}${code}`;
+  }
+
+  const last = matches[matches.length - 1];
+  const insertAt = (last.index ?? 0) + last[0].length;
+  return `${code.slice(0, insertAt)}\n${prelude}${code.slice(insertAt)}`;
+}
+
 async function runJavaScript(
   code: string,
   functionName: string,
@@ -365,11 +388,17 @@ async function runCSharp(
   const exePath = join(tempDir, "runner.exe");
   await fs.mkdir(tempDir, { recursive: true });
 
+  const composedCode = insertAfterHeader(
+    code,
+    buildCSharpPrelude(signature),
+    /^using\s+.+;\s*$/gm
+  );
+
   const script = `using System;
 using System.Collections.Generic;
 using System.Text;
 
-${code}
+${composedCode}
 
 public class Program {
   static string Escape(string value) {
@@ -533,7 +562,13 @@ async function runJava(
   const filePath = join(tempDir, "Runner.java");
   await fs.mkdir(tempDir, { recursive: true });
 
-  const script = `${code}
+  const composedCode = insertAfterHeader(
+    code,
+    buildJavaPrelude(signature),
+    /^import\s+.+;\s*$/gm
+  );
+
+  const script = `${composedCode}
 
 class Runner {
   static String escape(String value) {
@@ -688,7 +723,7 @@ async function runCpp(
 #include <vector>
 using namespace std;
 
-${code}
+${buildCppPrelude(signature)}${code}
 
 string escapeJson(const string& value) {
   string result;
@@ -805,7 +840,7 @@ async function runSwift(
 
   const script = `import Foundation
 
-${code}
+${buildSwiftPrelude(signature)}${code}
 
 func toJsonCompatible(_ value: Any, type: String) -> Any {
   switch type {
@@ -890,7 +925,7 @@ import (
   "fmt"
 )
 
-${code}
+${buildGoPrelude(signature)}${code}
 
 func toJSONCompatible(value any, kind string) any {
   switch kind {
@@ -984,7 +1019,7 @@ async function runKotlin(
   const jarPath = join(tempDir, "runner.jar");
   await fs.mkdir(tempDir, { recursive: true });
 
-  const script = `class Result(val label: String, val actual: String, val expected: String)
+  const script = `${buildKotlinPrelude(signature)}class Result(val label: String, val actual: String, val expected: String)
 
 ${code}
 
@@ -1059,6 +1094,36 @@ ${examples
   }
 }
 
+function buildJavaPrelude(signature: RunCodeRequest["signature"]) {
+  if (!signatureUsesType(signature, "binaryTree")) return "";
+  return `class TreeNode {\n  int val;\n  TreeNode left;\n  TreeNode right;\n\n  TreeNode(int val) { this.val = val; }\n  TreeNode(int val, TreeNode left, TreeNode right) {\n    this.val = val;\n    this.left = left;\n    this.right = right;\n  }\n}\n\n`;
+}
+
+function buildCSharpPrelude(signature: RunCodeRequest["signature"]) {
+  if (!signatureUsesType(signature, "binaryTree")) return "";
+  return `public class TreeNode {\n  public int val;\n  public TreeNode left;\n  public TreeNode right;\n\n  public TreeNode(int val = 0, TreeNode left = null, TreeNode right = null) {\n    this.val = val;\n    this.left = left;\n    this.right = right;\n  }\n}\n\n`;
+}
+
+function buildCppPrelude(signature: RunCodeRequest["signature"]) {
+  if (!signatureUsesType(signature, "binaryTree")) return "";
+  return `struct TreeNode {\n  int val;\n  TreeNode* left;\n  TreeNode* right;\n  TreeNode(int value) : val(value), left(nullptr), right(nullptr) {}\n  TreeNode(int value, TreeNode* leftNode, TreeNode* rightNode) : val(value), left(leftNode), right(rightNode) {}\n};\n\n`;
+}
+
+function buildSwiftPrelude(signature: RunCodeRequest["signature"]) {
+  if (!signatureUsesType(signature, "binaryTree")) return "";
+  return `final class TreeNode {\n  var val: Int\n  var left: TreeNode?\n  var right: TreeNode?\n\n  init(_ val: Int, _ left: TreeNode? = nil, _ right: TreeNode? = nil) {\n    self.val = val\n    self.left = left\n    self.right = right\n  }\n}\n\n`;
+}
+
+function buildGoPrelude(signature: RunCodeRequest["signature"]) {
+  if (!signatureUsesType(signature, "binaryTree")) return "";
+  return `type TreeNode struct {\n\tVal int\n\tLeft *TreeNode\n\tRight *TreeNode\n}\n\n`;
+}
+
+function buildKotlinPrelude(signature: RunCodeRequest["signature"]) {
+  if (!signatureUsesType(signature, "binaryTree")) return "";
+  return `class TreeNode(var \`val\`: Int, var left: TreeNode? = null, var right: TreeNode? = null)\n\n`;
+}
+
 function buildJavaLiteral(value: unknown, type: ValueType): string {
   switch (type) {
     case "int":
@@ -1084,6 +1149,8 @@ function buildJavaLiteral(value: unknown, type: ValueType): string {
       return `java.util.Arrays.asList(${(value as number[][])
         .map((row) => `java.util.Arrays.asList(${row.join(", ")})`)
         .join(", ")})`;
+    case "binaryTree":
+      return buildJavaTreeLiteral(value);
   }
 }
 
@@ -1109,6 +1176,8 @@ function buildCppLiteral(value: unknown, type: ValueType): string {
       return `{${(value as string[][])
         .map((row) => `{${row.map((char) => `'${escapeForSource(char)}'`).join(", ")}}`)
         .join(", ")}}`;
+    case "binaryTree":
+      return buildCppTreeLiteral(value);
   }
 }
 
@@ -1199,6 +1268,8 @@ function buildSwiftLiteral(value: unknown, type: ValueType): string {
       return `[${(value as string[][])
         .map((row) => `[${row.map((char) => `"${escapeForSource(char)}"`).join(", ")}]`)
         .join(", ")}]`;
+    case "binaryTree":
+      return buildSwiftTreeLiteral(value);
   }
 }
 
@@ -1224,6 +1295,8 @@ function buildGoLiteral(value: unknown, type: ValueType): string {
       return `[][]byte{${(value as string[][])
         .map((row) => `[]byte{${row.map((char) => `'${escapeForSource(char)}'`).join(", ")}}`)
         .join(", ")}}`;
+    case "binaryTree":
+      return buildGoTreeLiteral(value);
   }
 }
 
@@ -1252,6 +1325,8 @@ function buildCSharpLiteral(value: unknown, type: ValueType): string {
       return `new List<IList<int>> { ${(value as number[][])
         .map((row) => `new List<int> { ${row.join(", ")} }`)
         .join(", ")} }`;
+    case "binaryTree":
+      return buildCSharpTreeLiteral(value);
   }
 }
 
@@ -1280,7 +1355,55 @@ function buildKotlinLiteral(value: unknown, type: ValueType): string {
       return `listOf(${(value as number[][])
         .map((row) => `listOf(${row.join(", ")})`)
         .join(", ")})`;
+    case "binaryTree":
+      return buildKotlinTreeLiteral(value);
   }
+}
+
+type TreeValue = {
+  val: number;
+  left: TreeValue | null;
+  right: TreeValue | null;
+} | null;
+
+function asTreeValue(value: unknown): TreeValue {
+  return value as TreeValue;
+}
+
+function buildJavaTreeLiteral(value: unknown): string {
+  const node = asTreeValue(value);
+  if (!node) return "null";
+  return `new TreeNode(${node.val}, ${buildJavaTreeLiteral(node.left)}, ${buildJavaTreeLiteral(node.right)})`;
+}
+
+function buildCppTreeLiteral(value: unknown): string {
+  const node = asTreeValue(value);
+  if (!node) return "nullptr";
+  return `new TreeNode(${node.val}, ${buildCppTreeLiteral(node.left)}, ${buildCppTreeLiteral(node.right)})`;
+}
+
+function buildSwiftTreeLiteral(value: unknown): string {
+  const node = asTreeValue(value);
+  if (!node) return "nil";
+  return `TreeNode(${node.val}, ${buildSwiftTreeLiteral(node.left)}, ${buildSwiftTreeLiteral(node.right)})`;
+}
+
+function buildGoTreeLiteral(value: unknown): string {
+  const node = asTreeValue(value);
+  if (!node) return "nil";
+  return `&TreeNode{Val: ${node.val}, Left: ${buildGoTreeLiteral(node.left)}, Right: ${buildGoTreeLiteral(node.right)}}`;
+}
+
+function buildCSharpTreeLiteral(value: unknown): string {
+  const node = asTreeValue(value);
+  if (!node) return "null";
+  return `new TreeNode(${node.val}, ${buildCSharpTreeLiteral(node.left)}, ${buildCSharpTreeLiteral(node.right)})`;
+}
+
+function buildKotlinTreeLiteral(value: unknown): string {
+  const node = asTreeValue(value);
+  if (!node) return "null";
+  return `TreeNode(${node.val}, ${buildKotlinTreeLiteral(node.left)}, ${buildKotlinTreeLiteral(node.right)})`;
 }
 
 function escapeForSource(value: string) {
