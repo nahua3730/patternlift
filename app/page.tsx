@@ -1,5 +1,6 @@
 import { FeatureCard } from "@/components/feature-card";
 import { PatternDemo } from "@/components/pattern-demo";
+import { PracticeWorkspace } from "@/components/practice-workspace";
 import { ProductHeader } from "@/components/product-header";
 import { productFeatures } from "@/lib/product";
 
@@ -14,6 +15,8 @@ export default function HomePage() {
             <FeatureCard key={feature.title} {...feature} />
           ))}
         </section>
+
+        <PracticeWorkspace />
 
         <PatternDemo />
 

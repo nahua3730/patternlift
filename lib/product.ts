@@ -69,3 +69,78 @@ export const demoProblem = {
   takeaway:
     "PatternLift should help you tell the difference between a broad tool like hash maps and a strategy like sliding window."
 } as const;
+
+export const patternOptions = [
+  {
+    id: "sliding-window",
+    label: "Sliding Window",
+    clues: [
+      "contiguous array or substring",
+      "valid range that grows and shrinks",
+      "longest or shortest segment under a rule"
+    ],
+    coachPrompt:
+      "Ask whether the condition can be preserved by moving the left edge instead of restarting."
+  },
+  {
+    id: "two-pointers",
+    label: "Two Pointers",
+    clues: [
+      "sorted input",
+      "pair or triplet relationship",
+      "move two indices toward a target"
+    ],
+    coachPrompt:
+      "Ask whether two indices can move based on an ordering or direct comparison."
+  },
+  {
+    id: "bfs",
+    label: "Breadth-First Search",
+    clues: [
+      "level order exploration",
+      "shortest unweighted path",
+      "expand all neighbors before going deeper"
+    ],
+    coachPrompt:
+      "Ask whether the problem naturally unfolds level by level rather than down one branch at a time."
+  },
+  {
+    id: "dfs",
+    label: "Depth-First Search",
+    clues: [
+      "explore one branch fully",
+      "backtracking or subtree reasoning",
+      "path state matters during recursion"
+    ],
+    coachPrompt:
+      "Ask whether the solution depends on exploring a branch deeply before trying alternatives."
+  },
+  {
+    id: "heap",
+    label: "Heap / Priority Queue",
+    clues: [
+      "top k items",
+      "repeatedly need current smallest or largest",
+      "streaming updates with ranking"
+    ],
+    coachPrompt:
+      "Ask whether you need quick access to the current best candidate again and again."
+  },
+  {
+    id: "dynamic-programming",
+    label: "Dynamic Programming",
+    clues: [
+      "overlapping subproblems",
+      "best answer built from smaller states",
+      "choice at one step affects future states"
+    ],
+    coachPrompt:
+      "Ask whether a state and recurrence can capture repeated work or an optimal substructure."
+  }
+] as const;
+
+export const reflectionPrompts = [
+  "What clue in the prompt makes this pattern plausible?",
+  "What nearby pattern might you confuse it with?",
+  "What would your first step be before writing code?"
+] as const;
