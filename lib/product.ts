@@ -20,3 +20,52 @@ export const productFeatures = [
       "Bring old problems back through quick drills that reinforce pattern recognition and retention."
   }
 ] as const;
+
+export const demoProblem = {
+  title: "Longest Substring Without Repeating Characters",
+  difficulty: "Medium",
+  prompt:
+    "Given a string s, find the length of the longest substring without repeating characters.",
+  cues: [
+    "The answer depends on a contiguous part of the string.",
+    "You need to grow and shrink a range while preserving a condition.",
+    "Repeated characters tell you when the current range has become invalid."
+  ],
+  options: [
+    {
+      id: "sliding-window",
+      label: "Sliding Window",
+      summary:
+        "Track a moving substring and adjust the left edge when a duplicate breaks the rule.",
+      isCorrect: true
+    },
+    {
+      id: "two-pointers",
+      label: "Two Pointers",
+      summary:
+        "This sounds close, but the key idea is maintaining a valid window under a changing constraint.",
+      isCorrect: false
+    },
+    {
+      id: "hashmap",
+      label: "Hash Map",
+      summary:
+        "A hash map helps implement the solution, but it is not the main solving pattern by itself.",
+      isCorrect: false
+    },
+    {
+      id: "dynamic-programming",
+      label: "Dynamic Programming",
+      summary:
+        "There is no overlapping state recurrence driving the solution here.",
+      isCorrect: false
+    }
+  ],
+  hints: [
+    "Start by asking whether the problem cares about a contiguous region or scattered positions.",
+    "If adding one more character breaks the rule, what could you move to restore validity without restarting?",
+    "Keep a left pointer, scan with a right pointer, and track the characters inside the current substring."
+  ],
+  takeaway:
+    "PatternLift should help you tell the difference between a broad tool like hash maps and a strategy like sliding window."
+} as const;

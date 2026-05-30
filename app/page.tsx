@@ -1,4 +1,5 @@
 import { FeatureCard } from "@/components/feature-card";
+import { PatternDemo } from "@/components/pattern-demo";
 import { ProductHeader } from "@/components/product-header";
 import { productFeatures } from "@/lib/product";
 
@@ -13,6 +14,8 @@ export default function HomePage() {
             <FeatureCard key={feature.title} {...feature} />
           ))}
         </section>
+
+        <PatternDemo />
 
         <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="rounded-lg border border-black/10 bg-white/70 p-6 shadow-sm">
@@ -57,4 +60,3 @@ export default function HomePage() {
     </main>
   );
 }
-
