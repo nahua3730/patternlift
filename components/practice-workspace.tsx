@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { CoachRequest, CoachResponse } from "@/lib/coach";
 import { patternOptions, sampleProblems } from "@/lib/product";
+import { getSuggestedTechniques } from "@/lib/techniques";
 
 type PatternId = (typeof patternOptions)[number]["id"];
 type Problem = (typeof sampleProblems)[number];
@@ -127,6 +129,16 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
     return hints.slice(0, hintLevel);
   }, [activeProblem, correctPattern, hintLevel]);
 
+  const suggestedTechniques = useMemo(
+    () =>
+      getSuggestedTechniques({
+        primaryPatternId: activeProblem.targetPatternId,
+        contrastPatternId: activeProblem.contrastPatternId,
+        problemPrompt: problemText
+      }),
+    [activeProblem.contrastPatternId, activeProblem.targetPatternId, problemText]
+  );
+
   function toggleClue(clue: string) {
     setSelectedClues((current) =>
       current.includes(clue)
@@ -198,6 +210,7 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
       selectedPatternLabel: result.selectedPatternLabel,
       correctPatternLabel: result.correctPatternLabel,
       contrastPatternLabel: result.contrastPatternLabel,
+      suggestedTechniqueTitles: suggestedTechniques.map((technique) => technique.title),
       selectedClues: result.selectedClues,
       selectedFirstStep: result.selectedFirstStep,
       localOutcome: result.outcome,
@@ -452,6 +465,55 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
               >
                 {clue}
               </span>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-lg border border-black/10 bg-mist p-4">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-ink">Suggested techniques</p>
+            <Link
+              href="/techniques"
+              className="text-xs font-medium text-lake underline-offset-2 hover:underline"
+            >
+              View full library
+            </Link>
+          </div>
+          <div className="mt-3 space-y-3">
+            {suggestedTechniques.map((technique) => (
+              <div
+                key={technique.id}
+                className="rounded-lg border border-black/10 bg-white p-3"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-ink">{technique.title}</p>
+                  <span className="rounded-full border border-black/10 bg-mist px-3 py-1 text-xs font-medium text-black/64">
+                    automatic suggestion
+                  </span>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-black/72">
+                  <span className="font-semibold text-ink">When to think:</span>{" "}
+                  {technique.whenToThink}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-black/72">
+                  <span className="font-semibold text-ink">Starter question:</span>{" "}
+                  {technique.starterQuestion}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-black/68">
+                  <span className="font-semibold text-ink">Common trap:</span>{" "}
+                  {technique.commonTrap}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {technique.quickTips.map((tip) => (
+                    <span
+                      key={tip}
+                      className="rounded-full border border-black/10 bg-mist px-3 py-1 text-xs font-medium text-black/68"
+                    >
+                      {tip}
+                    </span>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         </div>

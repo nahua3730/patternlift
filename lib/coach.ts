@@ -6,6 +6,7 @@ export type CoachRequest = {
   selectedPatternLabel: string;
   correctPatternLabel: string;
   contrastPatternLabel: string;
+  suggestedTechniqueTitles: string[];
   selectedClues: string[];
   selectedFirstStep: string | null;
   localOutcome: AttemptOutcome;

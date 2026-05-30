@@ -102,6 +102,23 @@ export const techniqueLibrary = [
     ]
   },
   {
+    id: "heap",
+    title: "Heap / Priority Queue",
+    whenToThink:
+      "Use this when you repeatedly need the current smallest or largest item, especially for top k, streaming, or best-first extraction tasks.",
+    coreIdea:
+      "Maintain a structure where each push or pop keeps the highest-priority candidate easy to access.",
+    starterQuestion:
+      "Do I need the best item over and over, or just once at the end?",
+    commonTrap:
+      "Sorting everything up front when the problem only needs the next best candidate repeatedly.",
+    quickTips: [
+      "Top k language is a strong clue.",
+      "Decide whether a min-heap or max-heap makes the invariant easier.",
+      "If only k elements matter, cap the heap size."
+    ]
+  },
+  {
     id: "greedy",
     title: "Greedy",
     whenToThink:
@@ -170,3 +187,69 @@ export const techniqueLibrary = [
     ]
   }
 ] as const;
+
+export type Technique = (typeof techniqueLibrary)[number];
+export type TechniqueId = Technique["id"];
+
+const techniqueById = new Map<TechniqueId, Technique>(
+  techniqueLibrary.map((technique) => [technique.id, technique])
+);
+
+export function getTechniqueById(id: TechniqueId) {
+  return techniqueById.get(id) ?? null;
+}
+
+export function getSuggestedTechniques(options: {
+  primaryPatternId: string | null;
+  contrastPatternId: string | null;
+  problemPrompt: string;
+}) {
+  const suggestedIds: TechniqueId[] = [];
+
+  const primary = mapPatternToTechniqueId(options.primaryPatternId);
+  const contrast = mapPatternToTechniqueId(options.contrastPatternId);
+  const normalized = options.problemPrompt.toLowerCase();
+
+  if (primary) suggestedIds.push(primary);
+  if (contrast && contrast !== primary) suggestedIds.push(contrast);
+
+  if (
+    (normalized.includes("tree") || normalized.includes("binary tree")) &&
+    !suggestedIds.includes("binary-tree-recursion")
+  ) {
+    suggestedIds.push("binary-tree-recursion");
+  }
+
+  if (
+    (normalized.includes("shortest") ||
+      normalized.includes("longest") ||
+      normalized.includes("top k") ||
+      normalized.includes("constraint")) &&
+    !suggestedIds.includes("complexity")
+  ) {
+    suggestedIds.push("complexity");
+  }
+
+  return suggestedIds
+    .map((id) => techniqueById.get(id))
+    .filter((technique): technique is Technique => Boolean(technique));
+}
+
+function mapPatternToTechniqueId(patternId: string | null): TechniqueId | null {
+  if (!patternId) return null;
+
+  switch (patternId) {
+    case "sliding-window":
+      return "sliding-window";
+    case "two-pointers":
+      return "two-pointers";
+    case "bfs":
+      return "bfs";
+    case "dfs":
+      return "dfs-backtracking";
+    case "dynamic-programming":
+      return "dynamic-programming";
+    default:
+      return patternId === "heap" ? "heap" : null;
+  }
+}
