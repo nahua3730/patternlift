@@ -1001,6 +1001,74 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
       { label: "Example 2", argsExpression: "[[30,11,23,4,20], 5]", expectedExpression: "30" }
     ]
   },
+  "course-schedule": {
+    functionName: "canFinish",
+    starterCode: buildStarterCode(
+      "function canFinish(numCourses, prerequisites)",
+      [
+        "Treat prerequisites as directed edges: [course, prereq].",
+        "Return true if every course can be completed."
+      ]
+    ),
+    signature: {
+      params: [
+        { name: "numCourses", type: "int" },
+        { name: "prerequisites", type: "intMatrix" }
+      ],
+      returnType: "bool"
+    },
+    examples: [
+      { label: "Example 1", argsExpression: "[2, [[1,0]]]", expectedExpression: "true" },
+      { label: "Example 2", argsExpression: "[2, [[1,0],[0,1]]]", expectedExpression: "false" }
+    ]
+  },
+  "open-the-lock": {
+    functionName: "openLock",
+    starterCode: buildStarterCode(
+      "function openLock(deadends, target)",
+      [
+        "Each turn changes one wheel by plus or minus one.",
+        "Return the minimum moves from 0000 to target, or -1."
+      ]
+    ),
+    signature: {
+      params: [
+        { name: "deadends", type: "stringArray" },
+        { name: "target", type: "string" }
+      ],
+      returnType: "int"
+    },
+    examples: [
+      {
+        label: "Example 1",
+        argsExpression: "[['0201','0101','0102','1212','2002'], '0202']",
+        expectedExpression: "6"
+      },
+      { label: "Example 2", argsExpression: "[['8888'], '0009']", expectedExpression: "1" }
+    ]
+  },
+  "clone-graph": {
+    functionName: "cloneGraph",
+    starterCode: buildStarterCode(
+      "function cloneGraph(adjacency)",
+      [
+        "adjacency[i] lists the neighbors of node i + 1.",
+        "Return a deep copy in the same adjacency-list format."
+      ]
+    ),
+    signature: {
+      params: [{ name: "adjacency", type: "nestedIntArray" }],
+      returnType: "nestedIntArray"
+    },
+    examples: [
+      {
+        label: "Example 1",
+        argsExpression: "[[[2,4],[1,3],[2,4],[1,3]]]",
+        expectedExpression: "[[2,4],[1,3],[2,4],[1,3]]"
+      },
+      { label: "Example 2", argsExpression: "[[[]]]", expectedExpression: "[[]]" }
+    ]
+  },
   "reverse-linked-list": {
     functionName: "reverseList",
     starterCode: buildStarterCode(

@@ -1,5 +1,6 @@
 type HistoryItem = {
   id: string;
+  problemId: string;
   problemTitle: string;
   selectedPatternLabel: string;
   outcome: "solid" | "partial" | "confused";

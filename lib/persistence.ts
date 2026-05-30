@@ -9,6 +9,7 @@ export type PersistenceSnapshot = {
 export function buildHistoryItem(result: AttemptResult): HistoryItem {
   return {
     id: `attempt-${Date.now()}`,
+    problemId: result.problemId,
     problemTitle: result.problemTitle,
     selectedPatternLabel: result.selectedPatternLabel,
     outcome: result.outcome,

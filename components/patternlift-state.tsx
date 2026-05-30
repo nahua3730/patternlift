@@ -14,6 +14,7 @@ import type { PersistenceSnapshot } from "@/lib/persistence";
 
 export type HistoryItem = {
   id: string;
+  problemId: string;
   problemTitle: string;
   selectedPatternLabel: string;
   outcome: "solid" | "partial" | "confused";
@@ -105,6 +106,7 @@ export function PatternLiftStateProvider({ children }: { children: ReactNode }) 
 
     const optimisticHistoryItem: HistoryItem = {
       id: `attempt-${Date.now()}`,
+      problemId: result.problemId,
       problemTitle: result.problemTitle,
       selectedPatternLabel: result.selectedPatternLabel,
       outcome: result.outcome,

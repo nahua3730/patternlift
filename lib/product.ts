@@ -305,6 +305,48 @@ export const sampleProblems = [
     contrastPatternId: "greedy"
   },
   {
+    id: "course-schedule",
+    category: "Graphs",
+    title: "Course Schedule",
+    difficulty: "Medium",
+    prompt:
+      "Given the number of courses and prerequisite pairs, determine whether it is possible to finish every course.",
+    targetPatternId: "bfs",
+    recommendedClues: ["level-order traversal", "repeated best choice"],
+    recommendedFirstStep: "Use a queue for level order expansion",
+    reviewQuestion:
+      "What does it mean for a course to become available only after its incoming requirements drop to zero?",
+    contrastPatternId: "dfs"
+  },
+  {
+    id: "open-the-lock",
+    category: "Graphs",
+    title: "Open the Lock",
+    difficulty: "Medium",
+    prompt:
+      "You start at the combination 0000. Given deadends and a target combination, return the minimum number of turns needed to reach the target, or -1 if it is impossible.",
+    targetPatternId: "bfs",
+    recommendedClues: ["level-order traversal"],
+    recommendedFirstStep: "Use a queue for level order expansion",
+    reviewQuestion:
+      "Why does breadth-first search give the fewest turns before a deeper search would?",
+    contrastPatternId: "dfs"
+  },
+  {
+    id: "clone-graph",
+    category: "Graphs",
+    title: "Clone Graph (Adjacency View)",
+    difficulty: "Medium",
+    prompt:
+      "A connected undirected graph is given as an adjacency list where the nth list contains the neighbors of node n + 1. Return a deep copy of the graph in the same adjacency-list format.",
+    targetPatternId: "dfs",
+    recommendedClues: ["explore one branch fully"],
+    recommendedFirstStep: "Go deeper recursively before trying alternatives",
+    reviewQuestion:
+      "What extra structure keeps you from cloning the same node again when the graph loops back?",
+    contrastPatternId: "bfs"
+  },
+  {
     id: "reverse-linked-list",
     category: "Linked Lists",
     title: "Reverse Linked List",
@@ -617,6 +659,7 @@ export const sampleProblems = [
 export const starterHistory = [
   {
     id: "attempt-1",
+    problemId: "longest-substring-no-repeat",
     problemTitle: "Longest Substring Without Repeating Characters",
     selectedPatternLabel: "Sliding Window",
     outcome: "solid",
@@ -624,9 +667,63 @@ export const starterHistory = [
   },
   {
     id: "attempt-2",
+    problemId: "binary-tree-level-order",
     problemTitle: "Binary Tree Level Order Traversal",
     selectedPatternLabel: "Depth-First Search",
     outcome: "confused",
     insight: "Confused DFS with BFS because traversal was recognized but level-order detail was missed."
   }
 ] as const;
+
+export type RoadmapTrack = "blind75" | "neetcode150";
+
+export const roadmapTrackTotals: Record<RoadmapTrack, number> = {
+  blind75: 75,
+  neetcode150: 150
+};
+
+export const problemRoadmapMeta: Record<
+  string,
+  {
+    leetcodeNumber: number;
+    tracks: RoadmapTrack[];
+  }
+> = {
+  "longest-substring-no-repeat": { leetcodeNumber: 3, tracks: ["blind75", "neetcode150"] },
+  "minimum-window-substring": { leetcodeNumber: 76, tracks: ["neetcode150"] },
+  "valid-palindrome": { leetcodeNumber: 125, tracks: ["neetcode150"] },
+  "container-most-water": { leetcodeNumber: 11, tracks: ["blind75", "neetcode150"] },
+  "three-sum": { leetcodeNumber: 15, tracks: ["blind75", "neetcode150"] },
+  "binary-search": { leetcodeNumber: 704, tracks: ["neetcode150"] },
+  "search-2d-matrix": { leetcodeNumber: 74, tracks: ["neetcode150"] },
+  "koko-bananas": { leetcodeNumber: 875, tracks: ["neetcode150"] },
+  "course-schedule": { leetcodeNumber: 207, tracks: ["blind75", "neetcode150"] },
+  "open-the-lock": { leetcodeNumber: 752, tracks: ["neetcode150"] },
+  "clone-graph": { leetcodeNumber: 133, tracks: ["blind75", "neetcode150"] },
+  "reverse-linked-list": { leetcodeNumber: 206, tracks: ["blind75", "neetcode150"] },
+  "linked-list-cycle": { leetcodeNumber: 141, tracks: ["blind75", "neetcode150"] },
+  "merge-two-sorted-lists": { leetcodeNumber: 21, tracks: ["blind75", "neetcode150"] },
+  "remove-nth-from-end": { leetcodeNumber: 19, tracks: ["blind75", "neetcode150"] },
+  "binary-tree-level-order": { leetcodeNumber: 102, tracks: ["neetcode150"] },
+  "max-depth-tree": { leetcodeNumber: 104, tracks: ["blind75", "neetcode150"] },
+  "same-tree": { leetcodeNumber: 100, tracks: ["neetcode150"] },
+  "top-k-frequent-elements": { leetcodeNumber: 347, tracks: ["neetcode150"] },
+  "k-closest-points": { leetcodeNumber: 973, tracks: ["neetcode150"] },
+  "task-scheduler": { leetcodeNumber: 621, tracks: ["neetcode150"] },
+  subsets: { leetcodeNumber: 78, tracks: ["blind75", "neetcode150"] },
+  "combination-sum": { leetcodeNumber: 39, tracks: ["blind75", "neetcode150"] },
+  "word-search": { leetcodeNumber: 79, tracks: ["blind75", "neetcode150"] },
+  "number-of-islands": { leetcodeNumber: 200, tracks: ["blind75", "neetcode150"] },
+  "rotting-oranges": { leetcodeNumber: 994, tracks: ["neetcode150"] },
+  "house-robber": { leetcodeNumber: 198, tracks: ["blind75", "neetcode150"] },
+  "coin-change": { leetcodeNumber: 322, tracks: ["blind75", "neetcode150"] },
+  "partition-equal-subset-sum": { leetcodeNumber: 416, tracks: ["neetcode150"] },
+  "unique-paths": { leetcodeNumber: 62, tracks: ["neetcode150"] },
+  "longest-common-subsequence": { leetcodeNumber: 1143, tracks: ["neetcode150"] },
+  "jump-game": { leetcodeNumber: 55, tracks: ["blind75", "neetcode150"] },
+  "merge-triplets": { leetcodeNumber: 1899, tracks: ["neetcode150"] }
+};
+
+export function getProblemRoadmapMeta(problemId: string) {
+  return problemRoadmapMeta[problemId] ?? null;
+}

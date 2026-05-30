@@ -2,7 +2,13 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { CoachRequest, CoachResponse } from "@/lib/coach";
-import { patternOptions, sampleProblems } from "@/lib/product";
+import {
+  getProblemRoadmapMeta,
+  patternOptions,
+  roadmapTrackTotals,
+  sampleProblems,
+  type RoadmapTrack
+} from "@/lib/product";
 import {
   getAvailableLanguages,
   getStarterCode,
@@ -11,6 +17,7 @@ import {
   type SupportedLanguage
 } from "@/lib/problem-code";
 import { buildTechniqueBriefs, getSuggestedTechniques } from "@/lib/techniques";
+import { usePatternLiftState } from "@/components/patternlift-state";
 
 type PatternId = (typeof patternOptions)[number]["id"];
 
@@ -69,6 +76,16 @@ type RunResult = {
   error?: string;
 };
 
+type EditableExample = {
+  id: string;
+  label: string;
+  argsExpression: string;
+  expectedExpression: string;
+  kind: "built-in" | "custom";
+};
+
+type RoadmapFilter = "all" | "official" | RoadmapTrack;
+
 const editorLanguages: Array<{ id: SupportedLanguage; label: string }> = [
   { id: "javascript", label: "JavaScript" },
   { id: "typescript", label: "TypeScript" },
@@ -84,8 +101,10 @@ const editorLanguages: Array<{ id: SupportedLanguage; label: string }> = [
 ];
 
 export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
+  const { history } = usePatternLiftState();
   const [problemId, setProblemId] = useState<string>(sampleProblems[0].id);
-  const [problemQuery, setProblemQuery] = useState<string>(sampleProblems[0].title);
+  const [problemQuery, setProblemQuery] = useState<string>("");
+  const [roadmapFilter, setRoadmapFilter] = useState<RoadmapFilter>("all");
   const [problemText, setProblemText] = useState<string>(sampleProblems[0].prompt);
   const [selectedPattern, setSelectedPattern] = useState<PatternId | null>(null);
   const [selectedClues, setSelectedClues] = useState<string[]>([]);
@@ -112,6 +131,8 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
   });
   const [runResults, setRunResults] = useState<RunResult[] | null>(null);
   const [runnerError, setRunnerError] = useState<string | null>(null);
+  const [testCases, setTestCases] = useState<EditableExample[]>([]);
+  const [selectedTestCaseId, setSelectedTestCaseId] = useState<string | null>(null);
 
   const activeProblem = useMemo(
     () => sampleProblems.find((problem) => problem.id === problemId) ?? sampleProblems[0],
@@ -136,9 +157,14 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
 
   const contrastPatternLabel = contrastPattern?.label ?? "Neighboring pattern";
   const activeCodeConfig = problemCodeMap[activeProblem.id];
+  const activeRoadmapMeta = getProblemRoadmapMeta(activeProblem.id);
   const availableLanguages = useMemo(
     () => getAvailableLanguages(activeCodeConfig),
     [activeCodeConfig]
+  );
+  const completedProblemIds = useMemo(
+    () => new Set(history.map((item) => item.problemId)),
+    [history]
   );
 
   const problemsByCategory = useMemo(() => {
@@ -152,11 +178,13 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
   const filteredProblems = useMemo(() => {
     const normalizedQuery = problemQuery.trim().toLowerCase();
 
-    if (!normalizedQuery) {
-      return sampleProblems.slice(0, 8);
-    }
-
     return sampleProblems
+      .filter((problem) => {
+        if (roadmapFilter === "all") return true;
+        const meta = getProblemRoadmapMeta(problem.id);
+        if (roadmapFilter === "official") return Boolean(meta);
+        return Boolean(meta?.tracks.includes(roadmapFilter));
+      })
       .map((problem) => {
         const haystack = [
           problem.title,
@@ -176,15 +204,30 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
 
         return { problem, score };
       })
-      .filter((entry) => entry.score > 0)
+      .filter((entry) => normalizedQuery ? entry.score > 0 : true)
       .sort((left, right) => right.score - left.score || left.problem.title.localeCompare(right.problem.title))
       .slice(0, 8)
       .map((entry) => entry.problem);
-  }, [problemQuery]);
+  }, [problemQuery, roadmapFilter]);
+
+  const roadmapCoverage = useMemo(() => {
+    const tracks: RoadmapTrack[] = ["blind75", "neetcode150"];
+    return tracks.map((track) => {
+      const included = sampleProblems.filter((problem) =>
+        getProblemRoadmapMeta(problem.id)?.tracks.includes(track)
+      );
+      const completed = included.filter((problem) => completedProblemIds.has(problem.id)).length;
+      return {
+        track,
+        includedCount: included.length,
+        totalCount: roadmapTrackTotals[track],
+        completedCount: completed
+      };
+    });
+  }, [completedProblemIds]);
 
   useEffect(() => {
     setProblemText(activeProblem.prompt);
-    setProblemQuery(activeProblem.title);
     setSelectedPattern(null);
     setSelectedClues([]);
     setSelectedFirstStep(null);
@@ -212,7 +255,28 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
     );
     setRunResults(null);
     setRunnerError(null);
+    const nextCases =
+      activeCodeConfig?.examples.map((example, index) => ({
+        id: `${activeProblem.id}-example-${index + 1}`,
+        label: example.label,
+        argsExpression: example.argsExpression,
+        expectedExpression: example.expectedExpression,
+        kind: "built-in" as const
+      })) ?? [];
+    setTestCases(nextCases);
+    setSelectedTestCaseId(nextCases[0]?.id ?? null);
   }, [activeCodeConfig, activeProblem, availableLanguages]);
+
+  const selectedTestCase =
+    testCases.find((testCase) => testCase.id === selectedTestCaseId) ?? testCases[0] ?? null;
+  const runSummary = useMemo(() => {
+    if (!runResults) return null;
+    const passed = runResults.filter((result) => result.passed).length;
+    return {
+      passed,
+      total: runResults.length
+    };
+  }, [runResults]);
 
   const quickRead = useMemo(() => {
     const normalized = problemText.toLowerCase();
@@ -283,6 +347,49 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
     setRunnerError(null);
   }
 
+  function updateTestCase(
+    testCaseId: string,
+    field: "argsExpression" | "expectedExpression",
+    value: string
+  ) {
+    setTestCases((current) =>
+      current.map((testCase) =>
+        testCase.id === testCaseId
+          ? { ...testCase, [field]: value }
+          : testCase
+      )
+    );
+    setRunResults(null);
+    setRunnerError(null);
+  }
+
+  function addCustomTestCase() {
+    const nextId = `${activeProblem.id}-custom-${Date.now()}`;
+    const nextCase: EditableExample = {
+      id: nextId,
+      label: `Custom ${testCases.filter((testCase) => testCase.kind === "custom").length + 1}`,
+      argsExpression: selectedTestCase?.argsExpression ?? "[]",
+      expectedExpression: selectedTestCase?.expectedExpression ?? "null",
+      kind: "custom"
+    };
+    setTestCases((current) => [...current, nextCase]);
+    setSelectedTestCaseId(nextId);
+    setRunResults(null);
+    setRunnerError(null);
+  }
+
+  function removeCustomTestCase(testCaseId: string) {
+    setTestCases((current) => {
+      const nextCases = current.filter((testCase) => testCase.id !== testCaseId);
+      setSelectedTestCaseId((currentId) =>
+        currentId === testCaseId ? nextCases[0]?.id ?? null : currentId
+      );
+      return nextCases;
+    });
+    setRunResults(null);
+    setRunnerError(null);
+  }
+
   function toggleClue(clue: string) {
     setSelectedClues((current) =>
       current.includes(clue)
@@ -296,7 +403,6 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
     const nextProblem =
       sampleProblems.find((problem) => problem.id === nextProblemId) ?? sampleProblems[0];
     setProblemId(nextProblem.id);
-    setProblemQuery(nextProblem.title);
   }
 
   async function evaluateAttempt() {
@@ -424,7 +530,11 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
           functionName: activeCodeConfig.functionName,
           signature: activeCodeConfig.signature,
           compareMode: activeCodeConfig.compareMode ?? "strict",
-          examples: activeCodeConfig.examples
+          examples: testCases.map((testCase) => ({
+            label: testCase.label,
+            argsExpression: testCase.argsExpression,
+            expectedExpression: testCase.expectedExpression
+          }))
         })
       });
 
@@ -513,6 +623,57 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
           </button>
         </div>
 
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          {roadmapCoverage.map((coverage) => (
+            <div
+              key={coverage.track}
+              className="rounded-lg border border-black/10 bg-white/90 p-4"
+            >
+              <p className="text-xs font-semibold uppercase tracking-wide text-lake">
+                {coverage.track === "blind75" ? "75 Track" : "150 Track"}
+              </p>
+              <p className="mt-2 text-2xl font-semibold text-ink">
+                {coverage.completedCount}/{coverage.includedCount}
+              </p>
+              <p className="mt-1 text-sm leading-6 text-black/64">
+                Completed in app / included here
+              </p>
+              <p className="mt-2 text-xs text-black/54">
+                {coverage.includedCount} of {coverage.totalCount} official roadmap problems currently loaded
+              </p>
+            </div>
+          ))}
+          <div className="rounded-lg border border-black/10 bg-white/90 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-ember">
+              Filters
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {[
+                { id: "all" as const, label: "All prompts" },
+                { id: "official" as const, label: "Official only" },
+                { id: "blind75" as const, label: "75 track" },
+                { id: "neetcode150" as const, label: "150 track" }
+              ].map((filterOption) => {
+                const isActive = roadmapFilter === filterOption.id;
+                return (
+                  <button
+                    key={filterOption.id}
+                    type="button"
+                    onClick={() => setRoadmapFilter(filterOption.id)}
+                    className={`rounded-full px-3 py-2 text-xs font-medium transition ${
+                      isActive
+                        ? "bg-ink text-white"
+                        : "border border-black/10 bg-white text-black/68"
+                    }`}
+                  >
+                    {filterOption.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
         <div className="mt-4 rounded-lg border border-black/10 bg-white/88 p-4">
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm font-semibold text-ink">Relevant prompts</p>
@@ -538,6 +699,26 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-sm font-semibold text-ink">{problem.title}</p>
+                      {completedProblemIds.has(problem.id) ? (
+                        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700">
+                          Completed
+                        </span>
+                      ) : null}
+                      {getProblemRoadmapMeta(problem.id) ? (
+                        <>
+                          <span className="rounded-full border border-black/10 bg-white px-2 py-1 text-[11px] font-medium text-black/60">
+                            #{getProblemRoadmapMeta(problem.id)?.leetcodeNumber}
+                          </span>
+                          {getProblemRoadmapMeta(problem.id)?.tracks.map((track) => (
+                            <span
+                              key={`${problem.id}-${track}`}
+                              className="rounded-full border border-black/10 bg-white px-2 py-1 text-[11px] font-medium text-black/60"
+                            >
+                              {track === "blind75" ? "75" : "150"}
+                            </span>
+                          ))}
+                        </>
+                      ) : null}
                       <span className="rounded-full border border-black/10 bg-white px-2 py-1 text-[11px] font-medium text-black/60">
                         {problem.category}
                       </span>
@@ -579,6 +760,21 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
 
       <ThreadMessage speaker="user" title={activeProblem.title}>
         <p className="text-sm leading-7 text-black/78 whitespace-pre-wrap">{problemText}</p>
+        {activeRoadmapMeta ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            <span className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/68">
+              LeetCode #{activeRoadmapMeta.leetcodeNumber}
+            </span>
+            {activeRoadmapMeta.tracks.map((track) => (
+              <span
+                key={`${activeProblem.id}-${track}`}
+                className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/68"
+              >
+                {track === "blind75" ? "Blind 75" : "NeetCode 150"}
+              </span>
+            ))}
+          </div>
+        ) : null}
       </ThreadMessage>
 
       <ThreadMessage
@@ -848,24 +1044,107 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
 
             {activeCodeConfig ? (
               <div className="rounded-lg border border-black/10 bg-white/88 p-4">
-                <p className="text-sm font-semibold text-ink">Example tests</p>
-                <div className="mt-3 space-y-3">
-                  {activeCodeConfig.examples.map((example) => (
-                    <div
-                      key={example.label}
-                      className="rounded-lg border border-black/8 bg-mist p-3"
-                    >
-                      <p className="text-xs font-semibold uppercase tracking-wide text-lake">
-                        {example.label}
-                      </p>
-                      <p className="mt-2 font-mono text-xs leading-6 text-black/72">
-                        args: {example.argsExpression}
-                      </p>
-                      <p className="mt-1 font-mono text-xs leading-6 text-black/72">
-                        expected: {example.expectedExpression}
-                      </p>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-ink">Test case panel</p>
+                  <button
+                    type="button"
+                    onClick={addCustomTestCase}
+                    className="uiverse-button-secondary px-3 py-2 text-xs font-medium"
+                  >
+                    Add custom case
+                  </button>
+                </div>
+                {runSummary ? (
+                  <div className="mt-3 rounded-lg border border-black/10 bg-mist p-3 text-sm text-black/68">
+                    Passed {runSummary.passed} of {runSummary.total} cases
+                  </div>
+                ) : null}
+                <div className="mt-4 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+                  <div className="space-y-2">
+                    {testCases.map((testCase) => {
+                      const result = runResults?.find((entry) => entry.label === testCase.label);
+                      const isActive = selectedTestCase?.id === testCase.id;
+                      return (
+                        <button
+                          key={testCase.id}
+                          type="button"
+                          onClick={() => setSelectedTestCaseId(testCase.id)}
+                          className={`w-full rounded-lg border px-3 py-3 text-left transition ${
+                            isActive
+                              ? "border-lake/30 bg-lake/10"
+                              : "border-black/10 bg-mist"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-semibold text-ink">{testCase.label}</p>
+                            {result ? (
+                              <span className={`text-xs font-semibold ${result.passed ? "text-emerald-700" : "text-amber-700"}`}>
+                                {result.passed ? "Passed" : "Failed"}
+                              </span>
+                            ) : testCase.kind === "custom" ? (
+                              <span className="text-xs font-semibold text-black/50">Custom</span>
+                            ) : null}
+                          </div>
+                          <p className="mt-2 line-clamp-2 font-mono text-xs leading-5 text-black/62">
+                            {testCase.argsExpression}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {selectedTestCase ? (
+                    <div className="rounded-lg border border-black/10 bg-white/92 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <p className="text-sm font-semibold text-ink">{selectedTestCase.label}</p>
+                        {selectedTestCase.kind === "custom" ? (
+                          <button
+                            type="button"
+                            onClick={() => removeCustomTestCase(selectedTestCase.id)}
+                            className="text-xs font-medium text-ember"
+                          >
+                            Remove custom case
+                          </button>
+                        ) : null}
+                      </div>
+                      <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-black/56">
+                        Args expression
+                        <textarea
+                          value={selectedTestCase.argsExpression}
+                          onChange={(event) =>
+                            updateTestCase(selectedTestCase.id, "argsExpression", event.target.value)
+                          }
+                          rows={4}
+                          spellCheck={false}
+                          className="uiverse-field mt-2 w-full px-3 py-2 font-mono text-xs leading-6 text-ink"
+                        />
+                      </label>
+                      <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-black/56">
+                        Expected expression
+                        <textarea
+                          value={selectedTestCase.expectedExpression}
+                          onChange={(event) =>
+                            updateTestCase(selectedTestCase.id, "expectedExpression", event.target.value)
+                          }
+                          rows={4}
+                          spellCheck={false}
+                          className="uiverse-field mt-2 w-full px-3 py-2 font-mono text-xs leading-6 text-ink"
+                        />
+                      </label>
+                      {runResults?.find((entry) => entry.label === selectedTestCase.label) ? (
+                        <div className="mt-4 rounded-lg border border-black/10 bg-mist p-3">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-lake">
+                            Last run
+                          </p>
+                          <p className="mt-2 font-mono text-xs leading-6 text-black/72">
+                            actual: {runResults.find((entry) => entry.label === selectedTestCase.label)?.actual}
+                          </p>
+                          <p className="mt-1 font-mono text-xs leading-6 text-black/72">
+                            expected: {runResults.find((entry) => entry.label === selectedTestCase.label)?.expected}
+                          </p>
+                        </div>
+                      ) : null}
                     </div>
-                  ))}
+                  ) : null}
                 </div>
               </div>
             ) : null}

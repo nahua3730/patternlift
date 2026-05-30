@@ -28,7 +28,7 @@ export async function GET() {
   const attempts = db
     .prepare(
       `
-        SELECT id, problem_title, selected_pattern_label, outcome, insight
+        SELECT id, problem_id, problem_title, selected_pattern_label, outcome, insight
         FROM attempts
         ORDER BY datetime(created_at) DESC
         LIMIT 6
@@ -36,6 +36,7 @@ export async function GET() {
     )
     .all() as Array<{
     id: string;
+    problem_id: string;
     problem_title: string;
     selected_pattern_label: string;
     outcome: string;
@@ -64,6 +65,7 @@ export async function GET() {
     attempts.length > 0
       ? attempts.map((attempt) => ({
           id: attempt.id,
+          problemId: attempt.problem_id,
           problemTitle: attempt.problem_title,
           selectedPatternLabel: attempt.selected_pattern_label,
           outcome: attempt.outcome as "solid" | "partial" | "confused",

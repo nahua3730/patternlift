@@ -496,9 +496,16 @@ public class Program {
         return CharMatrixToJson((char[][])value);
       case "nestedIntArray":
         return NestedIntListToJson((IList<IList<int>>)value);
+      case "linkedList":
+        return LinkedListToJson((ListNode)value);
       default:
         throw new InvalidOperationException("Unsupported return type");
     }
+  }
+
+  static string LinkedListToJson(ListNode node) {
+    if (node == null) return "null";
+    return "{\\"val\\":" + node.val + ",\\"next\\":" + LinkedListToJson(node.next) + "}";
   }
 
   public static void Main() {
@@ -1135,11 +1142,9 @@ ${examples
 
 function buildJavaPrelude(signature: RunCodeRequest["signature"]) {
   const chunks: string[] = [];
+  chunks.push(`class ListNode {\n  int val;\n  ListNode next;\n\n  ListNode(int val) { this.val = val; }\n  ListNode(int val, ListNode next) {\n    this.val = val;\n    this.next = next;\n  }\n}`);
   if (signatureUsesType(signature, "binaryTree")) {
     chunks.push(`class TreeNode {\n  int val;\n  TreeNode left;\n  TreeNode right;\n\n  TreeNode(int val) { this.val = val; }\n  TreeNode(int val, TreeNode left, TreeNode right) {\n    this.val = val;\n    this.left = left;\n    this.right = right;\n  }\n}`);
-  }
-  if (signatureUsesType(signature, "linkedList")) {
-    chunks.push(`class ListNode {\n  int val;\n  ListNode next;\n\n  ListNode(int val) { this.val = val; }\n  ListNode(int val, ListNode next) {\n    this.val = val;\n    this.next = next;\n  }\n}`);
   }
   return chunks.length > 0 ? `${chunks.join("\n\n")}\n\n` : "";
 }
@@ -1157,44 +1162,36 @@ function buildCSharpPrelude(signature: RunCodeRequest["signature"]) {
 
 function buildCppPrelude(signature: RunCodeRequest["signature"]) {
   const chunks: string[] = [];
+  chunks.push(`struct ListNode {\n  int val;\n  ListNode* next;\n  ListNode(int value) : val(value), next(nullptr) {}\n  ListNode(int value, ListNode* nextNode) : val(value), next(nextNode) {}\n};`);
   if (signatureUsesType(signature, "binaryTree")) {
     chunks.push(`struct TreeNode {\n  int val;\n  TreeNode* left;\n  TreeNode* right;\n  TreeNode(int value) : val(value), left(nullptr), right(nullptr) {}\n  TreeNode(int value, TreeNode* leftNode, TreeNode* rightNode) : val(value), left(leftNode), right(rightNode) {}\n};`);
-  }
-  if (signatureUsesType(signature, "linkedList")) {
-    chunks.push(`struct ListNode {\n  int val;\n  ListNode* next;\n  ListNode(int value) : val(value), next(nullptr) {}\n  ListNode(int value, ListNode* nextNode) : val(value), next(nextNode) {}\n};`);
   }
   return chunks.length > 0 ? `${chunks.join("\n\n")}\n\n` : "";
 }
 
 function buildSwiftPrelude(signature: RunCodeRequest["signature"]) {
   const chunks: string[] = [];
+  chunks.push(`final class ListNode {\n  var val: Int\n  var next: ListNode?\n\n  init(_ val: Int, _ next: ListNode? = nil) {\n    self.val = val\n    self.next = next\n  }\n}`);
   if (signatureUsesType(signature, "binaryTree")) {
     chunks.push(`final class TreeNode {\n  var val: Int\n  var left: TreeNode?\n  var right: TreeNode?\n\n  init(_ val: Int, _ left: TreeNode? = nil, _ right: TreeNode? = nil) {\n    self.val = val\n    self.left = left\n    self.right = right\n  }\n}`);
-  }
-  if (signatureUsesType(signature, "linkedList")) {
-    chunks.push(`final class ListNode {\n  var val: Int\n  var next: ListNode?\n\n  init(_ val: Int, _ next: ListNode? = nil) {\n    self.val = val\n    self.next = next\n  }\n}`);
   }
   return chunks.length > 0 ? `${chunks.join("\n\n")}\n\n` : "";
 }
 
 function buildGoPrelude(signature: RunCodeRequest["signature"]) {
   const chunks: string[] = [];
+  chunks.push(`type ListNode struct {\n\tVal int\n\tNext *ListNode\n}`);
   if (signatureUsesType(signature, "binaryTree")) {
     chunks.push(`type TreeNode struct {\n\tVal int\n\tLeft *TreeNode\n\tRight *TreeNode\n}`);
-  }
-  if (signatureUsesType(signature, "linkedList")) {
-    chunks.push(`type ListNode struct {\n\tVal int\n\tNext *ListNode\n}`);
   }
   return chunks.length > 0 ? `${chunks.join("\n\n")}\n\n` : "";
 }
 
 function buildKotlinPrelude(signature: RunCodeRequest["signature"]) {
   const chunks: string[] = [];
+  chunks.push(`class ListNode(var \`val\`: Int, var next: ListNode? = null)`);
   if (signatureUsesType(signature, "binaryTree")) {
     chunks.push(`class TreeNode(var \`val\`: Int, var left: TreeNode? = null, var right: TreeNode? = null)`);
-  }
-  if (signatureUsesType(signature, "linkedList")) {
-    chunks.push(`class ListNode(var \`val\`: Int, var next: ListNode? = null)`);
   }
   return chunks.length > 0 ? `${chunks.join("\n\n")}\n\n` : "";
 }
