@@ -3,6 +3,7 @@
 import { PracticeWorkspace } from "@/components/practice-workspace";
 import { ProgressPanel } from "@/components/progress-panel";
 import { ReviewQueue } from "@/components/review-queue";
+import { TechniqueLibrary } from "@/components/technique-library";
 import { usePatternLiftState } from "@/components/patternlift-state";
 
 export function DashboardView() {
@@ -89,6 +90,10 @@ export function ProgressPageView() {
 export function ReviewPageView() {
   const { reviewQueue } = usePatternLiftState();
   return <ReviewQueue items={reviewQueue} />;
+}
+
+export function TechniquesPageView() {
+  return <TechniqueLibrary />;
 }
 
 function DashboardStat({ label, value }: { label: string; value: string }) {
