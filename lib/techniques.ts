@@ -14,6 +14,81 @@ type TechniqueSeed = {
 
 export const techniqueLibrary = [
   {
+    id: "hash-map",
+    title: "Hash Map and Set",
+    sourceTrack: "data-structure",
+    aliases: ["hashing", "frequency map", "set lookup"],
+    whenToThink:
+      "Use this when fast membership, complement lookup, or frequency counting can replace repeated scans.",
+    coreIdea:
+      "Trade extra memory for constant-time lookup so each element can answer a question about what you have already seen.",
+    starterQuestion:
+      "What should the map or set remember so the next lookup becomes immediate?",
+    commonTrap:
+      "Using hashing without deciding whether the structure should store existence, counts, or indices.",
+    quickTips: [
+      "Sets answer have-I-seen-this questions.",
+      "Maps answer how-many or where-did-I-see-it questions.",
+      "Write the key and stored value in words before coding."
+    ],
+    coachMoves: [
+      "Ask whether the learner needs membership, counts, or indices.",
+      "Use this when duplicate, anagram, complement, or lookup language appears.",
+      "Contrast one-pass hashing with sorting or nested loops."
+    ],
+    signalMatchers: ["duplicate", "anagram", "complement", "lookup", "set", "frequency", "hash"]
+  },
+  {
+    id: "stack",
+    title: "Stack Invariant",
+    sourceTrack: "data-structure",
+    aliases: ["stack", "parentheses", "latest unfinished item"],
+    whenToThink:
+      "Use this when the newest unresolved item should be matched, undone, or resolved before older ones.",
+    coreIdea:
+      "Let the stack store unfinished work in the exact order it must be resolved later.",
+    starterQuestion:
+      "What belongs on the stack, and what event should pop it back off?",
+    commonTrap:
+      "Pushing values without stating the invariant that makes a pop meaningful.",
+    quickTips: [
+      "Matching pairs often want a plain stack.",
+      "Next greater and similar problems often want a monotonic stack.",
+      "Write the push and pop triggers before the loop."
+    ],
+    coachMoves: [
+      "Ask the learner to name the stack invariant.",
+      "Use it for matching, undo, and next-greater style problems.",
+      "Contrast generic stack usage with monotonic-stack specialization."
+    ],
+    signalMatchers: ["parentheses", "stack", "warmer", "next greater", "fleet", "undo", "latest"]
+  },
+  {
+    id: "intervals",
+    title: "Interval Boundary Thinking",
+    sourceTrack: "essential-technique",
+    aliases: ["intervals", "merge intervals", "line sweep lite"],
+    whenToThink:
+      "Use this when ranges overlap, merge, insert, or compete based on their boundaries.",
+    coreIdea:
+      "Sort or scan by one boundary so each local overlap decision only depends on the current active range.",
+    starterQuestion:
+      "Which boundary should control the order, and what state represents the current active interval?",
+    commonTrap:
+      "Comparing every interval with every other interval instead of turning the problem into ordered local decisions.",
+    quickTips: [
+      "Sort by start when merging or inserting.",
+      "Earlier ending boundaries are often safer when intervals conflict.",
+      "Think in phases: before overlap, during overlap, after overlap."
+    ],
+    coachMoves: [
+      "Ask what the active interval state should be.",
+      "Use it when overlap, merge, insert, erase, or schedule language appears.",
+      "Contrast merge-style interval handling with greedy removal logic."
+    ],
+    signalMatchers: ["interval", "overlap", "merge", "insert interval", "erase", "meeting", "range"]
+  },
+  {
     id: "framework-thinking",
     title: "Framework Thinking",
     sourceTrack: "essential-technique",
@@ -721,14 +796,22 @@ function mapPatternToTechniqueId(patternId: string | null): TechniqueId | null {
       return "sliding-window";
     case "two-pointers":
       return "two-pointers";
+    case "hashing":
+      return "hash-map";
+    case "stack":
+      return "stack";
     case "bfs":
       return "bfs";
     case "dfs":
       return "dfs-backtracking";
+    case "intervals":
+      return "intervals";
     case "dynamic-programming":
       return "dynamic-programming";
     case "heap":
       return "heap";
+    case "greedy":
+      return "greedy";
     default:
       return null;
   }

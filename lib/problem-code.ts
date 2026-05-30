@@ -822,6 +822,84 @@ function toSnakeName(title: string) {
 }
 
 export const problemCodeMap: Record<string, ProblemCodeConfig> = {
+  "two-sum": {
+    functionName: "twoSum",
+    starterCode: buildStarterCode(
+      "function twoSum(nums, target)",
+      [
+        "Use a map from value to index.",
+        "Return the two indices that add up to target."
+      ]
+    ),
+    signature: {
+      params: [
+        { name: "nums", type: "intArray" },
+        { name: "target", type: "int" }
+      ],
+      returnType: "intArray"
+    },
+    examples: [
+      { label: "Example 1", argsExpression: "[[2,7,11,15], 9]", expectedExpression: "[0,1]" },
+      { label: "Example 2", argsExpression: "[[3,2,4], 6]", expectedExpression: "[1,2]" }
+    ]
+  },
+  "contains-duplicate": {
+    functionName: "containsDuplicate",
+    starterCode: buildStarterCode(
+      "function containsDuplicate(nums)",
+      [
+        "Return true as soon as a value repeats.",
+        "A set is usually enough."
+      ]
+    ),
+    signature: {
+      params: [{ name: "nums", type: "intArray" }],
+      returnType: "bool"
+    },
+    examples: [
+      { label: "Example 1", argsExpression: "[[1,2,3,1]]", expectedExpression: "true" },
+      { label: "Example 2", argsExpression: "[[1,2,3,4]]", expectedExpression: "false" }
+    ]
+  },
+  "valid-anagram": {
+    functionName: "isAnagram",
+    starterCode: buildStarterCode(
+      "function isAnagram(s, t)",
+      [
+        "Compare character frequencies.",
+        "Return true only if every count balances exactly."
+      ]
+    ),
+    signature: {
+      params: [
+        { name: "s", type: "string" },
+        { name: "t", type: "string" }
+      ],
+      returnType: "bool"
+    },
+    examples: [
+      { label: "Example 1", argsExpression: "[\"anagram\", \"nagaram\"]", expectedExpression: "true" },
+      { label: "Example 2", argsExpression: "[\"rat\", \"car\"]", expectedExpression: "false" }
+    ]
+  },
+  "longest-consecutive": {
+    functionName: "longestConsecutive",
+    starterCode: buildStarterCode(
+      "function longestConsecutive(nums)",
+      [
+        "Use a set to detect sequence starts.",
+        "Only grow sequences from numbers that have no predecessor."
+      ]
+    ),
+    signature: {
+      params: [{ name: "nums", type: "intArray" }],
+      returnType: "int"
+    },
+    examples: [
+      { label: "Example 1", argsExpression: "[[100,4,200,1,3,2]]", expectedExpression: "4" },
+      { label: "Example 2", argsExpression: "[[0,3,7,2,5,8,4,6,0,1]]", expectedExpression: "9" }
+    ]
+  },
   "shortest-subarray-target": {
     functionName: "minSubArrayLen",
     starterCode: buildStarterCode(
@@ -938,6 +1016,64 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
       { label: "Example 2", argsExpression: "[[0,1,1]]", expectedExpression: "[]" }
     ]
   },
+  "valid-parentheses": {
+    functionName: "isValid",
+    starterCode: buildStarterCode(
+      "function isValid(s)",
+      [
+        "Use a stack of opening brackets.",
+        "Each closing bracket must match the most recent opening bracket."
+      ]
+    ),
+    signature: {
+      params: [{ name: "s", type: "string" }],
+      returnType: "bool"
+    },
+    examples: [
+      { label: "Example 1", argsExpression: "[\"()[]{}\"]", expectedExpression: "true" },
+      { label: "Example 2", argsExpression: "[\"(]\"]", expectedExpression: "false" }
+    ]
+  },
+  "daily-temperatures": {
+    functionName: "dailyTemperatures",
+    starterCode: buildStarterCode(
+      "function dailyTemperatures(temperatures)",
+      [
+        "Use a stack of unresolved day indices.",
+        "Return how many days it takes to find a warmer temperature."
+      ]
+    ),
+    signature: {
+      params: [{ name: "temperatures", type: "intArray" }],
+      returnType: "intArray"
+    },
+    examples: [
+      { label: "Example 1", argsExpression: "[[73,74,75,71,69,72,76,73]]", expectedExpression: "[1,1,4,2,1,1,0,0]" },
+      { label: "Example 2", argsExpression: "[[30,40,50,60]]", expectedExpression: "[1,1,1,0]" }
+    ]
+  },
+  "car-fleet": {
+    functionName: "carFleet",
+    starterCode: buildStarterCode(
+      "function carFleet(target, position, speed)",
+      [
+        "Sort cars by position from closest to farthest from the target.",
+        "Use arrival times to decide whether a car forms a new fleet or joins one ahead."
+      ]
+    ),
+    signature: {
+      params: [
+        { name: "target", type: "int" },
+        { name: "position", type: "intArray" },
+        { name: "speed", type: "intArray" }
+      ],
+      returnType: "int"
+    },
+    examples: [
+      { label: "Example 1", argsExpression: "[12, [10,8,0,5,3], [2,4,1,1,3]]", expectedExpression: "3" },
+      { label: "Example 2", argsExpression: "[10, [3], [3]]", expectedExpression: "1" }
+    ]
+  },
   "binary-search": {
     functionName: "search",
     starterCode: buildStarterCode(
@@ -999,6 +1135,28 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
     examples: [
       { label: "Example 1", argsExpression: "[[3,6,7,11], 8]", expectedExpression: "4" },
       { label: "Example 2", argsExpression: "[[30,11,23,4,20], 5]", expectedExpression: "30" }
+    ]
+  },
+  "network-delay-time": {
+    functionName: "networkDelayTime",
+    starterCode: buildStarterCode(
+      "function networkDelayTime(times, n, k)",
+      [
+        "times contains directed edges [u, v, w].",
+        "Return the time for a signal from k to reach every node, or -1 if some node is unreachable."
+      ]
+    ),
+    signature: {
+      params: [
+        { name: "times", type: "intMatrix" },
+        { name: "n", type: "int" },
+        { name: "k", type: "int" }
+      ],
+      returnType: "int"
+    },
+    examples: [
+      { label: "Example 1", argsExpression: "[[[2,1,1],[2,3,1],[3,4,1]], 4, 2]", expectedExpression: "2" },
+      { label: "Example 2", argsExpression: "[[[1,2,1]], 2, 1]", expectedExpression: "1" }
     ]
   },
   "course-schedule": {
@@ -1418,6 +1576,24 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
       { label: "Example 2", argsExpression: "[[[2,1,1],[0,1,1],[1,0,1]]]", expectedExpression: "-1" }
     ]
   },
+  "counting-bits": {
+    functionName: "countBits",
+    starterCode: buildStarterCode(
+      "function countBits(n)",
+      [
+        "Return an array of bit counts from 0 through n.",
+        "Reuse smaller answers instead of recounting every number from scratch."
+      ]
+    ),
+    signature: {
+      params: [{ name: "n", type: "int" }],
+      returnType: "intArray"
+    },
+    examples: [
+      { label: "Example 1", argsExpression: "[2]", expectedExpression: "[0,1,1]" },
+      { label: "Example 2", argsExpression: "[5]", expectedExpression: "[0,1,1,2,1,2]" }
+    ]
+  },
   "house-robber": {
     functionName: "rob",
     starterCode: buildStarterCode(
@@ -1513,6 +1689,24 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
       { label: "Example 2", argsExpression: "[\"abc\", \"def\"]", expectedExpression: "0" }
     ]
   },
+  "best-time-stock": {
+    functionName: "maxProfit",
+    starterCode: buildStarterCode(
+      "function maxProfit(prices)",
+      [
+        "Track the cheapest buy seen so far.",
+        "Update the best profit as you scan to the right."
+      ]
+    ),
+    signature: {
+      params: [{ name: "prices", type: "intArray" }],
+      returnType: "int"
+    },
+    examples: [
+      { label: "Example 1", argsExpression: "[[7,1,5,3,6,4]]", expectedExpression: "5" },
+      { label: "Example 2", argsExpression: "[[7,6,4,3,1]]", expectedExpression: "0" }
+    ]
+  },
   "jump-game": {
     functionName: "canJump",
     starterCode: buildStarterCode(
@@ -1528,6 +1722,63 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
     examples: [
       { label: "Example 1", argsExpression: "[[2,3,1,1,4]]", expectedExpression: "true" },
       { label: "Example 2", argsExpression: "[[3,2,1,0,4]]", expectedExpression: "false" }
+    ]
+  },
+  "merge-intervals": {
+    functionName: "merge",
+    starterCode: buildStarterCode(
+      "function merge(intervals)",
+      [
+        "Sort by start time first.",
+        "Merge intervals whenever the next start is inside the current end boundary."
+      ]
+    ),
+    signature: {
+      params: [{ name: "intervals", type: "intMatrix" }],
+      returnType: "intMatrix"
+    },
+    examples: [
+      { label: "Example 1", argsExpression: "[[[1,3],[2,6],[8,10],[15,18]]]", expectedExpression: "[[1,6],[8,10],[15,18]]" },
+      { label: "Example 2", argsExpression: "[[[1,4],[4,5]]]", expectedExpression: "[[1,5]]" }
+    ]
+  },
+  "insert-interval": {
+    functionName: "insert",
+    starterCode: buildStarterCode(
+      "function insert(intervals, newInterval)",
+      [
+        "Intervals are already sorted and non-overlapping.",
+        "Return the merged result after inserting newInterval."
+      ]
+    ),
+    signature: {
+      params: [
+        { name: "intervals", type: "intMatrix" },
+        { name: "newInterval", type: "intArray" }
+      ],
+      returnType: "intMatrix"
+    },
+    examples: [
+      { label: "Example 1", argsExpression: "[[[1,3],[6,9]], [2,5]]", expectedExpression: "[[1,5],[6,9]]" },
+      { label: "Example 2", argsExpression: "[[[1,2],[3,5],[6,7],[8,10],[12,16]], [4,8]]", expectedExpression: "[[1,2],[3,10],[12,16]]" }
+    ]
+  },
+  "non-overlapping-intervals": {
+    functionName: "eraseOverlapIntervals",
+    starterCode: buildStarterCode(
+      "function eraseOverlapIntervals(intervals)",
+      [
+        "Sort intervals so overlap decisions are local.",
+        "Return the minimum number removed to leave only non-overlapping intervals."
+      ]
+    ),
+    signature: {
+      params: [{ name: "intervals", type: "intMatrix" }],
+      returnType: "int"
+    },
+    examples: [
+      { label: "Example 1", argsExpression: "[[[1,2],[2,3],[3,4],[1,3]]]", expectedExpression: "1" },
+      { label: "Example 2", argsExpression: "[[[1,2],[1,2],[1,2]]]", expectedExpression: "2" }
     ]
   },
   "merge-triplets": {

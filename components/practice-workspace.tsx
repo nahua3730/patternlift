@@ -44,26 +44,36 @@ type PracticeWorkspaceProps = {
 };
 
 const clueChoices = [
+  "need instant lookup",
+  "count frequencies or duplicates",
+  "pair or complement relationship",
   "contiguous subarray",
   "longest or shortest range",
   "sorted input",
   "sorted or monotonic search space",
   "minimum feasible / maximum feasible",
   "level-order traversal",
+  "matching pairs or reversible order",
+  "next greater or smaller signal",
   "top k ranking",
   "repeated best choice",
   "overlapping subproblems",
+  "overlapping ranges",
   "need to shrink after expanding",
+  "need to undo or resolve the latest unfinished item",
   "commit best local choice"
 ] as const;
 
 const firstStepChoices = [
+  "Store values in a hash map or set",
   "Track left and right pointers",
   "Set a left/right search interval and test the midpoint",
+  "Push candidates onto a stack and pop when the rule breaks",
   "Maintain a running sum or frequency state",
   "Use a queue for level order expansion",
   "Go deeper recursively before trying alternatives",
   "Push candidates into a heap",
+  "Sort intervals, then compare and merge boundaries",
   "Define a DP state and recurrence",
   "Sort or scan for the best safe local choice"
 ] as const;

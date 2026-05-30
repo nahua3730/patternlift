@@ -23,6 +23,22 @@ export const productFeatures = [
 
 export const patternOptions = [
   {
+    id: "hashing",
+    label: "Hash Map / Set",
+    firstSteps: [
+      "Choose whether you need a set for membership or a map for counts and indices",
+      "Store each value only once the lookup story is clear",
+      "Use constant-time lookup to avoid rescanning old work"
+    ],
+    clues: [
+      "need instant lookup",
+      "count frequencies or duplicates",
+      "pair or complement relationship"
+    ],
+    coachPrompt:
+      "Ask whether constant-time lookup, counting, or complement matching removes repeated scanning."
+  },
+  {
     id: "binary-search",
     label: "Binary Search",
     firstSteps: [
@@ -103,6 +119,22 @@ export const patternOptions = [
       "Ask whether the solution depends on exploring a branch deeply before trying alternatives."
   },
   {
+    id: "stack",
+    label: "Stack",
+    firstSteps: [
+      "Decide what should stay on the stack and what causes a pop",
+      "Write the stack invariant before coding the loop",
+      "Use the stack to remember unfinished work in the right order"
+    ],
+    clues: [
+      "matching pairs or reversible order",
+      "next greater or smaller signal",
+      "need to undo or resolve the latest unfinished item"
+    ],
+    coachPrompt:
+      "Ask whether the newest unfinished item should be resolved before older ones."
+  },
+  {
     id: "heap",
     label: "Heap / Priority Queue",
     firstSteps: [
@@ -117,6 +149,22 @@ export const patternOptions = [
     ],
     coachPrompt:
       "Ask whether you need quick access to the current best candidate again and again."
+  },
+  {
+    id: "intervals",
+    label: "Intervals",
+    firstSteps: [
+      "Sort intervals if order helps make overlap decisions local",
+      "Track the current merged range or the last safe ending boundary",
+      "Update boundaries when overlap happens and commit when it does not"
+    ],
+    clues: [
+      "overlapping ranges",
+      "start and end boundaries matter",
+      "merge, insert, erase, or schedule intervals"
+    ],
+    coachPrompt:
+      "Ask whether sorting ranges turns a global comparison into a local boundary decision."
   },
   {
     id: "dynamic-programming",
@@ -153,8 +201,10 @@ export const patternOptions = [
 ] as const;
 
 export type ProblemCategory =
+  | "Arrays & Hashing"
   | "Two Pointers"
   | "Sliding Window"
+  | "Stack"
   | "Binary Search"
   | "Linked Lists"
   | "Trees"
@@ -163,9 +213,66 @@ export type ProblemCategory =
   | "Graphs"
   | "1-D Dynamic Programming"
   | "2-D Dynamic Programming"
-  | "Greedy";
+  | "Greedy"
+  | "Intervals";
 
 export const sampleProblems = [
+  {
+    id: "two-sum",
+    category: "Arrays & Hashing",
+    title: "Two Sum",
+    difficulty: "Easy",
+    prompt:
+      "Given an array of integers and a target, return the indices of the two numbers that add up to the target.",
+    targetPatternId: "hashing",
+    recommendedClues: ["need instant lookup", "pair or complement relationship"],
+    recommendedFirstStep: "Store values in a hash map or set",
+    reviewQuestion:
+      "What should the map store so each new value can instantly check for its missing complement?",
+    contrastPatternId: "two-pointers"
+  },
+  {
+    id: "contains-duplicate",
+    category: "Arrays & Hashing",
+    title: "Contains Duplicate",
+    difficulty: "Easy",
+    prompt:
+      "Given an integer array, return true if any value appears at least twice and false if every element is distinct.",
+    targetPatternId: "hashing",
+    recommendedClues: ["need instant lookup", "count frequencies or duplicates"],
+    recommendedFirstStep: "Store values in a hash map or set",
+    reviewQuestion:
+      "Why is remembering what you have already seen enough to answer the question in one pass?",
+    contrastPatternId: "two-pointers"
+  },
+  {
+    id: "valid-anagram",
+    category: "Arrays & Hashing",
+    title: "Valid Anagram",
+    difficulty: "Easy",
+    prompt:
+      "Given two strings s and t, return true if t is an anagram of s and false otherwise.",
+    targetPatternId: "hashing",
+    recommendedClues: ["count frequencies or duplicates"],
+    recommendedFirstStep: "Store values in a hash map or set",
+    reviewQuestion:
+      "What frequency fact has to match exactly for the second string to be a true rearrangement?",
+    contrastPatternId: "two-pointers"
+  },
+  {
+    id: "longest-consecutive",
+    category: "Arrays & Hashing",
+    title: "Longest Consecutive Sequence",
+    difficulty: "Medium",
+    prompt:
+      "Given an unsorted array of integers, return the length of the longest consecutive elements sequence.",
+    targetPatternId: "hashing",
+    recommendedClues: ["need instant lookup"],
+    recommendedFirstStep: "Store values in a hash map or set",
+    reviewQuestion:
+      "How can a set tell you which values are starts of sequences instead of middles?",
+    contrastPatternId: "two-pointers"
+  },
   {
     id: "shortest-subarray-target",
     category: "Sliding Window",
@@ -261,6 +368,48 @@ export const sampleProblems = [
     reviewQuestion:
       "Why does sorting turn the inner search into a pointer problem instead of a full nested scan?",
     contrastPatternId: "binary-search"
+  },
+  {
+    id: "valid-parentheses",
+    category: "Stack",
+    title: "Valid Parentheses",
+    difficulty: "Easy",
+    prompt:
+      "Given a string containing just the characters (), {}, and [], determine whether the input string is valid.",
+    targetPatternId: "stack",
+    recommendedClues: ["matching pairs or reversible order"],
+    recommendedFirstStep: "Push candidates onto a stack and pop when the rule breaks",
+    reviewQuestion:
+      "Why does the most recent unmatched opening bracket have to be the first one you try to close?",
+    contrastPatternId: "hashing"
+  },
+  {
+    id: "daily-temperatures",
+    category: "Stack",
+    title: "Daily Temperatures",
+    difficulty: "Medium",
+    prompt:
+      "Given daily temperatures, return an array where each position stores how many days you would have to wait until a warmer temperature.",
+    targetPatternId: "stack",
+    recommendedClues: ["next greater or smaller signal"],
+    recommendedFirstStep: "Push candidates onto a stack and pop when the rule breaks",
+    reviewQuestion:
+      "What should stay on the stack so a warmer day can resolve several earlier days at once?",
+    contrastPatternId: "dynamic-programming"
+  },
+  {
+    id: "car-fleet",
+    category: "Stack",
+    title: "Car Fleet",
+    difficulty: "Medium",
+    prompt:
+      "Given positions and speeds of cars moving toward a target, return the number of car fleets that will arrive at the destination.",
+    targetPatternId: "stack",
+    recommendedClues: ["need to undo or resolve the latest unfinished item"],
+    recommendedFirstStep: "Push candidates onto a stack and pop when the rule breaks",
+    reviewQuestion:
+      "Why is the latest arrival time enough to decide whether a car becomes a new fleet or merges into one ahead of it?",
+    contrastPatternId: "greedy"
   },
   {
     id: "binary-search",
@@ -529,6 +678,20 @@ export const sampleProblems = [
     contrastPatternId: "bfs"
   },
   {
+    id: "network-delay-time",
+    category: "Graphs",
+    title: "Network Delay Time",
+    difficulty: "Medium",
+    prompt:
+      "Given travel times as directed edges, the number of nodes n, and a starting node k, return how long it takes for all nodes to receive the signal, or -1 if some node is unreachable.",
+    targetPatternId: "heap",
+    recommendedClues: ["top k ranking", "repeated best choice"],
+    recommendedFirstStep: "Push candidates into a heap",
+    reviewQuestion:
+      "Why does always expanding the currently fastest reachable node preserve the shortest known time?",
+    contrastPatternId: "bfs"
+  },
+  {
     id: "number-of-islands",
     category: "Graphs",
     title: "Number of Islands",
@@ -599,6 +762,20 @@ export const sampleProblems = [
     contrastPatternId: "dfs"
   },
   {
+    id: "counting-bits",
+    category: "1-D Dynamic Programming",
+    title: "Counting Bits",
+    difficulty: "Easy",
+    prompt:
+      "Given an integer n, return an array answer where answer[i] is the number of 1 bits in the binary representation of i for every i from 0 to n.",
+    targetPatternId: "dynamic-programming",
+    recommendedClues: ["overlapping subproblems"],
+    recommendedFirstStep: "Define a DP state and recurrence",
+    reviewQuestion:
+      "What smaller number already contains almost all the bit information you need for the current one?",
+    contrastPatternId: "greedy"
+  },
+  {
     id: "unique-paths",
     category: "2-D Dynamic Programming",
     title: "Unique Paths",
@@ -639,6 +816,62 @@ export const sampleProblems = [
     reviewQuestion:
       "What running invariant tells you the farthest reachable position so far?",
     contrastPatternId: "dynamic-programming"
+  },
+  {
+    id: "best-time-stock",
+    category: "Greedy",
+    title: "Best Time to Buy and Sell Stock",
+    difficulty: "Easy",
+    prompt:
+      "Given an array where prices[i] is the price of a stock on day i, return the maximum profit you can achieve from one buy and one sell.",
+    targetPatternId: "greedy",
+    recommendedClues: ["commit best local choice"],
+    recommendedFirstStep: "Sort or scan for the best safe local choice",
+    reviewQuestion:
+      "What single running fact about the best buying opportunity so far lets each later day evaluate profit instantly?",
+    contrastPatternId: "dynamic-programming"
+  },
+  {
+    id: "merge-intervals",
+    category: "Intervals",
+    title: "Merge Intervals",
+    difficulty: "Medium",
+    prompt:
+      "Given an array of intervals where intervals[i] = [starti, endi], merge all overlapping intervals and return the result.",
+    targetPatternId: "intervals",
+    recommendedClues: ["overlapping ranges"],
+    recommendedFirstStep: "Sort intervals, then compare and merge boundaries",
+    reviewQuestion:
+      "Why does sorting by start time make it enough to compare only with the current merged interval?",
+    contrastPatternId: "greedy"
+  },
+  {
+    id: "insert-interval",
+    category: "Intervals",
+    title: "Insert Interval",
+    difficulty: "Medium",
+    prompt:
+      "Given a sorted list of non-overlapping intervals and a new interval, insert the new interval and merge if necessary.",
+    targetPatternId: "intervals",
+    recommendedClues: ["overlapping ranges"],
+    recommendedFirstStep: "Sort intervals, then compare and merge boundaries",
+    reviewQuestion:
+      "What are the three phases of scanning before, during, and after overlap with the new interval?",
+    contrastPatternId: "greedy"
+  },
+  {
+    id: "non-overlapping-intervals",
+    category: "Intervals",
+    title: "Non-overlapping Intervals",
+    difficulty: "Medium",
+    prompt:
+      "Given intervals, return the minimum number you need to remove so the rest are non-overlapping.",
+    targetPatternId: "intervals",
+    recommendedClues: ["overlapping ranges", "commit best local choice"],
+    recommendedFirstStep: "Sort intervals, then compare and merge boundaries",
+    reviewQuestion:
+      "Why is keeping the interval with the earlier ending boundary the safer local choice during an overlap?",
+    contrastPatternId: "greedy"
   },
   {
     id: "merge-triplets",
@@ -689,17 +922,25 @@ export const problemRoadmapMeta: Record<
     tracks: RoadmapTrack[];
   }
 > = {
+  "two-sum": { leetcodeNumber: 1, tracks: ["blind75", "neetcode150"] },
+  "contains-duplicate": { leetcodeNumber: 217, tracks: ["blind75", "neetcode150"] },
+  "valid-anagram": { leetcodeNumber: 242, tracks: ["neetcode150"] },
+  "longest-consecutive": { leetcodeNumber: 128, tracks: ["blind75", "neetcode150"] },
   "longest-substring-no-repeat": { leetcodeNumber: 3, tracks: ["blind75", "neetcode150"] },
   "minimum-window-substring": { leetcodeNumber: 76, tracks: ["neetcode150"] },
   "valid-palindrome": { leetcodeNumber: 125, tracks: ["neetcode150"] },
   "container-most-water": { leetcodeNumber: 11, tracks: ["blind75", "neetcode150"] },
   "three-sum": { leetcodeNumber: 15, tracks: ["blind75", "neetcode150"] },
+  "valid-parentheses": { leetcodeNumber: 20, tracks: ["blind75", "neetcode150"] },
+  "daily-temperatures": { leetcodeNumber: 739, tracks: ["neetcode150"] },
+  "car-fleet": { leetcodeNumber: 853, tracks: ["neetcode150"] },
   "binary-search": { leetcodeNumber: 704, tracks: ["neetcode150"] },
   "search-2d-matrix": { leetcodeNumber: 74, tracks: ["neetcode150"] },
   "koko-bananas": { leetcodeNumber: 875, tracks: ["neetcode150"] },
   "course-schedule": { leetcodeNumber: 207, tracks: ["blind75", "neetcode150"] },
   "open-the-lock": { leetcodeNumber: 752, tracks: ["neetcode150"] },
   "clone-graph": { leetcodeNumber: 133, tracks: ["blind75", "neetcode150"] },
+  "network-delay-time": { leetcodeNumber: 743, tracks: ["neetcode150"] },
   "reverse-linked-list": { leetcodeNumber: 206, tracks: ["blind75", "neetcode150"] },
   "linked-list-cycle": { leetcodeNumber: 141, tracks: ["blind75", "neetcode150"] },
   "merge-two-sorted-lists": { leetcodeNumber: 21, tracks: ["blind75", "neetcode150"] },
@@ -718,9 +959,14 @@ export const problemRoadmapMeta: Record<
   "house-robber": { leetcodeNumber: 198, tracks: ["blind75", "neetcode150"] },
   "coin-change": { leetcodeNumber: 322, tracks: ["blind75", "neetcode150"] },
   "partition-equal-subset-sum": { leetcodeNumber: 416, tracks: ["neetcode150"] },
+  "counting-bits": { leetcodeNumber: 338, tracks: ["blind75", "neetcode150"] },
   "unique-paths": { leetcodeNumber: 62, tracks: ["neetcode150"] },
   "longest-common-subsequence": { leetcodeNumber: 1143, tracks: ["neetcode150"] },
+  "best-time-stock": { leetcodeNumber: 121, tracks: ["blind75", "neetcode150"] },
   "jump-game": { leetcodeNumber: 55, tracks: ["blind75", "neetcode150"] },
+  "merge-intervals": { leetcodeNumber: 56, tracks: ["blind75", "neetcode150"] },
+  "insert-interval": { leetcodeNumber: 57, tracks: ["blind75", "neetcode150"] },
+  "non-overlapping-intervals": { leetcodeNumber: 435, tracks: ["blind75", "neetcode150"] },
   "merge-triplets": { leetcodeNumber: 1899, tracks: ["neetcode150"] }
 };
 
