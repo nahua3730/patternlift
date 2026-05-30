@@ -14,7 +14,7 @@ type ReviewQueueProps = {
 export function ReviewQueue({ items }: ReviewQueueProps) {
   return (
     <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-      <div className="rounded-lg border border-black/10 bg-white/75 p-6 shadow-sm">
+      <div className="uiverse-panel p-6">
         <p className="text-sm font-semibold uppercase tracking-wide text-ember">
           Review Queue
         </p>
@@ -31,10 +31,10 @@ export function ReviewQueue({ items }: ReviewQueueProps) {
         {items.map((item) => (
           <article
             key={item.id}
-            className="rounded-lg border border-black/10 bg-ink p-5 text-white shadow-sm"
+            className="uiverse-panel p-5"
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h3 className="text-sm font-semibold text-white">
+              <h3 className="text-sm font-semibold text-ink">
                 {item.problemTitle}
               </h3>
               <span
@@ -47,10 +47,10 @@ export function ReviewQueue({ items }: ReviewQueueProps) {
                 {item.urgency} priority
               </span>
             </div>
-            <p className="mt-3 text-sm leading-6 text-white/74">
+            <p className="mt-3 text-sm leading-6 text-black/74">
               Review {item.targetPatternLabel} against {item.contrastPatternLabel}
             </p>
-            <p className="mt-2 text-sm leading-6 text-white/66">
+            <p className="mt-2 text-sm leading-6 text-black/64">
               {item.reviewQuestion}
             </p>
           </article>

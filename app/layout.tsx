@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { AppShell } from "@/components/app-shell";
+import { PatternLiftStateProvider } from "@/components/patternlift-state";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,8 +15,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <PatternLiftStateProvider>
+          <AppShell>{children}</AppShell>
+        </PatternLiftStateProvider>
+      </body>
     </html>
   );
 }
-

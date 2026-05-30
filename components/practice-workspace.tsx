@@ -346,51 +346,51 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
         </div>
       </div>
 
-      <div className="uiverse-panel-dark p-6 text-white shadow-sm">
+      <div className="uiverse-panel p-6">
         <p className="text-sm font-semibold uppercase tracking-wide text-lake">
           Coach
         </p>
 
-        <div className="mt-4 rounded-lg border border-white/12 bg-white/8 p-4">
-          <p className="text-sm font-semibold text-white">Detected signals</p>
-          <ul className="mt-3 space-y-2 text-sm leading-6 text-white/78">
+        <div className="mt-4 rounded-lg border border-black/10 bg-mist p-4">
+          <p className="text-sm font-semibold text-ink">Detected signals</p>
+          <ul className="mt-3 space-y-2 text-sm leading-6 text-black/74">
             {quickRead.map((signal) => (
               <li key={signal}>{signal}</li>
             ))}
           </ul>
         </div>
 
-        <div className="mt-4 rounded-lg border border-white/12 bg-white/8 p-4">
-          <p className="text-sm font-semibold text-white">Hint ladder</p>
+        <div className="mt-4 rounded-lg border border-black/10 bg-mist p-4">
+          <p className="text-sm font-semibold text-ink">Hint ladder</p>
           {hintTrail.length > 0 ? (
             <div className="mt-3 space-y-3">
               {hintTrail.map((hint, index) => (
                 <div
                   key={hint}
-                  className="rounded-lg border border-white/12 bg-black/18 p-3"
+                  className="rounded-lg border border-black/10 bg-white p-3"
                 >
                   <p className="text-xs font-semibold uppercase tracking-wide text-fern">
                     Hint {index + 1}
                   </p>
-                  <p className="mt-2 text-sm leading-6 text-white/78">{hint}</p>
+                  <p className="mt-2 text-sm leading-6 text-black/72">{hint}</p>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="mt-3 text-sm leading-6 text-white/62">
+            <p className="mt-3 text-sm leading-6 text-black/62">
               Start with your own attempt first, then reveal hints only when you
               need the next nudge.
             </p>
           )}
         </div>
 
-        <div className="mt-4 rounded-lg border border-white/12 bg-white/8 p-4">
-          <p className="text-sm font-semibold text-white">Target pattern</p>
+        <div className="mt-4 rounded-lg border border-black/10 bg-mist p-4">
+          <p className="text-sm font-semibold text-ink">Target pattern</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {correctPattern.clues.map((clue) => (
               <span
                 key={clue}
-                className="rounded-full border border-white/12 bg-black/18 px-3 py-1 text-xs font-medium text-white/78"
+                className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/72"
               >
                 {clue}
               </span>
@@ -414,8 +414,8 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
             </p>
           </div>
         ) : (
-          <div className="mt-4 rounded-lg border border-dashed border-white/18 p-4">
-            <p className="text-sm leading-6 text-white/64">
+          <div className="mt-4 rounded-lg border border-dashed border-black/16 p-4">
+            <p className="text-sm leading-6 text-black/62">
               Finish one attempt to generate score, review hooks, and progress
               updates.
             </p>

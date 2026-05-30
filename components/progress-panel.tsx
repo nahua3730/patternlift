@@ -26,7 +26,7 @@ export function ProgressPanel({
 
   return (
     <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-      <div className="rounded-lg border border-black/10 bg-white/75 p-6 shadow-sm">
+      <div className="uiverse-panel p-6">
         <p className="text-sm font-semibold uppercase tracking-wide text-ember">
           Progress
         </p>
@@ -47,7 +47,7 @@ export function ProgressPanel({
         </div>
       </div>
 
-      <div className="rounded-lg border border-black/10 bg-ink p-6 text-white shadow-sm">
+      <div className="uiverse-panel p-6">
         <p className="text-sm font-semibold uppercase tracking-wide text-lake">
           Attempt History
         </p>
@@ -55,10 +55,10 @@ export function ProgressPanel({
           {history.map((item) => (
             <article
               key={item.id}
-              className="rounded-lg border border-white/12 bg-white/8 p-4"
+              className="rounded-lg border border-black/10 bg-mist p-4"
             >
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <h3 className="text-sm font-semibold text-white">
+                <h3 className="text-sm font-semibold text-ink">
                   {item.problemTitle}
                 </h3>
                 <span
@@ -73,10 +73,10 @@ export function ProgressPanel({
                   {item.outcome}
                 </span>
               </div>
-              <p className="mt-2 text-sm leading-6 text-white/78">
+              <p className="mt-2 text-sm leading-6 text-black/76">
                 Pattern guessed: {item.selectedPatternLabel}
               </p>
-              <p className="mt-2 text-sm leading-6 text-white/68">{item.insight}</p>
+              <p className="mt-2 text-sm leading-6 text-black/64">{item.insight}</p>
             </article>
           ))}
         </div>

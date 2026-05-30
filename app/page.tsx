@@ -1,5 +1,5 @@
-import { PatternLiftApp } from "@/components/patternlift-app";
+import { DashboardView } from "@/components/state-views";
 
 export default function HomePage() {
-  return <PatternLiftApp />;
+  return <DashboardView />;
 }
