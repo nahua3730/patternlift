@@ -1,14 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { CoachRequest, CoachResponse } from "@/lib/coach";
 import { patternOptions, sampleProblems } from "@/lib/product";
 import { getSuggestedTechniques } from "@/lib/techniques";
 
 type PatternId = (typeof patternOptions)[number]["id"];
-type Problem = (typeof sampleProblems)[number];
-
 type AttemptResult = {
   problemId: string;
   problemTitle: string;
@@ -79,6 +76,13 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
     [activeProblem.targetPatternId]
   );
 
+  const contrastPatternLabel = useMemo(
+    () =>
+      patternOptions.find((pattern) => pattern.id === activeProblem.contrastPatternId)
+        ?.label ?? "Neighboring pattern",
+    [activeProblem.contrastPatternId]
+  );
+
   useEffect(() => {
     setProblemText(activeProblem.prompt);
     setSelectedPattern(null);
@@ -119,15 +123,12 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
   const hintTrail = useMemo(() => {
     const hints = [
       `First signal: ${activeProblem.reviewQuestion}`,
-      `Contrast check: this is more ${correctPattern.label} than ${
-        patternOptions.find((pattern) => pattern.id === activeProblem.contrastPatternId)
-          ?.label ?? "a neighboring pattern"
-      }.`,
+      `Contrast check: this is more ${correctPattern.label} than ${contrastPatternLabel}.`,
       `Implementation nudge: ${correctPattern.firstSteps[0]}.`
     ];
 
     return hints.slice(0, hintLevel);
-  }, [activeProblem, correctPattern, hintLevel]);
+  }, [activeProblem, contrastPatternLabel, correctPattern, hintLevel]);
 
   const suggestedTechniques = useMemo(
     () =>
@@ -177,7 +178,7 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
       outcome === "solid"
         ? `You matched the problem to ${correctPattern.label}, noticed the most useful prompt cues, and chose a fitting first move.`
         : outcome === "partial"
-          ? `There is something real in your instinct, but the best next step is to sharpen why this is ${correctPattern.label} rather than ${patternOptions.find((pattern) => pattern.id === activeProblem.contrastPatternId)?.label}.`
+          ? `There is something real in your instinct, but the best next step is to sharpen why this is ${correctPattern.label} rather than ${contrastPatternLabel}.`
           : `Right now the app would coach you back to the signal words in the prompt before showing more hints. This problem wants ${correctPattern.label}.`;
 
     const result: AttemptResult = {
@@ -194,9 +195,7 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
       feedbackBody,
       reviewQuestion: activeProblem.reviewQuestion,
       weakPatternLabel: correctPattern.label,
-      contrastPatternLabel:
-        patternOptions.find((pattern) => pattern.id === activeProblem.contrastPatternId)
-          ?.label ?? "Neighboring pattern"
+      contrastPatternLabel
     };
 
     setFeedback(result);
@@ -248,20 +247,29 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
   }
 
   return (
-    <section className="grid gap-6 lg:grid-cols-[1.12fr_0.88fr]">
-      <div className="uiverse-panel p-6">
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-5">
+      <ConversationBlock
+        speaker="Coach"
+        title="Let’s work through one interview problem together."
+      >
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-ember">
-              Practice
+          <div className="space-y-2">
+            <p className="text-sm leading-6 text-black/72">
+              Pick a problem, commit to a pattern, and I’ll help you sharpen
+              the clue you noticed and the first move you should make.
             </p>
-            <h2 className="mt-2 text-2xl font-semibold text-ink">
-              Run one interview-prep attempt from start to finish.
-            </h2>
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-full border border-black/10 bg-mist px-3 py-1 text-xs font-medium text-black/66">
+                {activeProblem.difficulty}
+              </span>
+              <span className="rounded-full border border-black/10 bg-mist px-3 py-1 text-xs font-medium text-black/66">
+                Common confusion: {contrastPatternLabel}
+              </span>
+            </div>
           </div>
 
           <label className="text-sm text-black/68">
-            Problem set
+            Problem
             <select
               value={problemId}
               onChange={(event) => setProblemId(event.target.value)}
@@ -276,21 +284,8 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
           </label>
         </div>
 
-        <div className="mt-5 flex flex-wrap gap-2">
-          <span className="rounded-full border border-black/10 bg-mist px-3 py-1 text-xs font-medium text-black/66">
-            {activeProblem.difficulty}
-          </span>
-          <span className="rounded-full border border-black/10 bg-mist px-3 py-1 text-xs font-medium text-black/66">
-            Contrast with{" "}
-            {
-              patternOptions.find((pattern) => pattern.id === activeProblem.contrastPatternId)
-                ?.label
-            }
-          </span>
-        </div>
-
-        <label className="mt-6 block text-sm font-medium text-ink">
-          Problem prompt
+        <div className="mt-4 rounded-lg border border-black/10 bg-mist p-5">
+          <p className="text-sm font-semibold text-ink">Problem</p>
           <textarea
             value={problemText}
             onChange={(event) => {
@@ -302,110 +297,115 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
             rows={6}
             className="uiverse-field mt-3 w-full px-4 py-3 text-sm leading-6 text-ink"
           />
-        </label>
+        </div>
+      </ConversationBlock>
 
-        <div className="mt-6">
-          <p className="text-sm font-semibold text-ink">
-            1. Which pattern would you try first?
-          </p>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {patternOptions.map((pattern) => {
-              const isSelected = pattern.id === selectedPattern;
+      <ConversationBlock
+        speaker="Coach"
+        title="Here’s what jumps out from the prompt first."
+      >
+        <ul className="space-y-2 text-sm leading-6 text-black/74">
+          {quickRead.map((signal) => (
+            <li key={signal}>{signal}</li>
+          ))}
+        </ul>
+      </ConversationBlock>
 
-              return (
-                <button
-                  key={pattern.id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedPattern(pattern.id);
-                    setFeedback(null);
-                    setAiCoach(null);
-                    setCoachError(null);
-                  }}
-                  className={`uiverse-choice p-4 text-left transition ${
-                    isSelected
-                      ? "uiverse-choice-active text-white"
-                      : "text-ink"
+      <ConversationBlock
+        speaker="Coach"
+        title="What pattern do you think this is?"
+      >
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {patternOptions.map((pattern) => {
+            const isSelected = pattern.id === selectedPattern;
+
+            return (
+              <button
+                key={pattern.id}
+                type="button"
+                onClick={() => {
+                  setSelectedPattern(pattern.id);
+                  setFeedback(null);
+                  setAiCoach(null);
+                  setCoachError(null);
+                }}
+                className={`uiverse-choice p-4 text-left transition ${
+                  isSelected ? "uiverse-choice-active text-white" : "text-ink"
+                }`}
+              >
+                <p className="text-sm font-semibold">{pattern.label}</p>
+                <p
+                  className={`mt-2 text-sm leading-6 ${
+                    isSelected ? "text-white/78" : "text-black/64"
                   }`}
                 >
-                  <p className="text-sm font-semibold">{pattern.label}</p>
-                  <p
-                    className={`mt-2 text-sm leading-6 ${
-                      isSelected ? "text-white/78" : "text-black/64"
-                    }`}
-                  >
-                    {pattern.coachPrompt}
-                  </p>
-                </button>
-              );
-            })}
-          </div>
+                  {pattern.coachPrompt}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+      </ConversationBlock>
+
+      <ConversationBlock
+        speaker="Coach"
+        title="What clue made you think that?"
+      >
+        <div className="flex flex-wrap gap-2">
+          {clueChoices.map((clue) => {
+            const isSelected = selectedClues.includes(clue);
+
+            return (
+              <button
+                key={clue}
+                type="button"
+                onClick={() => toggleClue(clue)}
+                className={`uiverse-chip px-3 py-2 text-sm transition ${
+                  isSelected ? "uiverse-chip-active text-white" : "text-black/72"
+                }`}
+              >
+                {clue}
+              </button>
+            );
+          })}
+        </div>
+      </ConversationBlock>
+
+      <ConversationBlock
+        speaker="Coach"
+        title="What would your first concrete move be?"
+      >
+        <div className="grid gap-3 sm:grid-cols-2">
+          {firstStepChoices.map((step) => {
+            const isSelected = selectedFirstStep === step;
+
+            return (
+              <button
+                key={step}
+                type="button"
+                onClick={() => {
+                  setSelectedFirstStep(step);
+                  setFeedback(null);
+                  setAiCoach(null);
+                  setCoachError(null);
+                }}
+                className={`uiverse-choice p-4 text-left text-sm leading-6 transition ${
+                  isSelected ? "uiverse-choice-active text-white" : "text-black/72"
+                }`}
+              >
+                {step}
+              </button>
+            );
+          })}
         </div>
 
-        <div className="mt-6">
-          <p className="text-sm font-semibold text-ink">
-            2. Which clues are pulling your attention?
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {clueChoices.map((clue) => {
-              const isSelected = selectedClues.includes(clue);
-
-              return (
-                <button
-                  key={clue}
-                  type="button"
-                  onClick={() => toggleClue(clue)}
-                  className={`uiverse-chip px-3 py-2 text-sm transition ${
-                    isSelected
-                      ? "uiverse-chip-active text-white"
-                      : "text-black/72"
-                  }`}
-                >
-                  {clue}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="mt-6">
-          <p className="text-sm font-semibold text-ink">
-            3. What would your first concrete move be?
-          </p>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            {firstStepChoices.map((step) => {
-              const isSelected = selectedFirstStep === step;
-
-              return (
-                <button
-                  key={step}
-                  type="button"
-                  onClick={() => {
-                    setSelectedFirstStep(step);
-                    setFeedback(null);
-                    setAiCoach(null);
-                    setCoachError(null);
-                  }}
-                  className={`uiverse-choice p-4 text-left text-sm leading-6 transition ${
-                    isSelected
-                      ? "uiverse-choice-active text-white"
-                      : "text-black/72"
-                  }`}
-                >
-                  {step}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="mt-6 flex flex-wrap items-center gap-3">
+        <div className="mt-5 flex flex-wrap items-center gap-3">
           <button
             type="button"
             onClick={evaluateAttempt}
             className="uiverse-button px-4 py-2 text-sm font-medium"
           >
-            {isCoachLoading ? "Coaching..." : "Score this attempt"}
+            {isCoachLoading ? "Coaching..." : "See coach response"}
           </button>
           <button
             type="button"
@@ -415,182 +415,145 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
             Reveal next hint
           </button>
         </div>
-      </div>
+      </ConversationBlock>
 
-      <div className="uiverse-panel p-6">
-        <p className="text-sm font-semibold uppercase tracking-wide text-lake">
-          Coach
-        </p>
-
-        <div className="mt-4 rounded-lg border border-black/10 bg-mist p-4">
-          <p className="text-sm font-semibold text-ink">Detected signals</p>
-          <ul className="mt-3 space-y-2 text-sm leading-6 text-black/74">
-            {quickRead.map((signal) => (
-              <li key={signal}>{signal}</li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="mt-4 rounded-lg border border-black/10 bg-mist p-4">
-          <p className="text-sm font-semibold text-ink">Hint ladder</p>
-          {hintTrail.length > 0 ? (
-            <div className="mt-3 space-y-3">
-              {hintTrail.map((hint, index) => (
-                <div
-                  key={hint}
-                  className="rounded-lg border border-black/10 bg-white p-3"
-                >
-                  <p className="text-xs font-semibold uppercase tracking-wide text-fern">
-                    Hint {index + 1}
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-black/72">{hint}</p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="mt-3 text-sm leading-6 text-black/62">
-              Start with your own attempt first, then reveal hints only when you
-              need the next nudge.
-            </p>
-          )}
-        </div>
-
-        <div className="mt-4 rounded-lg border border-black/10 bg-mist p-4">
-          <p className="text-sm font-semibold text-ink">Target pattern</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {correctPattern.clues.map((clue) => (
-              <span
-                key={clue}
-                className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/72"
-              >
-                {clue}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-4 rounded-lg border border-black/10 bg-mist p-4">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold text-ink">Suggested techniques</p>
-            <Link
-              href="/techniques"
-              className="text-xs font-medium text-lake underline-offset-2 hover:underline"
-            >
-              View full library
-            </Link>
-          </div>
-          <div className="mt-3 space-y-3">
-            {suggestedTechniques.map((technique) => (
-              <div
-                key={technique.id}
-                className="rounded-lg border border-black/10 bg-white p-3"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-ink">{technique.title}</p>
-                  <span className="rounded-full border border-black/10 bg-mist px-3 py-1 text-xs font-medium text-black/64">
-                    automatic suggestion
-                  </span>
-                </div>
-                <p className="mt-2 text-sm leading-6 text-black/72">
-                  <span className="font-semibold text-ink">When to think:</span>{" "}
-                  {technique.whenToThink}
+      {hintTrail.length > 0 ? (
+        <ConversationBlock speaker="Coach" title="Here are your hints so far.">
+          <div className="space-y-3">
+            {hintTrail.map((hint, index) => (
+              <div key={hint} className="rounded-lg border border-black/10 bg-white p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-fern">
+                  Hint {index + 1}
                 </p>
-                <p className="mt-2 text-sm leading-6 text-black/72">
-                  <span className="font-semibold text-ink">Starter question:</span>{" "}
-                  {technique.starterQuestion}
-                </p>
-                <p className="mt-2 text-sm leading-6 text-black/68">
-                  <span className="font-semibold text-ink">Common trap:</span>{" "}
-                  {technique.commonTrap}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {technique.quickTips.map((tip) => (
-                    <span
-                      key={tip}
-                      className="rounded-full border border-black/10 bg-mist px-3 py-1 text-xs font-medium text-black/68"
-                    >
-                      {tip}
-                    </span>
-                  ))}
-                </div>
+                <p className="mt-2 text-sm leading-6 text-black/72">{hint}</p>
               </div>
             ))}
           </div>
-        </div>
+        </ConversationBlock>
+      ) : null}
 
-        {feedback ? (
-          <div className="mt-4 space-y-4">
-            <div className="rounded-lg border border-fern/25 bg-fern/10 p-4 text-black">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-semibold">{feedback.feedbackTitle}</p>
-                <span className="rounded-full border border-black/10 bg-white/60 px-3 py-1 text-xs font-semibold">
-                  Score {feedback.score}
-                </span>
-              </div>
+      <ConversationBlock
+        speaker="Coach"
+        title="These techniques are worth keeping close for this problem."
+      >
+        <div className="space-y-3">
+          {suggestedTechniques.map((technique) => (
+            <div key={technique.id} className="rounded-lg border border-black/10 bg-white p-4">
+              <p className="text-sm font-semibold text-ink">{technique.title}</p>
               <p className="mt-2 text-sm leading-6 text-black/72">
-                {feedback.feedbackBody}
+                <span className="font-semibold text-ink">When to think:</span>{" "}
+                {technique.whenToThink}
               </p>
-              <p className="mt-3 text-sm leading-6 text-black/68">
-                Review hook: {feedback.reviewQuestion}
+              <p className="mt-2 text-sm leading-6 text-black/72">
+                <span className="font-semibold text-ink">Starter question:</span>{" "}
+                {technique.starterQuestion}
               </p>
+              <p className="mt-2 text-sm leading-6 text-black/68">
+                <span className="font-semibold text-ink">Common trap:</span>{" "}
+                {technique.commonTrap}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {technique.quickTips.map((tip) => (
+                  <span
+                    key={tip}
+                    className="rounded-full border border-black/10 bg-mist px-3 py-1 text-xs font-medium text-black/68"
+                  >
+                    {tip}
+                  </span>
+                ))}
+              </div>
             </div>
+          ))}
+        </div>
+      </ConversationBlock>
 
-            {isCoachLoading ? (
-              <div className="rounded-lg border border-black/10 bg-mist p-4">
-                <p className="text-sm leading-6 text-black/68">
-                  Asking the AI coach for a more specific diagnosis and next hint.
-                </p>
-              </div>
-            ) : null}
-
-            {aiCoach ? (
-              <div className="rounded-lg border border-lake/25 bg-lake/10 p-4 text-black">
-                <p className="text-sm font-semibold">{aiCoach.headline}</p>
-                <p className="mt-2 text-sm leading-6 text-black/72">
-                  {aiCoach.diagnosis}
-                </p>
-                <div className="mt-3 space-y-2 text-sm leading-6 text-black/68">
-                  <p>
-                    <span className="font-semibold text-ink">Clues:</span>{" "}
-                    {aiCoach.clueFeedback}
-                  </p>
-                  <p>
-                    <span className="font-semibold text-ink">First move:</span>{" "}
-                    {aiCoach.firstStepFeedback}
-                  </p>
-                  <p>
-                    <span className="font-semibold text-ink">Next hint:</span>{" "}
-                    {aiCoach.nextHint}
-                  </p>
-                  <p>
-                    <span className="font-semibold text-ink">Review:</span>{" "}
-                    {aiCoach.reviewQuestion}
-                  </p>
-                  <p>
-                    <span className="font-semibold text-ink">Coach note:</span>{" "}
-                    {aiCoach.encouragement}
-                  </p>
-                </div>
-              </div>
-            ) : null}
-
-            {coachError ? (
-              <div className="rounded-lg border border-ember/25 bg-ember/10 p-4 text-black">
-                <p className="text-sm font-semibold">AI coaching unavailable</p>
-                <p className="mt-2 text-sm leading-6 text-black/72">
-                  {coachError}
-                </p>
-              </div>
-            ) : null}
-          </div>
-        ) : (
-          <div className="mt-4 rounded-lg border border-dashed border-black/16 p-4">
-            <p className="text-sm leading-6 text-black/62">
-              Finish one attempt to generate score, review hooks, and progress
-              updates.
+      {feedback ? (
+        <ConversationBlock speaker="Coach" title={feedback.feedbackTitle}>
+          <div className="rounded-lg border border-fern/25 bg-fern/10 p-4 text-black">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm leading-6 text-black/72">{feedback.feedbackBody}</p>
+              <span className="rounded-full border border-black/10 bg-white/60 px-3 py-1 text-xs font-semibold">
+                Score {feedback.score}
+              </span>
+            </div>
+            <p className="mt-3 text-sm leading-6 text-black/68">
+              Review hook: {feedback.reviewQuestion}
             </p>
           </div>
-        )}
+        </ConversationBlock>
+      ) : null}
+
+      {isCoachLoading ? (
+        <ConversationBlock speaker="Coach" title="Thinking through your attempt...">
+          <p className="text-sm leading-6 text-black/68">
+            I&apos;m turning your choices into more specific coaching.
+          </p>
+        </ConversationBlock>
+      ) : null}
+
+      {aiCoach ? (
+        <ConversationBlock speaker="Coach" title={aiCoach.headline}>
+          <div className="rounded-lg border border-lake/25 bg-lake/10 p-4 text-black">
+            <p className="text-sm leading-6 text-black/72">{aiCoach.diagnosis}</p>
+            <div className="mt-3 space-y-2 text-sm leading-6 text-black/68">
+              <p>
+                <span className="font-semibold text-ink">Clues:</span>{" "}
+                {aiCoach.clueFeedback}
+              </p>
+              <p>
+                <span className="font-semibold text-ink">First move:</span>{" "}
+                {aiCoach.firstStepFeedback}
+              </p>
+              <p>
+                <span className="font-semibold text-ink">Next hint:</span>{" "}
+                {aiCoach.nextHint}
+              </p>
+              <p>
+                <span className="font-semibold text-ink">Review:</span>{" "}
+                {aiCoach.reviewQuestion}
+              </p>
+              <p>
+                <span className="font-semibold text-ink">Coach note:</span>{" "}
+                {aiCoach.encouragement}
+              </p>
+            </div>
+          </div>
+        </ConversationBlock>
+      ) : null}
+
+      {coachError ? (
+        <ConversationBlock speaker="Coach" title="I couldn’t load the AI coach just now.">
+          <div className="rounded-lg border border-ember/25 bg-ember/10 p-4 text-black">
+            <p className="text-sm leading-6 text-black/72">{coachError}</p>
+          </div>
+        </ConversationBlock>
+      ) : null}
+    </div>
+  );
+}
+
+function ConversationBlock({
+  speaker,
+  title,
+  children
+}: {
+  speaker: string;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="uiverse-panel p-6">
+      <div className="flex items-start gap-4">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-mist text-sm font-semibold text-ink">
+          {speaker.slice(0, 1)}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-semibold uppercase tracking-wide text-lake">
+            {speaker}
+          </p>
+          <h2 className="mt-1 text-xl font-semibold text-ink">{title}</h2>
+          <div className="mt-4">{children}</div>
+        </div>
       </div>
     </section>
   );
