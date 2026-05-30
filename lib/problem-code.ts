@@ -1,3 +1,5 @@
+export type SupportedLanguage = "javascript" | "typescript" | "python" | "ruby";
+
 export type CompareMode =
   | "strict"
   | "unordered-number-array"
@@ -20,6 +22,120 @@ function buildStarterCode(signature: string, notes: string[]) {
   return `${signature} {\n${notes
     .map((note) => `  // ${note}`)
     .join("\n")}\n\n}`;
+}
+
+function buildPythonStarterCode(functionName: string, params: string[], notes: string[]) {
+  const formattedParams = params.join(", ");
+
+  return `def ${functionName}(${formattedParams}):\n${notes
+    .map((note) => `    # ${note}`)
+    .join("\n")}\n    pass`;
+}
+
+function buildTypeScriptStarterCode(functionName: string, params: string[], notes: string[]) {
+  const typedParams = params.map((param) => `${param}: any`).join(", ");
+
+  return `function ${functionName}(${typedParams}): any {\n${notes
+    .map((note) => `  // ${note}`)
+    .join("\n")}\n\n}`;
+}
+
+function buildRubyStarterCode(functionName: string, params: string[], notes: string[]) {
+  const formattedParams = params.join(", ");
+
+  return `def ${functionName}(${formattedParams})\n${notes
+    .map((note) => `  # ${note}`)
+    .join("\n")}\nend`;
+}
+
+export function getStarterCode(
+  config: ProblemCodeConfig | undefined,
+  title: string,
+  language: SupportedLanguage
+) {
+  if (language === "typescript") {
+    if (config) {
+      const params = extractParamsFromStarter(config.starterCode);
+      const notes = extractNotesFromStarter(config.starterCode);
+      return buildTypeScriptStarterCode(config.functionName, params, notes);
+    }
+
+    return defaultTypeScriptStarter(title);
+  }
+
+  if (language === "python") {
+    if (config) {
+      const params = extractParamsFromStarter(config.starterCode);
+      const notes = extractNotesFromStarter(config.starterCode);
+      return buildPythonStarterCode(config.functionName, params, notes);
+    }
+
+    return defaultPythonStarter(title);
+  }
+
+  if (language === "ruby") {
+    if (config) {
+      const params = extractParamsFromStarter(config.starterCode);
+      const notes = extractNotesFromStarter(config.starterCode);
+      return buildRubyStarterCode(config.functionName, params, notes);
+    }
+
+    return defaultRubyStarter(title);
+  }
+
+  return config?.starterCode ?? defaultJavaScriptStarter(title);
+}
+
+function extractParamsFromStarter(starterCode: string) {
+  const match = starterCode.match(/function\s+\w+\((.*?)\)/);
+  if (!match) return ["input"];
+
+  return match[1]
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function extractNotesFromStarter(starterCode: string) {
+  const matches = [...starterCode.matchAll(/\/\/\s(.+)/g)].map((entry) => entry[1]);
+  return matches.length > 0 ? matches : ["Write your solution here."];
+}
+
+function defaultJavaScriptStarter(title: string) {
+  const functionName = toCamelName(title);
+  return `function ${functionName}(input) {\n  // Write your solution here.\n  return input;\n}`;
+}
+
+function defaultPythonStarter(title: string) {
+  const functionName = toSnakeName(title);
+  return `def ${functionName}(input):\n    # Write your solution here.\n    return input`;
+}
+
+function defaultTypeScriptStarter(title: string) {
+  const functionName = toCamelName(title);
+  return `function ${functionName}(input: any): any {\n  // Write your solution here.\n  return input;\n}`;
+}
+
+function defaultRubyStarter(title: string) {
+  const functionName = toSnakeName(title);
+  return `def ${functionName}(input)\n  # Write your solution here.\n  input\nend`;
+}
+
+function toCamelName(title: string) {
+  const sanitized = title.replace(/[^a-zA-Z0-9]+/g, " ").trim() || "solveProblem";
+  const words = sanitized.split(/\s+/);
+  return words
+    .map((word, index) =>
+      index === 0
+        ? word.charAt(0).toLowerCase() + word.slice(1)
+        : word.charAt(0).toUpperCase() + word.slice(1)
+    )
+    .join("");
+}
+
+function toSnakeName(title: string) {
+  return (title.replace(/[^a-zA-Z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "solve_problem")
+    .toLowerCase();
 }
 
 export const problemCodeMap: Record<string, ProblemCodeConfig> = {
@@ -422,4 +538,3 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
     ]
   }
 };
-

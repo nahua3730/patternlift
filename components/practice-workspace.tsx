@@ -3,7 +3,12 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { CoachRequest, CoachResponse } from "@/lib/coach";
 import { patternOptions, sampleProblems } from "@/lib/product";
-import { problemCodeMap, type CompareMode } from "@/lib/problem-code";
+import {
+  getStarterCode,
+  problemCodeMap,
+  type CompareMode,
+  type SupportedLanguage
+} from "@/lib/problem-code";
 import { buildTechniqueBriefs, getSuggestedTechniques } from "@/lib/techniques";
 
 type PatternId = (typeof patternOptions)[number]["id"];
@@ -63,6 +68,13 @@ type RunResult = {
   error?: string;
 };
 
+const editorLanguages: Array<{ id: SupportedLanguage; label: string }> = [
+  { id: "javascript", label: "JavaScript" },
+  { id: "typescript", label: "TypeScript" },
+  { id: "python", label: "Python" },
+  { id: "ruby", label: "Ruby" }
+];
+
 export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
   const [problemId, setProblemId] = useState<string>(sampleProblems[0].id);
   const [problemQuery, setProblemQuery] = useState<string>(sampleProblems[0].title);
@@ -76,7 +88,13 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
   const [aiCoach, setAiCoach] = useState<CoachResponse | null>(null);
   const [coachError, setCoachError] = useState<string | null>(null);
   const [isCoachLoading, setIsCoachLoading] = useState(false);
-  const [code, setCode] = useState<string>("");
+  const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>("javascript");
+  const [codeByLanguage, setCodeByLanguage] = useState<Record<SupportedLanguage, string>>({
+    javascript: "",
+    typescript: "",
+    python: "",
+    ruby: ""
+  });
   const [runResults, setRunResults] = useState<RunResult[] | null>(null);
   const [runnerError, setRunnerError] = useState<string | null>(null);
 
@@ -157,10 +175,15 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
     setAiCoach(null);
     setCoachError(null);
     setIsCoachLoading(false);
-    setCode(activeCodeConfig?.starterCode ?? defaultStarterCode(activeProblem.title));
+    setCodeByLanguage({
+      javascript: getStarterCode(activeCodeConfig, activeProblem.title, "javascript"),
+      typescript: getStarterCode(activeCodeConfig, activeProblem.title, "typescript"),
+      python: getStarterCode(activeCodeConfig, activeProblem.title, "python"),
+      ruby: getStarterCode(activeCodeConfig, activeProblem.title, "ruby")
+    });
     setRunResults(null);
     setRunnerError(null);
-  }, [activeCodeConfig?.starterCode, activeProblem]);
+  }, [activeCodeConfig, activeProblem]);
 
   const quickRead = useMemo(() => {
     const normalized = problemText.toLowerCase();
@@ -219,7 +242,14 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
   }
 
   function resetCodeEditor() {
-    setCode(activeCodeConfig?.starterCode ?? defaultStarterCode(activeProblem.title));
+    setCodeByLanguage((current) => ({
+      ...current,
+      [selectedLanguage]: getStarterCode(
+        activeCodeConfig,
+        activeProblem.title,
+        selectedLanguage
+      )
+    }));
     setRunResults(null);
     setRunnerError(null);
   }
@@ -347,32 +377,47 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
       return;
     }
 
-    try {
-      const candidate = new Function(
-        `${code}\nreturn typeof ${activeCodeConfig.functionName} !== "undefined" ? ${activeCodeConfig.functionName} : null;`
-      )();
+    void executeExamples();
+  }
 
-      if (typeof candidate !== "function") {
-        throw new Error(`I couldn't find a function named ${activeCodeConfig.functionName}.`);
+  async function executeExamples() {
+    if (!activeCodeConfig) return;
+
+    try {
+      const response = await fetch("/api/run-code", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          language: selectedLanguage,
+          code: codeByLanguage[selectedLanguage],
+          functionName: activeCodeConfig.functionName,
+          compareMode: activeCodeConfig.compareMode ?? "strict",
+          examples: activeCodeConfig.examples
+        })
+      });
+
+      const data = (await response.json()) as
+        | {
+            results: { label: string; actual: unknown; expected: unknown }[];
+          }
+        | { error: string };
+
+      if (!response.ok || "error" in data) {
+        throw new Error("error" in data ? data.error : "Unable to run the current code.");
       }
 
-      const results = activeCodeConfig.examples.map((example) => {
-        const args = new Function(`return ${example.argsExpression};`)();
-        const expected = new Function(`return ${example.expectedExpression};`)();
-        const actual = candidate(...args);
-        const passed = compareValues(
-          actual,
-          expected,
+      const results = data.results.map((result) => ({
+        label: result.label,
+        passed: compareValues(
+          result.actual,
+          result.expected,
           activeCodeConfig.compareMode ?? "strict"
-        );
-
-        return {
-          label: example.label,
-          passed,
-          actual: formatValue(actual),
-          expected: formatValue(expected)
-        };
-      });
+        ),
+        actual: formatValue(result.actual),
+        expected: formatValue(result.expected)
+      }));
 
       setRunResults(results);
       setRunnerError(null);
@@ -720,17 +765,46 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
           <div className="space-y-4">
             <div className="rounded-lg border border-black/10 bg-white/92 p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-ink">JavaScript starter</p>
+                <p className="text-sm font-semibold text-ink">
+                  {editorLanguages.find((language) => language.id === selectedLanguage)?.label} starter
+                </p>
                 {activeCodeConfig ? (
                   <span className="rounded-full border border-black/10 bg-mist px-3 py-1 text-xs font-medium text-black/68">
-                    function {activeCodeConfig.functionName}()
+                    {activeCodeConfig.functionName}
                   </span>
                 ) : null}
               </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {editorLanguages.map((language) => {
+                  const isActive = selectedLanguage === language.id;
+
+                  return (
+                    <button
+                      key={language.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedLanguage(language.id);
+                        setRunResults(null);
+                        setRunnerError(null);
+                      }}
+                      className={`rounded-full px-3 py-2 text-sm font-medium transition ${
+                        isActive
+                          ? "bg-ink text-white"
+                          : "border border-black/10 bg-white text-black/70"
+                      }`}
+                    >
+                      {language.label}
+                    </button>
+                  );
+                })}
+              </div>
               <textarea
-                value={code}
+                value={codeByLanguage[selectedLanguage]}
                 onChange={(event) => {
-                  setCode(event.target.value);
+                  setCodeByLanguage((current) => ({
+                    ...current,
+                    [selectedLanguage]: event.target.value
+                  }));
                   setRunResults(null);
                   setRunnerError(null);
                 }}
@@ -998,20 +1072,6 @@ function CoachNote({ title, body }: { title: string; body: string }) {
       <p className="mt-2 text-sm leading-6 text-black/70">{body}</p>
     </div>
   );
-}
-
-function defaultStarterCode(title: string) {
-  const sanitized = title.replace(/[^a-zA-Z0-9]+/g, " ").trim() || "solveProblem";
-  const words = sanitized.split(/\s+/);
-  const functionName = words
-    .map((word, index) =>
-      index === 0
-        ? word.charAt(0).toLowerCase() + word.slice(1)
-        : word.charAt(0).toUpperCase() + word.slice(1)
-    )
-    .join("");
-
-  return `function ${functionName}(input) {\n  // Write your solution here.\n  return input;\n}`;
 }
 
 function formatValue(value: unknown) {
