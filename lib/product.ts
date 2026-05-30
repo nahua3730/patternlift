@@ -23,6 +23,22 @@ export const productFeatures = [
 
 export const patternOptions = [
   {
+    id: "binary-search",
+    label: "Binary Search",
+    firstSteps: [
+      "Define the search interval and midpoint rule",
+      "Check whether the middle value or candidate is enough",
+      "Throw away the half that can no longer contain the answer"
+    ],
+    clues: [
+      "sorted input or monotonic answer space",
+      "minimum feasible or maximum feasible threshold",
+      "discard half the possibilities each step"
+    ],
+    coachPrompt:
+      "Ask whether the prompt gives you a monotonic condition that lets you eliminate half the search space."
+  },
+  {
     id: "sliding-window",
     label: "Sliding Window",
     firstSteps: [
@@ -117,12 +133,41 @@ export const patternOptions = [
     ],
     coachPrompt:
       "Ask whether a state and recurrence can capture repeated work or an optimal substructure."
+  },
+  {
+    id: "greedy",
+    label: "Greedy",
+    firstSteps: [
+      "Identify the strongest local choice available right now",
+      "State the invariant that makes that choice safe",
+      "Scan forward without revisiting earlier decisions"
+    ],
+    clues: [
+      "commit to the best local move",
+      "interval or scheduling language",
+      "can reach or maximize with one-pass decisions"
+    ],
+    coachPrompt:
+      "Ask whether a local choice can be proven safe without exploring every future branch."
   }
 ] as const;
+
+export type ProblemCategory =
+  | "Two Pointers"
+  | "Sliding Window"
+  | "Binary Search"
+  | "Trees"
+  | "Heap / Priority Queue"
+  | "Backtracking"
+  | "Graphs"
+  | "1-D Dynamic Programming"
+  | "2-D Dynamic Programming"
+  | "Greedy";
 
 export const sampleProblems = [
   {
     id: "shortest-subarray-target",
+    category: "Sliding Window",
     title: "Shortest Subarray At Least Target",
     difficulty: "Medium",
     prompt:
@@ -139,7 +184,128 @@ export const sampleProblems = [
     contrastPatternId: "two-pointers"
   },
   {
+    id: "longest-substring-no-repeat",
+    category: "Sliding Window",
+    title: "Longest Substring Without Repeating Characters",
+    difficulty: "Medium",
+    prompt:
+      "Given a string, return the length of the longest substring that contains no repeated characters.",
+    targetPatternId: "sliding-window",
+    recommendedClues: [
+      "contiguous subarray",
+      "longest or shortest range",
+      "need to shrink after expanding"
+    ],
+    recommendedFirstStep: "Maintain a running sum or frequency state",
+    reviewQuestion:
+      "What condition inside the current window becomes invalid when a character repeats?",
+    contrastPatternId: "two-pointers"
+  },
+  {
+    id: "minimum-window-substring",
+    category: "Sliding Window",
+    title: "Minimum Window Substring",
+    difficulty: "Hard",
+    prompt:
+      "Given two strings s and t, return the smallest substring of s that contains every character from t with the right frequency.",
+    targetPatternId: "sliding-window",
+    recommendedClues: [
+      "contiguous subarray",
+      "longest or shortest range",
+      "need to shrink after expanding"
+    ],
+    recommendedFirstStep: "Maintain a running sum or frequency state",
+    reviewQuestion:
+      "How do you know the window is valid before trying to shrink it?",
+    contrastPatternId: "two-pointers"
+  },
+  {
+    id: "valid-palindrome",
+    category: "Two Pointers",
+    title: "Valid Palindrome",
+    difficulty: "Easy",
+    prompt:
+      "Given a string, determine whether it reads the same forward and backward after ignoring non-alphanumeric characters and letter case.",
+    targetPatternId: "two-pointers",
+    recommendedClues: ["sorted input"],
+    recommendedFirstStep: "Track left and right pointers",
+    reviewQuestion:
+      "Why does comparing the left and right ends directly tell you more than scanning from one side only?",
+    contrastPatternId: "sliding-window"
+  },
+  {
+    id: "container-most-water",
+    category: "Two Pointers",
+    title: "Container With Most Water",
+    difficulty: "Medium",
+    prompt:
+      "Given heights of vertical lines, choose two lines that hold the maximum amount of water between them.",
+    targetPatternId: "two-pointers",
+    recommendedClues: ["sorted input"],
+    recommendedFirstStep: "Track left and right pointers",
+    reviewQuestion:
+      "Why is it safe to move the shorter wall rather than the taller one?",
+    contrastPatternId: "greedy"
+  },
+  {
+    id: "three-sum",
+    category: "Two Pointers",
+    title: "3Sum",
+    difficulty: "Medium",
+    prompt:
+      "Given an integer array, return all unique triplets whose sum is zero.",
+    targetPatternId: "two-pointers",
+    recommendedClues: ["sorted input"],
+    recommendedFirstStep: "Track left and right pointers",
+    reviewQuestion:
+      "Why does sorting turn the inner search into a pointer problem instead of a full nested scan?",
+    contrastPatternId: "binary-search"
+  },
+  {
+    id: "binary-search",
+    category: "Binary Search",
+    title: "Binary Search",
+    difficulty: "Easy",
+    prompt:
+      "Given a sorted array of distinct integers and a target value, return the target index or -1 if it is missing.",
+    targetPatternId: "binary-search",
+    recommendedClues: ["sorted input", "sorted or monotonic search space"],
+    recommendedFirstStep: "Set a left/right search interval and test the midpoint",
+    reviewQuestion:
+      "What lets you discard exactly half of the remaining search interval each step?",
+    contrastPatternId: "two-pointers"
+  },
+  {
+    id: "search-2d-matrix",
+    category: "Binary Search",
+    title: "Search a 2D Matrix",
+    difficulty: "Medium",
+    prompt:
+      "Given a matrix where rows are sorted and each row starts after the previous row ends, determine whether a target exists.",
+    targetPatternId: "binary-search",
+    recommendedClues: ["sorted input", "sorted or monotonic search space"],
+    recommendedFirstStep: "Set a left/right search interval and test the midpoint",
+    reviewQuestion:
+      "Why can the whole matrix be treated like one sorted search space?",
+    contrastPatternId: "two-pointers"
+  },
+  {
+    id: "koko-bananas",
+    category: "Binary Search",
+    title: "Koko Eating Bananas",
+    difficulty: "Medium",
+    prompt:
+      "Given piles of bananas and a deadline in hours, return the minimum eating speed that allows all bananas to be eaten in time.",
+    targetPatternId: "binary-search",
+    recommendedClues: ["sorted or monotonic search space", "minimum feasible / maximum feasible"],
+    recommendedFirstStep: "Set a left/right search interval and test the midpoint",
+    reviewQuestion:
+      "What makes the answer space monotonic even though the array is not sorted for direct search?",
+    contrastPatternId: "greedy"
+  },
+  {
     id: "binary-tree-level-order",
+    category: "Trees",
     title: "Binary Tree Level Order Traversal",
     difficulty: "Medium",
     prompt:
@@ -152,7 +318,36 @@ export const sampleProblems = [
     contrastPatternId: "dfs"
   },
   {
+    id: "max-depth-tree",
+    category: "Trees",
+    title: "Maximum Depth of Binary Tree",
+    difficulty: "Easy",
+    prompt:
+      "Given the root of a binary tree, return the maximum depth from the root to any leaf.",
+    targetPatternId: "dfs",
+    recommendedClues: ["level-order traversal"],
+    recommendedFirstStep: "Go deeper recursively before trying alternatives",
+    reviewQuestion:
+      "What should one recursive call return so the parent can compute the deeper subtree?",
+    contrastPatternId: "bfs"
+  },
+  {
+    id: "same-tree",
+    category: "Trees",
+    title: "Same Tree",
+    difficulty: "Easy",
+    prompt:
+      "Given two binary trees, determine whether they are structurally identical and contain the same values in corresponding nodes.",
+    targetPatternId: "dfs",
+    recommendedClues: ["level-order traversal"],
+    recommendedFirstStep: "Go deeper recursively before trying alternatives",
+    reviewQuestion:
+      "Why is comparing both subtrees recursively cleaner than building full traversal arrays first?",
+    contrastPatternId: "bfs"
+  },
+  {
     id: "top-k-frequent-elements",
+    category: "Heap / Priority Queue",
     title: "Top K Frequent Elements",
     difficulty: "Medium",
     prompt:
@@ -162,6 +357,202 @@ export const sampleProblems = [
     recommendedFirstStep: "Push candidates into a heap",
     reviewQuestion:
       "Why is a heap a more natural first move than sorting the full array each time?",
+    contrastPatternId: "dynamic-programming"
+  },
+  {
+    id: "k-closest-points",
+    category: "Heap / Priority Queue",
+    title: "K Closest Points to Origin",
+    difficulty: "Medium",
+    prompt:
+      "Given points on a 2D plane and an integer k, return the k points closest to the origin.",
+    targetPatternId: "heap",
+    recommendedClues: ["top k ranking", "repeated best choice"],
+    recommendedFirstStep: "Push candidates into a heap",
+    reviewQuestion:
+      "Why does the problem only care about the best k candidates instead of a full global ordering?",
+    contrastPatternId: "binary-search"
+  },
+  {
+    id: "task-scheduler",
+    category: "Heap / Priority Queue",
+    title: "Task Scheduler",
+    difficulty: "Medium",
+    prompt:
+      "Given tasks and a cooldown, compute the minimum time needed to finish all tasks while respecting the cooldown between identical tasks.",
+    targetPatternId: "heap",
+    recommendedClues: ["top k ranking", "repeated best choice"],
+    recommendedFirstStep: "Push candidates into a heap",
+    reviewQuestion:
+      "Why do repeated best-available choices matter more than solving this as plain dynamic programming first?",
+    contrastPatternId: "greedy"
+  },
+  {
+    id: "subsets",
+    category: "Backtracking",
+    title: "Subsets",
+    difficulty: "Medium",
+    prompt:
+      "Given an array of unique integers, return every possible subset.",
+    targetPatternId: "dfs",
+    recommendedClues: ["overlapping subproblems"],
+    recommendedFirstStep: "Go deeper recursively before trying alternatives",
+    reviewQuestion:
+      "What are the two choices available for each element as you build a subset?",
+    contrastPatternId: "dynamic-programming"
+  },
+  {
+    id: "combination-sum",
+    category: "Backtracking",
+    title: "Combination Sum",
+    difficulty: "Medium",
+    prompt:
+      "Given distinct candidate numbers and a target, return all unique combinations where numbers can be reused and sum to the target.",
+    targetPatternId: "dfs",
+    recommendedClues: ["overlapping subproblems"],
+    recommendedFirstStep: "Go deeper recursively before trying alternatives",
+    reviewQuestion:
+      "What path state changes when you include a number again in the current combination?",
+    contrastPatternId: "dynamic-programming"
+  },
+  {
+    id: "word-search",
+    category: "Backtracking",
+    title: "Word Search",
+    difficulty: "Medium",
+    prompt:
+      "Given a board of characters and a word, determine whether the word can be formed by sequentially adjacent cells without reusing a cell.",
+    targetPatternId: "dfs",
+    recommendedClues: ["overlapping subproblems"],
+    recommendedFirstStep: "Go deeper recursively before trying alternatives",
+    reviewQuestion:
+      "What needs to be marked and then restored while you explore neighboring cells?",
+    contrastPatternId: "bfs"
+  },
+  {
+    id: "number-of-islands",
+    category: "Graphs",
+    title: "Number of Islands",
+    difficulty: "Medium",
+    prompt:
+      "Given a grid of land and water, count how many disconnected islands exist.",
+    targetPatternId: "dfs",
+    recommendedClues: ["level-order traversal"],
+    recommendedFirstStep: "Go deeper recursively before trying alternatives",
+    reviewQuestion:
+      "Why is flood-filling one connected component at a time enough to count islands?",
+    contrastPatternId: "bfs"
+  },
+  {
+    id: "rotting-oranges",
+    category: "Graphs",
+    title: "Rotting Oranges",
+    difficulty: "Medium",
+    prompt:
+      "Given a grid of fresh and rotten oranges, return the minimum minutes until all reachable fresh oranges become rotten.",
+    targetPatternId: "bfs",
+    recommendedClues: ["level-order traversal"],
+    recommendedFirstStep: "Use a queue for level order expansion",
+    reviewQuestion:
+      "Why does one BFS layer naturally correspond to one minute in the spread process?",
+    contrastPatternId: "dfs"
+  },
+  {
+    id: "house-robber",
+    category: "1-D Dynamic Programming",
+    title: "House Robber",
+    difficulty: "Medium",
+    prompt:
+      "Given values in a row of houses, return the maximum amount you can steal without taking from adjacent houses.",
+    targetPatternId: "dynamic-programming",
+    recommendedClues: ["overlapping subproblems"],
+    recommendedFirstStep: "Define a DP state and recurrence",
+    reviewQuestion:
+      "What choice at house i determines which previous result you are allowed to use?",
+    contrastPatternId: "greedy"
+  },
+  {
+    id: "coin-change",
+    category: "1-D Dynamic Programming",
+    title: "Coin Change",
+    difficulty: "Medium",
+    prompt:
+      "Given coin denominations and a target amount, return the fewest coins needed to make that amount or -1 if it is impossible.",
+    targetPatternId: "dynamic-programming",
+    recommendedClues: ["overlapping subproblems"],
+    recommendedFirstStep: "Define a DP state and recurrence",
+    reviewQuestion:
+      "What smaller amount should the current state depend on after choosing one coin?",
+    contrastPatternId: "dfs"
+  },
+  {
+    id: "partition-equal-subset-sum",
+    category: "1-D Dynamic Programming",
+    title: "Partition Equal Subset Sum",
+    difficulty: "Medium",
+    prompt:
+      "Given positive integers, determine whether they can be split into two subsets with equal sum.",
+    targetPatternId: "dynamic-programming",
+    recommendedClues: ["overlapping subproblems"],
+    recommendedFirstStep: "Define a DP state and recurrence",
+    reviewQuestion:
+      "What does the state need to remember about the target half-sum as you process numbers?",
+    contrastPatternId: "dfs"
+  },
+  {
+    id: "unique-paths",
+    category: "2-D Dynamic Programming",
+    title: "Unique Paths",
+    difficulty: "Medium",
+    prompt:
+      "Given an m by n grid, return the number of paths from top-left to bottom-right when you can only move right or down.",
+    targetPatternId: "dynamic-programming",
+    recommendedClues: ["overlapping subproblems"],
+    recommendedFirstStep: "Define a DP state and recurrence",
+    reviewQuestion:
+      "Which smaller grid positions fully determine the number of paths into the current cell?",
+    contrastPatternId: "bfs"
+  },
+  {
+    id: "longest-common-subsequence",
+    category: "2-D Dynamic Programming",
+    title: "Longest Common Subsequence",
+    difficulty: "Medium",
+    prompt:
+      "Given two strings, return the length of their longest common subsequence.",
+    targetPatternId: "dynamic-programming",
+    recommendedClues: ["overlapping subproblems"],
+    recommendedFirstStep: "Define a DP state and recurrence",
+    reviewQuestion:
+      "What pair of indices is enough to represent the remaining subproblem?",
+    contrastPatternId: "dfs"
+  },
+  {
+    id: "jump-game",
+    category: "Greedy",
+    title: "Jump Game",
+    difficulty: "Medium",
+    prompt:
+      "Given jump lengths at each index, determine whether the last index is reachable.",
+    targetPatternId: "greedy",
+    recommendedClues: ["commit best local choice"],
+    recommendedFirstStep: "Sort or scan for the best safe local choice",
+    reviewQuestion:
+      "What running invariant tells you the farthest reachable position so far?",
+    contrastPatternId: "dynamic-programming"
+  },
+  {
+    id: "merge-triplets",
+    category: "Greedy",
+    title: "Merge Triplets to Form Target Triplet",
+    difficulty: "Medium",
+    prompt:
+      "Given triplets and a target triplet, determine whether repeated merges can produce the exact target values.",
+    targetPatternId: "greedy",
+    recommendedClues: ["commit best local choice"],
+    recommendedFirstStep: "Sort or scan for the best safe local choice",
+    reviewQuestion:
+      "Why can invalid triplets be ignored immediately without losing a possible solution?",
     contrastPatternId: "dynamic-programming"
   }
 ] as const;
