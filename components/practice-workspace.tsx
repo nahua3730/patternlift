@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { CoachRequest, CoachResponse } from "@/lib/coach";
 import { patternOptions, sampleProblems } from "@/lib/product";
 
 type PatternId = (typeof patternOptions)[number]["id"];
@@ -55,6 +56,9 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
   const [selectedFirstStep, setSelectedFirstStep] = useState<string | null>(null);
   const [hintLevel, setHintLevel] = useState(0);
   const [feedback, setFeedback] = useState<AttemptResult | null>(null);
+  const [aiCoach, setAiCoach] = useState<CoachResponse | null>(null);
+  const [coachError, setCoachError] = useState<string | null>(null);
+  const [isCoachLoading, setIsCoachLoading] = useState(false);
 
   const activeProblem = useMemo(
     () => sampleProblems.find((problem) => problem.id === problemId) ?? sampleProblems[0],
@@ -80,6 +84,9 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
     setSelectedFirstStep(null);
     setHintLevel(0);
     setFeedback(null);
+    setAiCoach(null);
+    setCoachError(null);
+    setIsCoachLoading(false);
   }, [activeProblem]);
 
   const quickRead = useMemo(() => {
@@ -127,9 +134,11 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
         : [...current, clue]
     );
     setFeedback(null);
+    setAiCoach(null);
+    setCoachError(null);
   }
 
-  function evaluateAttempt() {
+  async function evaluateAttempt() {
     const matchedClues = selectedClues.filter((clue) =>
       (activeProblem.recommendedClues as readonly string[]).includes(clue)
     ).length;
@@ -179,7 +188,50 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
     };
 
     setFeedback(result);
+    setAiCoach(null);
+    setCoachError(null);
     onComplete(result);
+
+    const coachPayload: CoachRequest = {
+      problemTitle: activeProblem.title,
+      problemPrompt: problemText,
+      selectedPatternLabel: result.selectedPatternLabel,
+      correctPatternLabel: result.correctPatternLabel,
+      contrastPatternLabel: result.contrastPatternLabel,
+      selectedClues: result.selectedClues,
+      selectedFirstStep: result.selectedFirstStep,
+      localOutcome: result.outcome,
+      localScore: result.score,
+      reviewQuestion: result.reviewQuestion
+    };
+
+    setIsCoachLoading(true);
+
+    try {
+      const coachResponse = await fetch("/api/coach", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(coachPayload)
+      });
+
+      const data = (await coachResponse.json()) as CoachResponse | { error: string };
+
+      if (!coachResponse.ok || "error" in data) {
+        throw new Error("error" in data ? data.error : "Unable to load AI coaching.");
+      }
+
+      setAiCoach(data);
+    } catch (error) {
+      setCoachError(
+        error instanceof Error
+          ? error.message
+          : "Unable to load AI coaching right now."
+      );
+    } finally {
+      setIsCoachLoading(false);
+    }
   }
 
   return (
@@ -231,6 +283,8 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
             onChange={(event) => {
               setProblemText(event.target.value);
               setFeedback(null);
+              setAiCoach(null);
+              setCoachError(null);
             }}
             rows={6}
             className="uiverse-field mt-3 w-full px-4 py-3 text-sm leading-6 text-ink"
@@ -252,6 +306,8 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
                   onClick={() => {
                     setSelectedPattern(pattern.id);
                     setFeedback(null);
+                    setAiCoach(null);
+                    setCoachError(null);
                   }}
                   className={`uiverse-choice p-4 text-left transition ${
                     isSelected
@@ -314,6 +370,8 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
                   onClick={() => {
                     setSelectedFirstStep(step);
                     setFeedback(null);
+                    setAiCoach(null);
+                    setCoachError(null);
                   }}
                   className={`uiverse-choice p-4 text-left text-sm leading-6 transition ${
                     isSelected
@@ -334,7 +392,7 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
             onClick={evaluateAttempt}
             className="uiverse-button px-4 py-2 text-sm font-medium"
           >
-            Score this attempt
+            {isCoachLoading ? "Coaching..." : "Score this attempt"}
           </button>
           <button
             type="button"
@@ -399,19 +457,69 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
         </div>
 
         {feedback ? (
-          <div className="mt-4 rounded-lg border border-fern/25 bg-fern/10 p-4 text-black">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold">{feedback.feedbackTitle}</p>
-              <span className="rounded-full border border-black/10 bg-white/60 px-3 py-1 text-xs font-semibold">
-                Score {feedback.score}
-              </span>
+          <div className="mt-4 space-y-4">
+            <div className="rounded-lg border border-fern/25 bg-fern/10 p-4 text-black">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-semibold">{feedback.feedbackTitle}</p>
+                <span className="rounded-full border border-black/10 bg-white/60 px-3 py-1 text-xs font-semibold">
+                  Score {feedback.score}
+                </span>
+              </div>
+              <p className="mt-2 text-sm leading-6 text-black/72">
+                {feedback.feedbackBody}
+              </p>
+              <p className="mt-3 text-sm leading-6 text-black/68">
+                Review hook: {feedback.reviewQuestion}
+              </p>
             </div>
-            <p className="mt-2 text-sm leading-6 text-black/72">
-              {feedback.feedbackBody}
-            </p>
-            <p className="mt-3 text-sm leading-6 text-black/68">
-              Review hook: {feedback.reviewQuestion}
-            </p>
+
+            {isCoachLoading ? (
+              <div className="rounded-lg border border-black/10 bg-mist p-4">
+                <p className="text-sm leading-6 text-black/68">
+                  Asking the AI coach for a more specific diagnosis and next hint.
+                </p>
+              </div>
+            ) : null}
+
+            {aiCoach ? (
+              <div className="rounded-lg border border-lake/25 bg-lake/10 p-4 text-black">
+                <p className="text-sm font-semibold">{aiCoach.headline}</p>
+                <p className="mt-2 text-sm leading-6 text-black/72">
+                  {aiCoach.diagnosis}
+                </p>
+                <div className="mt-3 space-y-2 text-sm leading-6 text-black/68">
+                  <p>
+                    <span className="font-semibold text-ink">Clues:</span>{" "}
+                    {aiCoach.clueFeedback}
+                  </p>
+                  <p>
+                    <span className="font-semibold text-ink">First move:</span>{" "}
+                    {aiCoach.firstStepFeedback}
+                  </p>
+                  <p>
+                    <span className="font-semibold text-ink">Next hint:</span>{" "}
+                    {aiCoach.nextHint}
+                  </p>
+                  <p>
+                    <span className="font-semibold text-ink">Review:</span>{" "}
+                    {aiCoach.reviewQuestion}
+                  </p>
+                  <p>
+                    <span className="font-semibold text-ink">Coach note:</span>{" "}
+                    {aiCoach.encouragement}
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
+            {coachError ? (
+              <div className="rounded-lg border border-ember/25 bg-ember/10 p-4 text-black">
+                <p className="text-sm font-semibold">AI coaching unavailable</p>
+                <p className="mt-2 text-sm leading-6 text-black/72">
+                  {coachError}
+                </p>
+              </div>
+            ) : null}
           </div>
         ) : (
           <div className="mt-4 rounded-lg border border-dashed border-black/16 p-4">
