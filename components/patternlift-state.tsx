@@ -10,6 +10,7 @@ import {
 } from "react";
 import { starterHistory } from "@/lib/product";
 import type { AttemptResult } from "@/components/practice-workspace";
+import type { PersistenceSnapshot } from "@/lib/persistence";
 
 export type HistoryItem = {
   id: string;
@@ -61,44 +62,28 @@ const initialReviewQueue: ReviewItem[] = [
   }
 ];
 
-const STORAGE_KEY = "patternlift-state-v1";
-
 const PatternLiftStateContext = createContext<PatternLiftStateValue | null>(null);
 
 export function PatternLiftStateProvider({ children }: { children: ReactNode }) {
   const [history, setHistory] = useState<HistoryItem[]>(starterHistory.map((item) => ({ ...item })));
   const [reviewQueue, setReviewQueue] = useState<ReviewItem[]>(initialReviewQueue);
   const [latestAttempt, setLatestAttempt] = useState<AttemptResult | null>(null);
-  const [hydrated, setHydrated] = useState(false);
-
   useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored) as {
-          history?: HistoryItem[];
-          reviewQueue?: ReviewItem[];
-          latestAttempt?: AttemptResult | null;
-        };
+    async function loadState() {
+      try {
+        const response = await fetch("/api/state");
+        if (!response.ok) return;
+
+        const parsed = (await response.json()) as PersistenceSnapshot;
         if (parsed.history) setHistory(parsed.history);
         if (parsed.reviewQueue) setReviewQueue(parsed.reviewQueue);
-        if (parsed.latestAttempt !== undefined) setLatestAttempt(parsed.latestAttempt);
+      } catch {
+        // Keep starter data if server fetch fails.
       }
-    } catch {
-      // Ignore broken local state and keep defaults.
-    } finally {
-      setHydrated(true);
     }
+
+    void loadState();
   }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
-
-    window.localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ history, reviewQueue, latestAttempt })
-    );
-  }, [history, hydrated, latestAttempt, reviewQueue]);
 
   const totalAttempts = history.length;
   const solidAttempts = history.filter((item) => item.outcome === "solid").length;
@@ -115,40 +100,49 @@ export function PatternLiftStateProvider({ children }: { children: ReactNode }) 
     [latestAttempt, reviewQueue.length, solidAttempts]
   );
 
-  function addAttempt(result: AttemptResult) {
+  async function addAttempt(result: AttemptResult) {
     setLatestAttempt(result);
 
-    setHistory((current) =>
-      [
-        {
-          id: `attempt-${Date.now()}`,
-          problemTitle: result.problemTitle,
-          selectedPatternLabel: result.selectedPatternLabel,
-          outcome: result.outcome,
-          insight:
-            result.outcome === "solid"
-              ? `Strong match between ${result.selectedPatternLabel} and the prompt clues.`
-              : result.outcome === "partial"
-                ? `Some useful signals were present, but the contrast with ${result.contrastPatternLabel} still needs reinforcement.`
-                : `The prompt was steered toward ${result.correctPatternLabel}, but the attempt drifted away from the strongest clues.`
-        },
-        ...current
-      ].slice(0, 6)
-    );
+    const optimisticHistoryItem: HistoryItem = {
+      id: `attempt-${Date.now()}`,
+      problemTitle: result.problemTitle,
+      selectedPatternLabel: result.selectedPatternLabel,
+      outcome: result.outcome,
+      insight:
+        result.outcome === "solid"
+          ? `Strong match between ${result.selectedPatternLabel} and the prompt clues.`
+          : result.outcome === "partial"
+            ? `Some useful signals were present, but the contrast with ${result.contrastPatternLabel} still needs reinforcement.`
+            : `The prompt was steered toward ${result.correctPatternLabel}, but the attempt drifted away from the strongest clues.`
+    };
+
+    setHistory((current) => [optimisticHistoryItem, ...current].slice(0, 6));
+
+    const optimisticReviewItem: ReviewItem = {
+      id: `review-${Date.now()}`,
+      problemTitle: result.problemTitle,
+      targetPatternLabel: result.correctPatternLabel,
+      contrastPatternLabel: result.contrastPatternLabel,
+      reviewQuestion: result.reviewQuestion,
+      urgency: result.outcome === "solid" ? "medium" : "high"
+    };
 
     setReviewQueue((current) => {
-      const nextItem: ReviewItem = {
-        id: `review-${Date.now()}`,
-        problemTitle: result.problemTitle,
-        targetPatternLabel: result.correctPatternLabel,
-        contrastPatternLabel: result.contrastPatternLabel,
-        reviewQuestion: result.reviewQuestion,
-        urgency: result.outcome === "solid" ? "medium" : "high"
-      };
-
       const filtered = current.filter((item) => item.problemTitle !== result.problemTitle);
-      return [nextItem, ...filtered].slice(0, 4);
+      return [optimisticReviewItem, ...filtered].slice(0, 4);
     });
+
+    try {
+      await fetch("/api/attempts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(result)
+      });
+    } catch {
+      // Keep optimistic UI state even if persistence fails for now.
+    }
   }
 
   const value: PatternLiftStateValue = {
