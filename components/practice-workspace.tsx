@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { CoachRequest, CoachResponse } from "@/lib/coach";
 import { patternOptions, sampleProblems } from "@/lib/product";
 import {
+  getAvailableLanguages,
   getStarterCode,
   problemCodeMap,
   type CompareMode,
@@ -72,7 +73,9 @@ const editorLanguages: Array<{ id: SupportedLanguage; label: string }> = [
   { id: "javascript", label: "JavaScript" },
   { id: "typescript", label: "TypeScript" },
   { id: "python", label: "Python" },
-  { id: "ruby", label: "Ruby" }
+  { id: "ruby", label: "Ruby" },
+  { id: "java", label: "Java" },
+  { id: "cpp", label: "C++" }
 ];
 
 export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
@@ -93,7 +96,9 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
     javascript: "",
     typescript: "",
     python: "",
-    ruby: ""
+    ruby: "",
+    java: "",
+    cpp: ""
   });
   const [runResults, setRunResults] = useState<RunResult[] | null>(null);
   const [runnerError, setRunnerError] = useState<string | null>(null);
@@ -121,6 +126,10 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
 
   const contrastPatternLabel = contrastPattern?.label ?? "Neighboring pattern";
   const activeCodeConfig = problemCodeMap[activeProblem.id];
+  const availableLanguages = useMemo(
+    () => getAvailableLanguages(activeCodeConfig),
+    [activeCodeConfig]
+  );
 
   const problemsByCategory = useMemo(() => {
     return sampleProblems.reduce<Record<string, Array<(typeof sampleProblems)[number]>>>((groups, problem) => {
@@ -179,11 +188,16 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
       javascript: getStarterCode(activeCodeConfig, activeProblem.title, "javascript"),
       typescript: getStarterCode(activeCodeConfig, activeProblem.title, "typescript"),
       python: getStarterCode(activeCodeConfig, activeProblem.title, "python"),
-      ruby: getStarterCode(activeCodeConfig, activeProblem.title, "ruby")
+      ruby: getStarterCode(activeCodeConfig, activeProblem.title, "ruby"),
+      java: getStarterCode(activeCodeConfig, activeProblem.title, "java"),
+      cpp: getStarterCode(activeCodeConfig, activeProblem.title, "cpp")
     });
+    setSelectedLanguage((current) =>
+      availableLanguages.includes(current) ? current : availableLanguages[0]
+    );
     setRunResults(null);
     setRunnerError(null);
-  }, [activeCodeConfig, activeProblem]);
+  }, [activeCodeConfig, activeProblem, availableLanguages]);
 
   const quickRead = useMemo(() => {
     const normalized = problemText.toLowerCase();
@@ -393,6 +407,7 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
           language: selectedLanguage,
           code: codeByLanguage[selectedLanguage],
           functionName: activeCodeConfig.functionName,
+          signature: activeCodeConfig.signature,
           compareMode: activeCodeConfig.compareMode ?? "strict",
           examples: activeCodeConfig.examples
         })
@@ -775,7 +790,9 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
                 ) : null}
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
-                {editorLanguages.map((language) => {
+                {editorLanguages
+                  .filter((language) => availableLanguages.includes(language.id))
+                  .map((language) => {
                   const isActive = selectedLanguage === language.id;
 
                   return (

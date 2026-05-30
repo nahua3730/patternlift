@@ -1,4 +1,21 @@
-export type SupportedLanguage = "javascript" | "typescript" | "python" | "ruby";
+export type SupportedLanguage =
+  | "javascript"
+  | "typescript"
+  | "python"
+  | "ruby"
+  | "java"
+  | "cpp";
+
+export type ValueType =
+  | "int"
+  | "bool"
+  | "string"
+  | "intArray"
+  | "stringArray"
+  | "intMatrix"
+  | "charMatrix"
+  | "pointArray"
+  | "nestedIntArray";
 
 export type CompareMode =
   | "strict"
@@ -9,6 +26,10 @@ export type CompareMode =
 
 export type ProblemCodeConfig = {
   functionName: string;
+  signature?: {
+    params: { name: string; type: ValueType }[];
+    returnType: ValueType;
+  };
   starterCode: string;
   compareMode?: CompareMode;
   examples: {
@@ -48,6 +69,38 @@ function buildRubyStarterCode(functionName: string, params: string[], notes: str
     .join("\n")}\nend`;
 }
 
+function buildJavaStarterCode(
+  functionName: string,
+  params: { name: string; type: ValueType }[],
+  returnType: ValueType,
+  notes: string[]
+) {
+  const signature = params
+    .map((param) => `${toJavaType(param.type)} ${param.name}`)
+    .join(", ");
+  const fallback = javaDefaultReturn(returnType);
+
+  return `import java.util.*;\n\nclass Solution {\n  public ${toJavaType(returnType)} ${functionName}(${signature}) {\n${notes
+    .map((note) => `    // ${note}`)
+    .join("\n")}\n\n    ${fallback}\n  }\n}`;
+}
+
+function buildCppStarterCode(
+  functionName: string,
+  params: { name: string; type: ValueType }[],
+  returnType: ValueType,
+  notes: string[]
+) {
+  const signature = params
+    .map((param) => `${toCppType(param.type)} ${param.name}`)
+    .join(", ");
+  const fallback = cppDefaultReturn(returnType);
+
+  return `#include <iostream>\n#include <string>\n#include <vector>\nusing namespace std;\n\nclass Solution {\npublic:\n  ${toCppType(returnType)} ${functionName}(${signature}) {\n${notes
+    .map((note) => `    // ${note}`)
+    .join("\n")}\n\n    ${fallback}\n  }\n};`;
+}
+
 export function getStarterCode(
   config: ProblemCodeConfig | undefined,
   title: string,
@@ -83,7 +136,43 @@ export function getStarterCode(
     return defaultRubyStarter(title);
   }
 
+  if (language === "java") {
+    if (config?.signature) {
+      const notes = extractNotesFromStarter(config.starterCode);
+      return buildJavaStarterCode(
+        config.functionName,
+        config.signature.params,
+        config.signature.returnType,
+        notes
+      );
+    }
+
+    return "// Java runner is not available for this problem yet.";
+  }
+
+  if (language === "cpp") {
+    if (config?.signature) {
+      const notes = extractNotesFromStarter(config.starterCode);
+      return buildCppStarterCode(
+        config.functionName,
+        config.signature.params,
+        config.signature.returnType,
+        notes
+      );
+    }
+
+    return "// C++ runner is not available for this problem yet.";
+  }
+
   return config?.starterCode ?? defaultJavaScriptStarter(title);
+}
+
+export function getAvailableLanguages(config: ProblemCodeConfig | undefined): SupportedLanguage[] {
+  const base: SupportedLanguage[] = ["javascript", "typescript", "python", "ruby"];
+  if (config?.signature) {
+    base.push("java", "cpp");
+  }
+  return base;
 }
 
 function extractParamsFromStarter(starterCode: string) {
@@ -121,6 +210,90 @@ function defaultRubyStarter(title: string) {
   return `def ${functionName}(input)\n  # Write your solution here.\n  input\nend`;
 }
 
+function toJavaType(type: ValueType) {
+  switch (type) {
+    case "int":
+      return "int";
+    case "bool":
+      return "boolean";
+    case "string":
+      return "String";
+    case "intArray":
+      return "int[]";
+    case "stringArray":
+      return "String[]";
+    case "intMatrix":
+    case "pointArray":
+    case "charMatrix":
+      return type === "charMatrix" ? "char[][]" : "int[][]";
+    case "nestedIntArray":
+      return "List<List<Integer>>";
+  }
+}
+
+function toCppType(type: ValueType) {
+  switch (type) {
+    case "int":
+      return "int";
+    case "bool":
+      return "bool";
+    case "string":
+      return "string";
+    case "intArray":
+      return "vector<int>";
+    case "stringArray":
+      return "vector<string>";
+    case "intMatrix":
+    case "pointArray":
+    case "charMatrix":
+      return type === "charMatrix" ? "vector<vector<char>>" : "vector<vector<int>>";
+    case "nestedIntArray":
+      return "vector<vector<int>>";
+  }
+}
+
+function javaDefaultReturn(type: ValueType) {
+  switch (type) {
+    case "int":
+      return "return 0;";
+    case "bool":
+      return "return false;";
+    case "string":
+      return 'return "";';
+    case "intArray":
+      return "return new int[]{};";
+    case "stringArray":
+      return "return new String[]{};";
+    case "intMatrix":
+    case "pointArray":
+      return "return new int[][]{};";
+    case "charMatrix":
+      return "return new char[][]{};";
+    case "nestedIntArray":
+      return "return new ArrayList<>();";
+  }
+}
+
+function cppDefaultReturn(type: ValueType) {
+  switch (type) {
+    case "int":
+      return "return 0;";
+    case "bool":
+      return "return false;";
+    case "string":
+      return 'return "";';
+    case "intArray":
+      return "return {};";
+    case "stringArray":
+      return "return {};";
+    case "intMatrix":
+    case "pointArray":
+    case "charMatrix":
+    case "nestedIntArray":
+      return "return {};";
+  }
+}
+
 function toCamelName(title: string) {
   const sanitized = title.replace(/[^a-zA-Z0-9]+/g, " ").trim() || "solveProblem";
   const words = sanitized.split(/\s+/);
@@ -149,6 +322,13 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
         "Return 0 if no valid window exists."
       ]
     ),
+    signature: {
+      params: [
+        { name: "target", type: "int" },
+        { name: "nums", type: "intArray" }
+      ],
+      returnType: "int"
+    },
     examples: [
       { label: "Example 1", argsExpression: "[7, [2,3,1,2,4,3]]", expectedExpression: "2" },
       { label: "Example 2", argsExpression: "[11, [1,1,1,1,1,1,1,1]]", expectedExpression: "0" }
@@ -163,6 +343,10 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
         "Return the maximum valid window length."
       ]
     ),
+    signature: {
+      params: [{ name: "s", type: "string" }],
+      returnType: "int"
+    },
     examples: [
       { label: "Example 1", argsExpression: "[\"abcabcbb\"]", expectedExpression: "3" },
       { label: "Example 2", argsExpression: "[\"bbbbb\"]", expectedExpression: "1" }
@@ -177,6 +361,13 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
         "Return an empty string when no valid window exists."
       ]
     ),
+    signature: {
+      params: [
+        { name: "s", type: "string" },
+        { name: "t", type: "string" }
+      ],
+      returnType: "string"
+    },
     examples: [
       { label: "Example 1", argsExpression: "[\"ADOBECODEBANC\", \"ABC\"]", expectedExpression: "\"BANC\"" },
       { label: "Example 2", argsExpression: "[\"a\", \"aa\"]", expectedExpression: "\"\"" }
@@ -191,6 +382,10 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
         "Compare from both ends after lowercasing."
       ]
     ),
+    signature: {
+      params: [{ name: "s", type: "string" }],
+      returnType: "bool"
+    },
     examples: [
       { label: "Example 1", argsExpression: "[\"A man, a plan, a canal: Panama\"]", expectedExpression: "true" },
       { label: "Example 2", argsExpression: "[\"race a car\"]", expectedExpression: "false" }
@@ -205,6 +400,10 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
         "Return the maximum water area."
       ]
     ),
+    signature: {
+      params: [{ name: "heights", type: "intArray" }],
+      returnType: "int"
+    },
     examples: [
       { label: "Example 1", argsExpression: "[[1,8,6,2,5,4,8,3,7]]", expectedExpression: "49" },
       { label: "Example 2", argsExpression: "[[1,1]]", expectedExpression: "1" }
@@ -219,6 +418,10 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
         "Triplet order does not matter."
       ]
     ),
+    signature: {
+      params: [{ name: "nums", type: "intArray" }],
+      returnType: "nestedIntArray"
+    },
     compareMode: "unordered-nested-array",
     examples: [
       { label: "Example 1", argsExpression: "[[-1,0,1,2,-1,-4]]", expectedExpression: "[[-1,-1,2],[-1,0,1]]" },
@@ -234,6 +437,13 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
         "Return the index of target or -1."
       ]
     ),
+    signature: {
+      params: [
+        { name: "nums", type: "intArray" },
+        { name: "target", type: "int" }
+      ],
+      returnType: "int"
+    },
     examples: [
       { label: "Example 1", argsExpression: "[[-1,0,2,4,6,8], 4]", expectedExpression: "3" },
       { label: "Example 2", argsExpression: "[[-1,0,2,4,6,8], 3]", expectedExpression: "-1" }
@@ -248,6 +458,13 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
         "Return true if target exists, otherwise false."
       ]
     ),
+    signature: {
+      params: [
+        { name: "matrix", type: "intMatrix" },
+        { name: "target", type: "int" }
+      ],
+      returnType: "bool"
+    },
     examples: [
       { label: "Example 1", argsExpression: "[[[1,3,5,7],[10,11,16,20],[23,30,34,60]], 3]", expectedExpression: "true" },
       { label: "Example 2", argsExpression: "[[[1,3,5,7],[10,11,16,20],[23,30,34,60]], 13]", expectedExpression: "false" }
@@ -262,6 +479,13 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
         "Return the minimum speed that finishes within h hours."
       ]
     ),
+    signature: {
+      params: [
+        { name: "piles", type: "intArray" },
+        { name: "h", type: "int" }
+      ],
+      returnType: "int"
+    },
     examples: [
       { label: "Example 1", argsExpression: "[[3,6,7,11], 8]", expectedExpression: "4" },
       { label: "Example 2", argsExpression: "[[30,11,23,4,20], 5]", expectedExpression: "30" }
@@ -338,6 +562,13 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
         "Result order does not matter."
       ]
     ),
+    signature: {
+      params: [
+        { name: "nums", type: "intArray" },
+        { name: "k", type: "int" }
+      ],
+      returnType: "intArray"
+    },
     compareMode: "unordered-number-array",
     examples: [
       { label: "Example 1", argsExpression: "[[1,1,1,2,2,3], 2]", expectedExpression: "[1,2]" },
@@ -353,6 +584,13 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
         "Result order does not matter."
       ]
     ),
+    signature: {
+      params: [
+        { name: "points", type: "pointArray" },
+        { name: "k", type: "int" }
+      ],
+      returnType: "pointArray"
+    },
     compareMode: "unordered-point-array",
     examples: [
       { label: "Example 1", argsExpression: "[[[1,3],[-2,2]], 1]", expectedExpression: "[[-2,2]]" },
@@ -368,6 +606,13 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
         "Return the minimum intervals needed to finish all tasks."
       ]
     ),
+    signature: {
+      params: [
+        { name: "tasks", type: "stringArray" },
+        { name: "n", type: "int" }
+      ],
+      returnType: "int"
+    },
     examples: [
       { label: "Example 1", argsExpression: "[['A','A','A','B','B','B'], 2]", expectedExpression: "8" },
       { label: "Example 2", argsExpression: "[['A','C','A','B','D','B'], 1]", expectedExpression: "6" }
@@ -382,6 +627,10 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
         "Subset order does not matter."
       ]
     ),
+    signature: {
+      params: [{ name: "nums", type: "intArray" }],
+      returnType: "nestedIntArray"
+    },
     compareMode: "unordered-nested-array",
     examples: [
       { label: "Example 1", argsExpression: "[[1,2]]", expectedExpression: "[[],[1],[2],[1,2]]" },
@@ -397,6 +646,13 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
         "You may reuse the same candidate multiple times."
       ]
     ),
+    signature: {
+      params: [
+        { name: "candidates", type: "intArray" },
+        { name: "target", type: "int" }
+      ],
+      returnType: "nestedIntArray"
+    },
     compareMode: "unordered-nested-array",
     examples: [
       { label: "Example 1", argsExpression: "[[2,3,6,7], 7]", expectedExpression: "[[2,2,3],[7]]" },
@@ -412,6 +668,13 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
         "Board is a 2D array of characters."
       ]
     ),
+    signature: {
+      params: [
+        { name: "board", type: "charMatrix" },
+        { name: "word", type: "string" }
+      ],
+      returnType: "bool"
+    },
     examples: [
       { label: "Example 1", argsExpression: "[[['A','B','C','E'],['S','F','C','S'],['A','D','E','E']], 'ABCCED']", expectedExpression: "true" },
       { label: "Example 2", argsExpression: "[[['A','B','C','E'],['S','F','C','S'],['A','D','E','E']], 'ABCB']", expectedExpression: "false" }
@@ -426,6 +689,10 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
         "Return the number of disconnected islands."
       ]
     ),
+    signature: {
+      params: [{ name: "grid", type: "charMatrix" }],
+      returnType: "int"
+    },
     examples: [
       { label: "Example 1", argsExpression: "[[['1','1','1','1','0'],['1','1','0','1','0'],['1','1','0','0','0'],['0','0','0','0','0']]]", expectedExpression: "1" },
       { label: "Example 2", argsExpression: "[[['1','1','0','0','0'],['1','1','0','0','0'],['0','0','1','0','0'],['0','0','0','1','1']]]", expectedExpression: "3" }
@@ -440,6 +707,10 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
         "Return the minimum minutes to rot all reachable fresh oranges, or -1."
       ]
     ),
+    signature: {
+      params: [{ name: "grid", type: "intMatrix" }],
+      returnType: "int"
+    },
     examples: [
       { label: "Example 1", argsExpression: "[[[2,1,1],[1,1,0],[0,1,1]]]", expectedExpression: "4" },
       { label: "Example 2", argsExpression: "[[[2,1,1],[0,1,1],[1,0,1]]]", expectedExpression: "-1" }
@@ -453,6 +724,10 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
         "Return the maximum amount that can be robbed without taking adjacent houses."
       ]
     ),
+    signature: {
+      params: [{ name: "nums", type: "intArray" }],
+      returnType: "int"
+    },
     examples: [
       { label: "Example 1", argsExpression: "[[1,2,3,1]]", expectedExpression: "4" },
       { label: "Example 2", argsExpression: "[[2,7,9,3,1]]", expectedExpression: "12" }
@@ -467,6 +742,13 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
         "Return -1 when it is impossible."
       ]
     ),
+    signature: {
+      params: [
+        { name: "coins", type: "intArray" },
+        { name: "amount", type: "int" }
+      ],
+      returnType: "int"
+    },
     examples: [
       { label: "Example 1", argsExpression: "[[1,2,5], 11]", expectedExpression: "3" },
       { label: "Example 2", argsExpression: "[[2], 3]", expectedExpression: "-1" }
@@ -480,6 +762,10 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
         "Return true if nums can be split into two subsets with equal sum."
       ]
     ),
+    signature: {
+      params: [{ name: "nums", type: "intArray" }],
+      returnType: "bool"
+    },
     examples: [
       { label: "Example 1", argsExpression: "[[1,5,11,5]]", expectedExpression: "true" },
       { label: "Example 2", argsExpression: "[[1,2,3,5]]", expectedExpression: "false" }
@@ -493,6 +779,13 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
         "Return the number of paths from top-left to bottom-right moving only right or down."
       ]
     ),
+    signature: {
+      params: [
+        { name: "m", type: "int" },
+        { name: "n", type: "int" }
+      ],
+      returnType: "int"
+    },
     examples: [
       { label: "Example 1", argsExpression: "[3, 7]", expectedExpression: "28" },
       { label: "Example 2", argsExpression: "[3, 2]", expectedExpression: "3" }
@@ -506,6 +799,13 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
         "Return the length of the longest common subsequence."
       ]
     ),
+    signature: {
+      params: [
+        { name: "text1", type: "string" },
+        { name: "text2", type: "string" }
+      ],
+      returnType: "int"
+    },
     examples: [
       { label: "Example 1", argsExpression: "[\"abcde\", \"ace\"]", expectedExpression: "3" },
       { label: "Example 2", argsExpression: "[\"abc\", \"def\"]", expectedExpression: "0" }
@@ -519,6 +819,10 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
         "Return true if the last index is reachable from the first index."
       ]
     ),
+    signature: {
+      params: [{ name: "nums", type: "intArray" }],
+      returnType: "bool"
+    },
     examples: [
       { label: "Example 1", argsExpression: "[[2,3,1,1,4]]", expectedExpression: "true" },
       { label: "Example 2", argsExpression: "[[3,2,1,0,4]]", expectedExpression: "false" }
@@ -532,6 +836,13 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
         "Return true if repeated merges can form target exactly."
       ]
     ),
+    signature: {
+      params: [
+        { name: "triplets", type: "intMatrix" },
+        { name: "target", type: "intArray" }
+      ],
+      returnType: "bool"
+    },
     examples: [
       { label: "Example 1", argsExpression: "[[[2,5,3],[1,8,4],[1,7,5]], [2,7,5]]", expectedExpression: "true" },
       { label: "Example 2", argsExpression: "[[[3,4,5],[4,5,6]], [3,2,5]]", expectedExpression: "false" }

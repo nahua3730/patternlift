@@ -58,8 +58,7 @@ Planned stack:
 - `Next.js`
 - `TypeScript`
 - `Tailwind CSS`
-- `PostgreSQL`
-- `Prisma`
+- `SQLite`
 - `OpenAI API`
 - `Vercel`
 
