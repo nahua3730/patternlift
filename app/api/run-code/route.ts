@@ -587,6 +587,7 @@ class Runner {
     if (type.equals("intMatrix") || type.equals("pointArray")) return intMatrixToJson((int[][]) value);
     if (type.equals("charMatrix")) return charMatrixToJson((char[][]) value);
     if (type.equals("nestedIntArray")) return nestedIntListToJson((java.util.List<java.util.List<Integer>>) value);
+    if (type.equals("linkedList")) return linkedListToJson((ListNode) value);
     return "null";
   }
 
@@ -649,6 +650,11 @@ class Runner {
     }
     sb.append("]");
     return sb.toString();
+  }
+
+  static String linkedListToJson(ListNode node) {
+    if (node == null) return "null";
+    return "{\\"val\\":" + node.val + ",\\"next\\":" + linkedListToJson(node.next) + "}";
   }
 
   public static void main(String[] args) {
@@ -739,6 +745,10 @@ string escapeJson(const string& value) {
 string toJson(const int& value) { return to_string(value); }
 string toJson(const bool& value) { return value ? "true" : "false"; }
 string toJson(const string& value) { return "\\\"" + escapeJson(value) + "\\\""; }
+string toJson(ListNode* node) {
+  if (node == nullptr) return "null";
+  return "{\\"val\\":" + to_string(node->val) + ",\\"next\\":" + toJson(node->next) + "}";
+}
 string toJson(const vector<int>& values) {
   string result = "[";
   for (size_t i = 0; i < values.size(); ++i) {
@@ -854,9 +864,20 @@ func toJsonCompatible(_ value: Any, type: String) -> Any {
     return value as! [[Int]]
   case "charMatrix":
     return (value as! [[Character]]).map { row in row.map { String($0) } }
+  case "linkedList":
+    guard let node = value as? ListNode else { return NSNull() }
+    return linkedListToDictionary(node)
   default:
     return NSNull()
   }
+}
+
+func linkedListToDictionary(_ node: ListNode?) -> Any {
+  guard let node else { return NSNull() }
+  return [
+    "val": node.val,
+    "next": linkedListToDictionary(node.next)
+  ]
 }
 
 let results: [[String: Any]] = [
@@ -947,8 +968,20 @@ func toJSONCompatible(value any, kind string) any {
       }
     }
     return converted
+  case "linkedList":
+    return linkedListToMap(value.(*ListNode))
   default:
     return nil
+  }
+}
+
+func linkedListToMap(node *ListNode) any {
+  if node == nil {
+    return nil
+  }
+  return map[string]any{
+    "val": node.Val,
+    "next": linkedListToMap(node.Next),
   }
 }
 
@@ -1042,7 +1075,13 @@ fun toJson(value: Any?, type: String): String = when (type) {
   "intMatrix", "pointArray" -> (value as Array<IntArray>).joinToString(prefix = "[", postfix = "]") { row -> row.joinToString(prefix = "[", postfix = "]") }
   "charMatrix" -> (value as Array<CharArray>).joinToString(prefix = "[", postfix = "]") { row -> row.joinToString(prefix = "[", postfix = "]") { "\\"" + escapeJson(it.toString()) + "\\"" } }
   "nestedIntArray" -> (value as List<List<Int>>).joinToString(prefix = "[", postfix = "]") { row -> row.joinToString(prefix = "[", postfix = "]") }
+  "linkedList" -> linkedListToJson(value as ListNode?)
   else -> "null"
+}
+
+fun linkedListToJson(node: ListNode?): String {
+  if (node == null) return "null"
+  return "{\\"val\\":" + node.\`val\` + ",\\"next\\":" + linkedListToJson(node.next) + "}"
 }
 
 fun main() {
@@ -1095,33 +1134,69 @@ ${examples
 }
 
 function buildJavaPrelude(signature: RunCodeRequest["signature"]) {
-  if (!signatureUsesType(signature, "binaryTree")) return "";
-  return `class TreeNode {\n  int val;\n  TreeNode left;\n  TreeNode right;\n\n  TreeNode(int val) { this.val = val; }\n  TreeNode(int val, TreeNode left, TreeNode right) {\n    this.val = val;\n    this.left = left;\n    this.right = right;\n  }\n}\n\n`;
+  const chunks: string[] = [];
+  if (signatureUsesType(signature, "binaryTree")) {
+    chunks.push(`class TreeNode {\n  int val;\n  TreeNode left;\n  TreeNode right;\n\n  TreeNode(int val) { this.val = val; }\n  TreeNode(int val, TreeNode left, TreeNode right) {\n    this.val = val;\n    this.left = left;\n    this.right = right;\n  }\n}`);
+  }
+  if (signatureUsesType(signature, "linkedList")) {
+    chunks.push(`class ListNode {\n  int val;\n  ListNode next;\n\n  ListNode(int val) { this.val = val; }\n  ListNode(int val, ListNode next) {\n    this.val = val;\n    this.next = next;\n  }\n}`);
+  }
+  return chunks.length > 0 ? `${chunks.join("\n\n")}\n\n` : "";
 }
 
 function buildCSharpPrelude(signature: RunCodeRequest["signature"]) {
-  if (!signatureUsesType(signature, "binaryTree")) return "";
-  return `public class TreeNode {\n  public int val;\n  public TreeNode left;\n  public TreeNode right;\n\n  public TreeNode(int val = 0, TreeNode left = null, TreeNode right = null) {\n    this.val = val;\n    this.left = left;\n    this.right = right;\n  }\n}\n\n`;
+  const chunks: string[] = [];
+  if (signatureUsesType(signature, "binaryTree")) {
+    chunks.push(`public class TreeNode {\n  public int val;\n  public TreeNode left;\n  public TreeNode right;\n\n  public TreeNode(int val = 0, TreeNode left = null, TreeNode right = null) {\n    this.val = val;\n    this.left = left;\n    this.right = right;\n  }\n}`);
+  }
+  if (signatureUsesType(signature, "linkedList")) {
+    chunks.push(`public class ListNode {\n  public int val;\n  public ListNode next;\n\n  public ListNode(int val = 0, ListNode next = null) {\n    this.val = val;\n    this.next = next;\n  }\n}`);
+  }
+  return chunks.length > 0 ? `${chunks.join("\n\n")}\n\n` : "";
 }
 
 function buildCppPrelude(signature: RunCodeRequest["signature"]) {
-  if (!signatureUsesType(signature, "binaryTree")) return "";
-  return `struct TreeNode {\n  int val;\n  TreeNode* left;\n  TreeNode* right;\n  TreeNode(int value) : val(value), left(nullptr), right(nullptr) {}\n  TreeNode(int value, TreeNode* leftNode, TreeNode* rightNode) : val(value), left(leftNode), right(rightNode) {}\n};\n\n`;
+  const chunks: string[] = [];
+  if (signatureUsesType(signature, "binaryTree")) {
+    chunks.push(`struct TreeNode {\n  int val;\n  TreeNode* left;\n  TreeNode* right;\n  TreeNode(int value) : val(value), left(nullptr), right(nullptr) {}\n  TreeNode(int value, TreeNode* leftNode, TreeNode* rightNode) : val(value), left(leftNode), right(rightNode) {}\n};`);
+  }
+  if (signatureUsesType(signature, "linkedList")) {
+    chunks.push(`struct ListNode {\n  int val;\n  ListNode* next;\n  ListNode(int value) : val(value), next(nullptr) {}\n  ListNode(int value, ListNode* nextNode) : val(value), next(nextNode) {}\n};`);
+  }
+  return chunks.length > 0 ? `${chunks.join("\n\n")}\n\n` : "";
 }
 
 function buildSwiftPrelude(signature: RunCodeRequest["signature"]) {
-  if (!signatureUsesType(signature, "binaryTree")) return "";
-  return `final class TreeNode {\n  var val: Int\n  var left: TreeNode?\n  var right: TreeNode?\n\n  init(_ val: Int, _ left: TreeNode? = nil, _ right: TreeNode? = nil) {\n    self.val = val\n    self.left = left\n    self.right = right\n  }\n}\n\n`;
+  const chunks: string[] = [];
+  if (signatureUsesType(signature, "binaryTree")) {
+    chunks.push(`final class TreeNode {\n  var val: Int\n  var left: TreeNode?\n  var right: TreeNode?\n\n  init(_ val: Int, _ left: TreeNode? = nil, _ right: TreeNode? = nil) {\n    self.val = val\n    self.left = left\n    self.right = right\n  }\n}`);
+  }
+  if (signatureUsesType(signature, "linkedList")) {
+    chunks.push(`final class ListNode {\n  var val: Int\n  var next: ListNode?\n\n  init(_ val: Int, _ next: ListNode? = nil) {\n    self.val = val\n    self.next = next\n  }\n}`);
+  }
+  return chunks.length > 0 ? `${chunks.join("\n\n")}\n\n` : "";
 }
 
 function buildGoPrelude(signature: RunCodeRequest["signature"]) {
-  if (!signatureUsesType(signature, "binaryTree")) return "";
-  return `type TreeNode struct {\n\tVal int\n\tLeft *TreeNode\n\tRight *TreeNode\n}\n\n`;
+  const chunks: string[] = [];
+  if (signatureUsesType(signature, "binaryTree")) {
+    chunks.push(`type TreeNode struct {\n\tVal int\n\tLeft *TreeNode\n\tRight *TreeNode\n}`);
+  }
+  if (signatureUsesType(signature, "linkedList")) {
+    chunks.push(`type ListNode struct {\n\tVal int\n\tNext *ListNode\n}`);
+  }
+  return chunks.length > 0 ? `${chunks.join("\n\n")}\n\n` : "";
 }
 
 function buildKotlinPrelude(signature: RunCodeRequest["signature"]) {
-  if (!signatureUsesType(signature, "binaryTree")) return "";
-  return `class TreeNode(var \`val\`: Int, var left: TreeNode? = null, var right: TreeNode? = null)\n\n`;
+  const chunks: string[] = [];
+  if (signatureUsesType(signature, "binaryTree")) {
+    chunks.push(`class TreeNode(var \`val\`: Int, var left: TreeNode? = null, var right: TreeNode? = null)`);
+  }
+  if (signatureUsesType(signature, "linkedList")) {
+    chunks.push(`class ListNode(var \`val\`: Int, var next: ListNode? = null)`);
+  }
+  return chunks.length > 0 ? `${chunks.join("\n\n")}\n\n` : "";
 }
 
 function buildJavaLiteral(value: unknown, type: ValueType): string {
@@ -1136,21 +1211,23 @@ function buildJavaLiteral(value: unknown, type: ValueType): string {
       return `new int[]{${(value as number[]).join(", ")}}`;
     case "stringArray":
       return `new String[]{${(value as string[]).map((item) => `"${escapeForSource(item)}"`).join(", ")}}`;
-    case "intMatrix":
-    case "pointArray":
-      return `new int[][]{${(value as number[][])
-        .map((row) => `{${row.join(", ")}}`)
-        .join(", ")}}`;
+      case "intMatrix":
+      case "pointArray":
+        return `new int[][]{${(value as number[][])
+          .map((row) => `{${row.join(", ")}}`)
+          .join(", ")}}`;
     case "charMatrix":
       return `new char[][]{${(value as string[][])
         .map((row) => `{${row.map((char) => `'${escapeForSource(char)}'`).join(", ")}}`)
         .join(", ")}}`;
-    case "nestedIntArray":
-      return `java.util.Arrays.asList(${(value as number[][])
-        .map((row) => `java.util.Arrays.asList(${row.join(", ")})`)
-        .join(", ")})`;
-    case "binaryTree":
-      return buildJavaTreeLiteral(value);
+      case "nestedIntArray":
+        return `java.util.Arrays.asList(${(value as number[][])
+          .map((row) => `java.util.Arrays.asList(${row.join(", ")})`)
+          .join(", ")})`;
+      case "binaryTree":
+        return buildJavaTreeLiteral(value);
+      case "linkedList":
+        return buildJavaLinkedListLiteral(value);
   }
 }
 
@@ -1178,6 +1255,8 @@ function buildCppLiteral(value: unknown, type: ValueType): string {
         .join(", ")}}`;
     case "binaryTree":
       return buildCppTreeLiteral(value);
+    case "linkedList":
+      return buildCppLinkedListLiteral(value);
   }
 }
 
@@ -1270,6 +1349,8 @@ function buildSwiftLiteral(value: unknown, type: ValueType): string {
         .join(", ")}]`;
     case "binaryTree":
       return buildSwiftTreeLiteral(value);
+    case "linkedList":
+      return buildSwiftLinkedListLiteral(value);
   }
 }
 
@@ -1297,6 +1378,8 @@ function buildGoLiteral(value: unknown, type: ValueType): string {
         .join(", ")}}`;
     case "binaryTree":
       return buildGoTreeLiteral(value);
+    case "linkedList":
+      return buildGoLinkedListLiteral(value);
   }
 }
 
@@ -1327,6 +1410,8 @@ function buildCSharpLiteral(value: unknown, type: ValueType): string {
         .join(", ")} }`;
     case "binaryTree":
       return buildCSharpTreeLiteral(value);
+    case "linkedList":
+      return buildCSharpLinkedListLiteral(value);
   }
 }
 
@@ -1357,6 +1442,8 @@ function buildKotlinLiteral(value: unknown, type: ValueType): string {
         .join(", ")})`;
     case "binaryTree":
       return buildKotlinTreeLiteral(value);
+    case "linkedList":
+      return buildKotlinLinkedListLiteral(value);
   }
 }
 
@@ -1366,8 +1453,17 @@ type TreeValue = {
   right: TreeValue | null;
 } | null;
 
+type LinkedListValue = {
+  val: number;
+  next: LinkedListValue | null;
+} | null;
+
 function asTreeValue(value: unknown): TreeValue {
   return value as TreeValue;
+}
+
+function asLinkedListValue(value: unknown): LinkedListValue {
+  return value as LinkedListValue;
 }
 
 function buildJavaTreeLiteral(value: unknown): string {
@@ -1404,6 +1500,42 @@ function buildKotlinTreeLiteral(value: unknown): string {
   const node = asTreeValue(value);
   if (!node) return "null";
   return `TreeNode(${node.val}, ${buildKotlinTreeLiteral(node.left)}, ${buildKotlinTreeLiteral(node.right)})`;
+}
+
+function buildJavaLinkedListLiteral(value: unknown): string {
+  const node = asLinkedListValue(value);
+  if (!node) return "null";
+  return `new ListNode(${node.val}, ${buildJavaLinkedListLiteral(node.next)})`;
+}
+
+function buildCppLinkedListLiteral(value: unknown): string {
+  const node = asLinkedListValue(value);
+  if (!node) return "nullptr";
+  return `new ListNode(${node.val}, ${buildCppLinkedListLiteral(node.next)})`;
+}
+
+function buildSwiftLinkedListLiteral(value: unknown): string {
+  const node = asLinkedListValue(value);
+  if (!node) return "nil";
+  return `ListNode(${node.val}, ${buildSwiftLinkedListLiteral(node.next)})`;
+}
+
+function buildGoLinkedListLiteral(value: unknown): string {
+  const node = asLinkedListValue(value);
+  if (!node) return "nil";
+  return `&ListNode{Val: ${node.val}, Next: ${buildGoLinkedListLiteral(node.next)}}`;
+}
+
+function buildCSharpLinkedListLiteral(value: unknown): string {
+  const node = asLinkedListValue(value);
+  if (!node) return "null";
+  return `new ListNode(${node.val}, ${buildCSharpLinkedListLiteral(node.next)})`;
+}
+
+function buildKotlinLinkedListLiteral(value: unknown): string {
+  const node = asLinkedListValue(value);
+  if (!node) return "null";
+  return `ListNode(${node.val}, ${buildKotlinLinkedListLiteral(node.next)})`;
 }
 
 function escapeForSource(value: string) {

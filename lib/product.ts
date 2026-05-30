@@ -156,6 +156,7 @@ export type ProblemCategory =
   | "Two Pointers"
   | "Sliding Window"
   | "Binary Search"
+  | "Linked Lists"
   | "Trees"
   | "Heap / Priority Queue"
   | "Backtracking"
@@ -302,6 +303,62 @@ export const sampleProblems = [
     reviewQuestion:
       "What makes the answer space monotonic even though the array is not sorted for direct search?",
     contrastPatternId: "greedy"
+  },
+  {
+    id: "reverse-linked-list",
+    category: "Linked Lists",
+    title: "Reverse Linked List",
+    difficulty: "Easy",
+    prompt:
+      "Given the head of a singly linked list, reverse the list and return the new head.",
+    targetPatternId: "two-pointers",
+    recommendedClues: ["sorted input"],
+    recommendedFirstStep: "Track left and right pointers",
+    reviewQuestion:
+      "What three pointers do you need to keep from losing the rest of the list while reversing a link?",
+    contrastPatternId: "dfs"
+  },
+  {
+    id: "linked-list-cycle",
+    category: "Linked Lists",
+    title: "Linked List Cycle",
+    difficulty: "Easy",
+    prompt:
+      "Given the head of a linked list, determine whether the list contains a cycle.",
+    targetPatternId: "two-pointers",
+    recommendedClues: ["sorted input"],
+    recommendedFirstStep: "Track left and right pointers",
+    reviewQuestion:
+      "Why do a slow pointer and a fast pointer reveal a cycle without extra memory?",
+    contrastPatternId: "dfs"
+  },
+  {
+    id: "merge-two-sorted-lists",
+    category: "Linked Lists",
+    title: "Merge Two Sorted Lists",
+    difficulty: "Easy",
+    prompt:
+      "Given the heads of two sorted linked lists, merge them into one sorted linked list and return its head.",
+    targetPatternId: "two-pointers",
+    recommendedClues: ["sorted input"],
+    recommendedFirstStep: "Track left and right pointers",
+    reviewQuestion:
+      "What makes this pointer merge safer than copying values into a new array first?",
+    contrastPatternId: "greedy"
+  },
+  {
+    id: "remove-nth-from-end",
+    category: "Linked Lists",
+    title: "Remove Nth Node From End of List",
+    difficulty: "Medium",
+    prompt:
+      "Given the head of a linked list, remove the nth node from the end and return the head of the modified list.",
+    targetPatternId: "two-pointers",
+    recommendedClues: ["sorted input"],
+    recommendedFirstStep: "Track left and right pointers",
+    reviewQuestion:
+      "Why is a fixed gap between two pointers enough to find the node just before the removal target?",
+    contrastPatternId: "dfs"
   },
   {
     id: "binary-tree-level-order",

@@ -21,7 +21,8 @@ export type ValueType =
   | "charMatrix"
   | "pointArray"
   | "nestedIntArray"
-  | "binaryTree";
+  | "binaryTree"
+  | "linkedList";
 
 export type CompareMode =
   | "strict"
@@ -387,6 +388,8 @@ function toJavaType(type: ValueType) {
       return "List<List<Integer>>";
     case "binaryTree":
       return "TreeNode";
+    case "linkedList":
+      return "ListNode";
   }
 }
 
@@ -428,6 +431,8 @@ function toCSharpType(type: ValueType) {
       return "IList<IList<int>>";
     case "binaryTree":
       return "TreeNode";
+    case "linkedList":
+      return "ListNode";
   }
 }
 
@@ -451,6 +456,8 @@ function toCppType(type: ValueType) {
       return "vector<vector<int>>";
     case "binaryTree":
       return "TreeNode*";
+    case "linkedList":
+      return "ListNode*";
   }
 }
 
@@ -474,6 +481,8 @@ function toSwiftType(type: ValueType) {
       return "[[Character]]";
     case "binaryTree":
       return "TreeNode?";
+    case "linkedList":
+      return "ListNode?";
   }
 }
 
@@ -497,6 +506,8 @@ function toGoType(type: ValueType) {
       return "[][]byte";
     case "binaryTree":
       return "*TreeNode";
+    case "linkedList":
+      return "*ListNode";
   }
 }
 
@@ -521,6 +532,8 @@ function toKotlinType(type: ValueType) {
       return "List<List<Int>>";
     case "binaryTree":
       return "TreeNode?";
+    case "linkedList":
+      return "ListNode?";
   }
 }
 
@@ -528,34 +541,74 @@ function usesBinaryTree(params: { name: string; type: ValueType }[]) {
   return params.some((param) => param.type === "binaryTree");
 }
 
+function usesLinkedList(params: { name: string; type: ValueType }[]) {
+  return params.some((param) => param.type === "linkedList");
+}
+
 function buildJavaHelpers(params: { name: string; type: ValueType }[]) {
-  if (!usesBinaryTree(params)) return "";
-  return `class TreeNode {\n  int val;\n  TreeNode left;\n  TreeNode right;\n\n  TreeNode(int val) { this.val = val; }\n  TreeNode(int val, TreeNode left, TreeNode right) {\n    this.val = val;\n    this.left = left;\n    this.right = right;\n  }\n}\n\n`;
+  const chunks: string[] = [];
+  if (usesBinaryTree(params)) {
+    chunks.push(`class TreeNode {\n  int val;\n  TreeNode left;\n  TreeNode right;\n\n  TreeNode(int val) { this.val = val; }\n  TreeNode(int val, TreeNode left, TreeNode right) {\n    this.val = val;\n    this.left = left;\n    this.right = right;\n  }\n}`);
+  }
+  if (usesLinkedList(params)) {
+    chunks.push(`class ListNode {\n  int val;\n  ListNode next;\n\n  ListNode(int val) { this.val = val; }\n  ListNode(int val, ListNode next) {\n    this.val = val;\n    this.next = next;\n  }\n}`);
+  }
+  return chunks.length > 0 ? `${chunks.join("\n\n")}\n\n` : "";
 }
 
 function buildCSharpHelpers(params: { name: string; type: ValueType }[]) {
-  if (!usesBinaryTree(params)) return "";
-  return `public class TreeNode {\n  public int val;\n  public TreeNode left;\n  public TreeNode right;\n\n  public TreeNode(int val = 0, TreeNode left = null, TreeNode right = null) {\n    this.val = val;\n    this.left = left;\n    this.right = right;\n  }\n}\n\n`;
+  const chunks: string[] = [];
+  if (usesBinaryTree(params)) {
+    chunks.push(`public class TreeNode {\n  public int val;\n  public TreeNode left;\n  public TreeNode right;\n\n  public TreeNode(int val = 0, TreeNode left = null, TreeNode right = null) {\n    this.val = val;\n    this.left = left;\n    this.right = right;\n  }\n}`);
+  }
+  if (usesLinkedList(params)) {
+    chunks.push(`public class ListNode {\n  public int val;\n  public ListNode next;\n\n  public ListNode(int val = 0, ListNode next = null) {\n    this.val = val;\n    this.next = next;\n  }\n}`);
+  }
+  return chunks.length > 0 ? `${chunks.join("\n\n")}\n\n` : "";
 }
 
 function buildCppHelpers(params: { name: string; type: ValueType }[]) {
-  if (!usesBinaryTree(params)) return "";
-  return `struct TreeNode {\n  int val;\n  TreeNode* left;\n  TreeNode* right;\n  TreeNode(int value) : val(value), left(nullptr), right(nullptr) {}\n  TreeNode(int value, TreeNode* leftNode, TreeNode* rightNode) : val(value), left(leftNode), right(rightNode) {}\n};\n\n`;
+  const chunks: string[] = [];
+  if (usesBinaryTree(params)) {
+    chunks.push(`struct TreeNode {\n  int val;\n  TreeNode* left;\n  TreeNode* right;\n  TreeNode(int value) : val(value), left(nullptr), right(nullptr) {}\n  TreeNode(int value, TreeNode* leftNode, TreeNode* rightNode) : val(value), left(leftNode), right(rightNode) {}\n};`);
+  }
+  if (usesLinkedList(params)) {
+    chunks.push(`struct ListNode {\n  int val;\n  ListNode* next;\n  ListNode(int value) : val(value), next(nullptr) {}\n  ListNode(int value, ListNode* nextNode) : val(value), next(nextNode) {}\n};`);
+  }
+  return chunks.length > 0 ? `${chunks.join("\n\n")}\n\n` : "";
 }
 
 function buildSwiftHelpers(params: { name: string; type: ValueType }[]) {
-  if (!usesBinaryTree(params)) return "";
-  return `final class TreeNode {\n  var val: Int\n  var left: TreeNode?\n  var right: TreeNode?\n\n  init(_ val: Int, _ left: TreeNode? = nil, _ right: TreeNode? = nil) {\n    self.val = val\n    self.left = left\n    self.right = right\n  }\n}\n\n`;
+  const chunks: string[] = [];
+  if (usesBinaryTree(params)) {
+    chunks.push(`final class TreeNode {\n  var val: Int\n  var left: TreeNode?\n  var right: TreeNode?\n\n  init(_ val: Int, _ left: TreeNode? = nil, _ right: TreeNode? = nil) {\n    self.val = val\n    self.left = left\n    self.right = right\n  }\n}`);
+  }
+  if (usesLinkedList(params)) {
+    chunks.push(`final class ListNode {\n  var val: Int\n  var next: ListNode?\n\n  init(_ val: Int, _ next: ListNode? = nil) {\n    self.val = val\n    self.next = next\n  }\n}`);
+  }
+  return chunks.length > 0 ? `${chunks.join("\n\n")}\n\n` : "";
 }
 
 function buildGoHelpers(params: { name: string; type: ValueType }[]) {
-  if (!usesBinaryTree(params)) return "";
-  return `type TreeNode struct {\n\tVal int\n\tLeft *TreeNode\n\tRight *TreeNode\n}\n\n`;
+  const chunks: string[] = [];
+  if (usesBinaryTree(params)) {
+    chunks.push(`type TreeNode struct {\n\tVal int\n\tLeft *TreeNode\n\tRight *TreeNode\n}`);
+  }
+  if (usesLinkedList(params)) {
+    chunks.push(`type ListNode struct {\n\tVal int\n\tNext *ListNode\n}`);
+  }
+  return chunks.length > 0 ? `${chunks.join("\n\n")}\n\n` : "";
 }
 
 function buildKotlinHelpers(params: { name: string; type: ValueType }[]) {
-  if (!usesBinaryTree(params)) return "";
-  return `class TreeNode(var \`val\`: Int, var left: TreeNode? = null, var right: TreeNode? = null)\n\n`;
+  const chunks: string[] = [];
+  if (usesBinaryTree(params)) {
+    chunks.push(`class TreeNode(var \`val\`: Int, var left: TreeNode? = null, var right: TreeNode? = null)`);
+  }
+  if (usesLinkedList(params)) {
+    chunks.push(`class ListNode(var \`val\`: Int, var next: ListNode? = null)`);
+  }
+  return chunks.length > 0 ? `${chunks.join("\n\n")}\n\n` : "";
 }
 
 function supportsCLanguage(signature: NonNullable<ProblemCodeConfig["signature"]>) {
@@ -614,6 +667,9 @@ function javaDefaultReturn(type: ValueType) {
       return "return new char[][]{};";
     case "nestedIntArray":
       return "return new ArrayList<>();";
+    case "binaryTree":
+    case "linkedList":
+      return "return null;";
   }
 }
 
@@ -634,6 +690,9 @@ function cppDefaultReturn(type: ValueType) {
     case "charMatrix":
     case "nestedIntArray":
       return "return {};";
+    case "binaryTree":
+    case "linkedList":
+      return "return {};";
   }
 }
 
@@ -645,6 +704,9 @@ function cDefaultReturn(type: ValueType) {
       return "return false;";
     case "string":
       return 'return "";';
+    case "binaryTree":
+    case "linkedList":
+      return "return null;";
     default:
       return "return 0;";
   }
@@ -665,6 +727,9 @@ function swiftDefaultReturn(type: ValueType) {
     case "pointArray":
     case "nestedIntArray":
       return "return []";
+    case "binaryTree":
+    case "linkedList":
+      return "return nil";
   }
 }
 
@@ -682,6 +747,9 @@ function goDefaultReturn(type: ValueType) {
     case "charMatrix":
     case "pointArray":
     case "nestedIntArray":
+      return "return nil";
+    case "binaryTree":
+    case "linkedList":
       return "return nil";
   }
 }
@@ -705,6 +773,9 @@ function csharpDefaultReturn(type: ValueType) {
       return "return Array.Empty<char[]>();";
     case "nestedIntArray":
       return "return new List<IList<int>>();";
+    case "binaryTree":
+    case "linkedList":
+      return "return null;";
   }
 }
 
@@ -727,6 +798,9 @@ function kotlinDefaultReturn(type: ValueType) {
       return "return emptyArray()";
     case "nestedIntArray":
       return "return emptyList()";
+    case "binaryTree":
+    case "linkedList":
+      return "return null";
   }
 }
 
@@ -925,6 +999,115 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
     examples: [
       { label: "Example 1", argsExpression: "[[3,6,7,11], 8]", expectedExpression: "4" },
       { label: "Example 2", argsExpression: "[[30,11,23,4,20], 5]", expectedExpression: "30" }
+    ]
+  },
+  "reverse-linked-list": {
+    functionName: "reverseList",
+    starterCode: buildStarterCode(
+      "function reverseList(head)",
+      [
+        "Assume nodes look like { val, next } or null.",
+        "Reverse the pointers in-place and return the new head."
+      ]
+    ),
+    signature: {
+      params: [{ name: "head", type: "linkedList" }],
+      returnType: "linkedList"
+    },
+    examples: [
+      {
+        label: "Example 1",
+        argsExpression:
+          "[{ val: 1, next: { val: 2, next: { val: 3, next: { val: 4, next: { val: 5, next: null } } } } }]",
+        expectedExpression:
+          "{ val: 5, next: { val: 4, next: { val: 3, next: { val: 2, next: { val: 1, next: null } } } } }"
+      },
+      { label: "Example 2", argsExpression: "[null]", expectedExpression: "null" }
+    ]
+  },
+  "linked-list-cycle": {
+    functionName: "hasCycle",
+    starterCode: buildStarterCode(
+      "function hasCycle(head)",
+      [
+        "Assume nodes look like { val, next } or null.",
+        "Return true if the list contains a cycle."
+      ]
+    ),
+    signature: {
+      params: [{ name: "head", type: "linkedList" }],
+      returnType: "bool"
+    },
+    examples: [
+      {
+        label: "Example 1",
+        argsExpression:
+          "[{ val: 3, next: { val: 2, next: { val: 0, next: { val: -4, next: null } } } }]",
+        expectedExpression: "false"
+      },
+      {
+        label: "Example 2",
+        argsExpression: "[{ val: 1, next: { val: 2, next: null } }]",
+        expectedExpression: "false"
+      }
+    ]
+  },
+  "merge-two-sorted-lists": {
+    functionName: "mergeTwoLists",
+    starterCode: buildStarterCode(
+      "function mergeTwoLists(list1, list2)",
+      [
+        "Assume both inputs use nodes like { val, next } or null.",
+        "Merge the lists by pointer rewiring and return the head."
+      ]
+    ),
+    signature: {
+      params: [
+        { name: "list1", type: "linkedList" },
+        { name: "list2", type: "linkedList" }
+      ],
+      returnType: "linkedList"
+    },
+    examples: [
+      {
+        label: "Example 1",
+        argsExpression:
+          "[{ val: 1, next: { val: 2, next: { val: 4, next: null } } }, { val: 1, next: { val: 3, next: { val: 4, next: null } } }]",
+        expectedExpression:
+          "{ val: 1, next: { val: 1, next: { val: 2, next: { val: 3, next: { val: 4, next: { val: 4, next: null } } } } } }"
+      },
+      { label: "Example 2", argsExpression: "[null, null]", expectedExpression: "null" }
+    ]
+  },
+  "remove-nth-from-end": {
+    functionName: "removeNthFromEnd",
+    starterCode: buildStarterCode(
+      "function removeNthFromEnd(head, n)",
+      [
+        "Assume nodes look like { val, next } or null.",
+        "Use a gap between two pointers to find the node before the target."
+      ]
+    ),
+    signature: {
+      params: [
+        { name: "head", type: "linkedList" },
+        { name: "n", type: "int" }
+      ],
+      returnType: "linkedList"
+    },
+    examples: [
+      {
+        label: "Example 1",
+        argsExpression:
+          "[{ val: 1, next: { val: 2, next: { val: 3, next: { val: 4, next: { val: 5, next: null } } } } }, 2]",
+        expectedExpression:
+          "{ val: 1, next: { val: 2, next: { val: 3, next: { val: 5, next: null } } } }"
+      },
+      {
+        label: "Example 2",
+        argsExpression: "[{ val: 1, next: null }, 1]",
+        expectedExpression: "null"
+      }
     ]
   },
   "binary-tree-level-order": {
