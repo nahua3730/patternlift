@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { CoachRequest, CoachResponse } from "@/lib/coach";
 import { patternOptions, sampleProblems } from "@/lib/product";
-import { getSuggestedTechniques } from "@/lib/techniques";
+import { buildTechniqueBriefs, getSuggestedTechniques } from "@/lib/techniques";
 
 type PatternId = (typeof patternOptions)[number]["id"];
 
@@ -222,7 +222,7 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
       selectedPatternLabel: result.selectedPatternLabel,
       correctPatternLabel: result.correctPatternLabel,
       contrastPatternLabel: result.contrastPatternLabel,
-      suggestedTechniqueTitles: suggestedTechniques.map((technique) => technique.title),
+      suggestedTechniques: buildTechniqueBriefs(suggestedTechniques),
       selectedClues: result.selectedClues,
       selectedFirstStep: result.selectedFirstStep,
       learnerNote: result.learnerNote,
@@ -480,6 +480,10 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
                     {technique.starterQuestion}
                   </p>
                   <p className="mt-2 text-sm leading-6 text-black/68">
+                    <span className="font-semibold text-ink">Core idea:</span>{" "}
+                    {technique.coreIdea}
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-black/68">
                     <span className="font-semibold text-ink">Trap:</span>{" "}
                     {technique.commonTrap}
                   </p>
@@ -592,9 +596,12 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
           <div className="space-y-4 rounded-lg border border-lake/25 bg-lake/10 p-4">
             <p className="text-sm leading-6 text-black/72">{aiCoach.diagnosis}</p>
 
+            <CoachNote title="Technique focus" body={aiCoach.techniqueFocus} />
+            <CoachNote title="Why this fits" body={aiCoach.techniqueReason} />
             <CoachNote title="Clue read" body={aiCoach.clueFeedback} />
             <CoachNote title="First move" body={aiCoach.firstStepFeedback} />
             <CoachNote title="Next hint" body={aiCoach.nextHint} />
+            <CoachNote title="Coach asks next" body={aiCoach.nextQuestion} />
             <CoachNote title="Review later" body={aiCoach.reviewQuestion} />
 
             <p className="text-sm leading-6 text-black/68">{aiCoach.encouragement}</p>
