@@ -531,13 +531,10 @@ export function PracticeWorkspace({
   }, [activeCoachStyle, mode, selectedPatternIds]);
 
   return (
-    <div className="mx-auto flex w-full max-w-[92rem] flex-col gap-4">
-      <section className="uiverse-panel px-5 py-3 md:px-6">
+    <div className="flex min-h-[calc(100vh-1.5rem)] w-full flex-col gap-3 text-white">
+      <section className="rounded-[8px] border border-white/8 bg-[#171717] px-4 py-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-black/10 bg-white px-3 py-2 text-xs font-medium text-black/66">
-              Coach style
-            </span>
             {coachStyles.map((style) => {
               const isActive = activeCoachStyle === style.id;
               return (
@@ -545,10 +542,10 @@ export function PracticeWorkspace({
                   key={style.id}
                   type="button"
                   onClick={() => setActiveCoachStyle(style.id)}
-                  className={`rounded-full px-3 py-2 text-xs font-medium transition ${
+                  className={`rounded-[8px] px-3 py-2 text-xs font-medium transition ${
                     isActive
-                      ? "bg-ink text-white"
-                      : "border border-black/10 bg-white text-black/68"
+                      ? "bg-white text-[#111111]"
+                      : "border border-white/10 bg-white/4 text-white/68"
                   }`}
                 >
                   {style.label}
@@ -559,24 +556,28 @@ export function PracticeWorkspace({
 
           <Link
             href={selectionBackHref}
-            className="coach-chip px-4 py-2 text-sm font-medium text-black/66"
+            className="rounded-[8px] border border-white/10 bg-white/4 px-4 py-2 text-sm font-medium text-white/66"
           >
             Choose another problem
           </Link>
         </div>
       </section>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)]">
-        <section className="uiverse-panel flex min-h-[92vh] flex-col overflow-hidden xl:sticky xl:top-2 xl:h-[calc(100vh-1.5rem)] xl:self-start">
-          <div className="border-b border-black/8 px-5 py-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-coral">
-              Coach chat
-            </p>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <p className="text-[1.45rem] font-semibold leading-tight text-ink">
+      <div className="grid flex-1 gap-3 xl:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)]">
+        <section className="flex min-h-[84vh] flex-col overflow-hidden rounded-[8px] border border-white/8 bg-[#171717] xl:h-[calc(100vh-6rem)]">
+          <div className="border-b border-white/8 px-4 py-3">
+            <div className="flex items-center gap-3 border-b border-white/8 pb-3 text-sm">
+              <span className="rounded-[6px] bg-white/8 px-3 py-2 font-medium text-white">
+                Coach
+              </span>
+              <span className="text-white/46">Conversation</span>
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <p className="text-[1.35rem] font-semibold leading-tight text-white">
                 {activeProblem.title}
               </p>
-              <span className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/66">
+              <span className="rounded-full border border-white/10 bg-white/6 px-3 py-1 text-xs font-medium text-white/66">
                 {mode === "learn"
                   ? "Learning mode"
                   : mode === "recognize"
@@ -584,63 +585,43 @@ export function PracticeWorkspace({
                     : "Practice mode"}
               </span>
             </div>
-            {activeRoadmapMeta ? (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {activeRoadmapMeta.leetcodeNumber ? (
-                  <span className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/68">
-                    LeetCode #{activeRoadmapMeta.leetcodeNumber}
-                  </span>
-                ) : null}
-                {activeRoadmapMeta.tracks.map((track) => (
-                  <span
-                    key={`${activeProblem.id}-${track}`}
-                    className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/68"
-                  >
-                    {track === "blind75" ? "Blind 75" : "NeetCode 150"}
-                  </span>
-                ))}
-              </div>
-            ) : null}
-            <div className="mt-2 flex flex-wrap gap-2">
-              <span className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/66">
-                Strongest pattern: {correctPattern.label}
+
+            <div className="mt-2 flex flex-wrap gap-2 text-xs">
+              {activeRoadmapMeta?.leetcodeNumber ? (
+                <span className="rounded-full border border-white/10 bg-white/6 px-3 py-1 font-medium text-white/68">
+                  LeetCode #{activeRoadmapMeta.leetcodeNumber}
+                </span>
+              ) : null}
+              {activeRoadmapMeta?.tracks.map((track) => (
+                <span
+                  key={`${activeProblem.id}-${track}`}
+                  className="rounded-full border border-white/10 bg-white/6 px-3 py-1 font-medium text-white/68"
+                >
+                  {track === "blind75" ? "Blind 75" : "NeetCode 150"}
+                </span>
+              ))}
+              <span className="rounded-full border border-white/10 bg-white/6 px-3 py-1 font-medium text-white/66">
+                {correctPattern.label}
               </span>
-              <span className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/66">
-                Easy to confuse with {contrastPatternLabel}
+              <span className="rounded-full border border-white/10 bg-white/6 px-3 py-1 font-medium text-white/66">
+                vs {contrastPatternLabel}
               </span>
             </div>
-            {suggestedTechniques.length > 0 ? (
-              <details className="mt-2 rounded-lg border border-black/8 bg-white/70 px-3 py-2">
-                <summary className="cursor-pointer text-sm font-medium text-black/70">
-                  Learning context
-                </summary>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {suggestedTechniques.slice(0, 4).map((technique) => (
-                    <span
-                      key={technique.id}
-                      className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/66"
-                    >
-                      {technique.title}
-                    </span>
-                  ))}
-                </div>
-              </details>
-            ) : null}
           </div>
 
           <div
             ref={chatScrollRef}
-            className="min-h-[46rem] flex-[1_1_0] space-y-4 overflow-y-auto px-5 py-5 pb-32 overscroll-contain"
+            className="min-h-[46rem] flex-[1_1_0] space-y-4 overflow-y-auto px-4 py-4 pb-32 overscroll-contain"
           >
             {chatMessages.map((message) => (
               <ThreadMessage key={message.id} speaker={message.speaker} title={message.title}>
-                <p className="whitespace-pre-wrap text-lg leading-9 text-black/76">{message.body}</p>
+                <p className="whitespace-pre-wrap text-lg leading-9 text-white/86">{message.body}</p>
               </ThreadMessage>
             ))}
 
             {isCoachLoading ? (
               <ThreadMessage speaker="coach" title="Coach is thinking...">
-                <p className="text-lg leading-8 text-black/68">
+                <p className="text-lg leading-8 text-white/68">
                   I&apos;m reading your last message and shaping the next step.
                 </p>
               </ThreadMessage>
@@ -648,18 +629,18 @@ export function PracticeWorkspace({
 
             {coachError ? (
               <ThreadMessage speaker="coach" title="AI coaching unavailable">
-                <p className="text-lg leading-8 text-red-700">{coachError}</p>
+                <p className="text-lg leading-8 text-red-400">{coachError}</p>
               </ThreadMessage>
             ) : null}
           </div>
 
-          <div className="sticky bottom-0 z-10 border-t border-black/8 bg-white/95 px-5 py-2 backdrop-blur">
-            <div className="coach-input-shell">
+          <div className="sticky bottom-0 z-10 border-t border-white/8 bg-[#171717]/95 px-4 py-2 backdrop-blur">
+            <div className="rounded-[8px] border border-white/8 bg-white/4 p-3">
               <textarea
                 value={coachDraft}
                 onChange={(event) => setCoachDraft(event.target.value)}
                 rows={2}
-                className="w-full resize-none border-0 bg-transparent text-lg leading-8 text-ink outline-none placeholder:text-black/34"
+                className="w-full resize-none border-0 bg-transparent text-lg leading-8 text-white outline-none placeholder:text-white/30"
                 placeholder={
                   mode === "recognize"
                     ? "Tell the coach what pattern you suspect, what clues led you there, or what feels ambiguous."
@@ -669,14 +650,14 @@ export function PracticeWorkspace({
                 }
               />
               <div className="mt-2 flex items-center justify-between gap-3">
-                <p className="text-xs text-black/48">
+                <p className="text-xs text-white/48">
                   Ask naturally. The coach will react to what you actually say.
                 </p>
                 <button
                   type="button"
                   onClick={() => void sendCoachMessage()}
                   disabled={coachDraft.trim().length === 0 || isCoachLoading}
-                  className="uiverse-button px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-[8px] bg-white px-4 py-2 text-sm font-medium text-[#111111] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isCoachLoading ? "Sending..." : "Send"}
                 </button>
@@ -685,29 +666,27 @@ export function PracticeWorkspace({
           </div>
         </section>
 
-        <section className="uiverse-panel flex min-h-[92vh] flex-col overflow-hidden xl:sticky xl:top-2 xl:h-[calc(100vh-1.5rem)] xl:self-start">
-          <div className="border-b border-black/8 px-5 py-3">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-coral">
-                  Code workspace
-                </p>
-                <p className="mt-2 text-sm leading-6 text-black/64">
-                  Keep the conversation on the left and your implementation on the right.
-                </p>
+        <section className="flex min-h-[84vh] flex-col overflow-hidden rounded-[8px] border border-white/8 bg-[#171717] xl:h-[calc(100vh-6rem)]">
+          <div className="border-b border-white/8 px-4 py-3">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 text-sm">
+                <span className="rounded-[6px] bg-white/8 px-3 py-2 font-medium text-white">
+                  Editor
+                </span>
+                <span className="text-white/46">Code</span>
               </div>
               <div className="flex flex-wrap gap-3">
                 <button
                   type="button"
                   onClick={runExamples}
-                  className="uiverse-button px-4 py-2 text-sm font-medium"
+                  className="rounded-[8px] bg-white px-4 py-2 text-sm font-medium text-[#111111]"
                 >
                   Run examples
                 </button>
                 <button
                   type="button"
                   onClick={resetCodeEditor}
-                  className="uiverse-button-secondary px-4 py-2 text-sm font-medium"
+                  className="rounded-[8px] border border-white/10 bg-white/4 px-4 py-2 text-sm font-medium text-white/76"
                 >
                   Reset starter code
                 </button>
@@ -715,227 +694,229 @@ export function PracticeWorkspace({
             </div>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
             <div className="space-y-4">
-          <details className="rounded-lg border border-black/10 bg-white/90 p-4">
-            <summary className="cursor-pointer text-sm font-semibold text-ink">
-              Problem statement
-            </summary>
-            <p className="mt-3 whitespace-pre-wrap text-base leading-8 text-black/72">
-              {problemText}
-            </p>
-          </details>
+              <details className="rounded-[8px] border border-white/8 bg-white/4 p-4">
+                <summary className="cursor-pointer text-sm font-semibold text-white">
+                  Problem statement
+                </summary>
+                <p className="mt-3 whitespace-pre-wrap text-base leading-8 text-white/72">
+                  {problemText}
+                </p>
+              </details>
 
-          <div className="rounded-lg border border-black/10 bg-white/92 p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-ink">
-                {editorLanguages.find((language) => language.id === selectedLanguage)?.label} starter
-              </p>
-              {activeCodeConfig ? (
-                <span className="rounded-full border border-black/10 bg-mist px-3 py-1 text-xs font-medium text-black/68">
-                  {activeCodeConfig.functionName}
-                </span>
-              ) : null}
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {editorLanguages
-                .filter((language) => availableLanguages.includes(language.id))
-                .map((language) => {
-                  const isActive = selectedLanguage === language.id;
-
-                  return (
-                    <button
-                      key={language.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedLanguage(language.id);
-                        setRunResults(null);
-                        setRunnerError(null);
-                      }}
-                      className={`rounded-full px-3 py-2 text-sm font-medium transition ${
-                        isActive
-                          ? "bg-ink text-white"
-                          : "border border-black/10 bg-white text-black/70"
-                      }`}
-                    >
-                      {language.label}
-                    </button>
-                  );
-                })}
-            </div>
-            <textarea
-              value={codeByLanguage[selectedLanguage]}
-              onChange={(event) => {
-                setCodeByLanguage((current) => ({
-                  ...current,
-                  [selectedLanguage]: event.target.value
-                }));
-                setRunResults(null);
-                setRunnerError(null);
-              }}
-              rows={26}
-              spellCheck={false}
-              className="uiverse-field mt-3 min-h-[34rem] w-full px-4 py-4 font-mono text-[15px] leading-7 text-ink xl:min-h-[46rem]"
-            />
-          </div>
-
-          {activeCodeConfig ? (
-            <details className="rounded-lg border border-black/10 bg-white/88 p-4">
-              <summary className="cursor-pointer text-sm font-semibold text-ink">
-                Test case panel
-              </summary>
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  {runSummary ? (
-                    <div className="rounded-lg border border-black/10 bg-mist p-3 text-sm text-black/68">
-                      Passed {runSummary.passed} of {runSummary.total} cases
-                    </div>
+              <div className="rounded-[8px] border border-white/8 bg-[#1b1b1b] p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-white">
+                    {editorLanguages.find((language) => language.id === selectedLanguage)?.label} starter
+                  </p>
+                  {activeCodeConfig ? (
+                    <span className="rounded-full border border-white/10 bg-white/6 px-3 py-1 text-xs font-medium text-white/68">
+                      {activeCodeConfig.functionName}
+                    </span>
                   ) : null}
                 </div>
-                <button
-                  type="button"
-                  onClick={addCustomTestCase}
-                  className="uiverse-button-secondary px-3 py-2 text-xs font-medium"
-                >
-                  Add custom case
-                </button>
-              </div>
-              <div className="mt-4 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-                <div className="space-y-2">
-                  {testCases.map((testCase) => {
-                    const result = runResults?.find((entry) => entry.label === testCase.label);
-                    const isActive = selectedTestCase?.id === testCase.id;
-                    return (
-                      <button
-                        key={testCase.id}
-                        type="button"
-                        onClick={() => setSelectedTestCaseId(testCase.id)}
-                        className={`w-full rounded-lg border px-3 py-3 text-left transition ${
-                          isActive ? "border-lake/30 bg-lake/10" : "border-black/10 bg-mist"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-sm font-semibold text-ink">{testCase.label}</p>
-                          {result ? (
-                            <span
-                              className={`text-xs font-semibold ${
-                                result.passed ? "text-emerald-700" : "text-amber-700"
-                              }`}
-                            >
-                              {result.passed ? "Passed" : "Failed"}
-                            </span>
-                          ) : testCase.kind === "custom" ? (
-                            <span className="text-xs font-semibold text-black/50">Custom</span>
-                          ) : null}
-                        </div>
-                        <p className="mt-2 line-clamp-2 font-mono text-xs leading-5 text-black/62">
-                          {testCase.argsExpression}
-                        </p>
-                      </button>
-                    );
-                  })}
-                </div>
-                {selectedTestCase ? (
-                  <div className="rounded-lg border border-black/10 bg-white/92 p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <p className="text-sm font-semibold text-ink">{selectedTestCase.label}</p>
-                      {selectedTestCase.kind === "custom" ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {editorLanguages
+                    .filter((language) => availableLanguages.includes(language.id))
+                    .map((language) => {
+                      const isActive = selectedLanguage === language.id;
+
+                      return (
                         <button
+                          key={language.id}
                           type="button"
-                          onClick={() => removeCustomTestCase(selectedTestCase.id)}
-                          className="text-xs font-medium text-ember"
+                          onClick={() => {
+                            setSelectedLanguage(language.id);
+                            setRunResults(null);
+                            setRunnerError(null);
+                          }}
+                          className={`rounded-full px-3 py-2 text-sm font-medium transition ${
+                            isActive
+                              ? "bg-white text-[#111111]"
+                              : "border border-white/10 bg-white/4 text-white/70"
+                          }`}
                         >
-                          Remove custom case
+                          {language.label}
                         </button>
+                      );
+                    })}
+                </div>
+                <textarea
+                  value={codeByLanguage[selectedLanguage]}
+                  onChange={(event) => {
+                    setCodeByLanguage((current) => ({
+                      ...current,
+                      [selectedLanguage]: event.target.value
+                    }));
+                    setRunResults(null);
+                    setRunnerError(null);
+                  }}
+                  rows={26}
+                  spellCheck={false}
+                  className="mt-3 min-h-[34rem] w-full rounded-[8px] border border-white/8 bg-[#111111] px-4 py-4 font-mono text-[15px] leading-7 text-white outline-none xl:min-h-[46rem]"
+                />
+              </div>
+
+              {activeCodeConfig ? (
+                <details className="rounded-[8px] border border-white/8 bg-white/4 p-4">
+                  <summary className="cursor-pointer text-sm font-semibold text-white">
+                    Test case panel
+                  </summary>
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      {runSummary ? (
+                        <div className="rounded-[8px] border border-white/8 bg-white/4 p-3 text-sm text-white/68">
+                          Passed {runSummary.passed} of {runSummary.total} cases
+                        </div>
                       ) : null}
                     </div>
-                    <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-black/56">
-                      Args expression
-                      <textarea
-                        value={selectedTestCase.argsExpression}
-                        onChange={(event) =>
-                          updateTestCase(selectedTestCase.id, "argsExpression", event.target.value)
-                        }
-                        rows={4}
-                        spellCheck={false}
-                        className="uiverse-field mt-2 w-full px-3 py-2 font-mono text-xs leading-6 text-ink"
-                      />
-                    </label>
-                    <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-black/56">
-                      Expected expression
-                      <textarea
-                        value={selectedTestCase.expectedExpression}
-                        onChange={(event) =>
-                          updateTestCase(
-                            selectedTestCase.id,
-                            "expectedExpression",
-                            event.target.value
-                          )
-                        }
-                        rows={4}
-                        spellCheck={false}
-                        className="uiverse-field mt-2 w-full px-3 py-2 font-mono text-xs leading-6 text-ink"
-                      />
-                    </label>
-                    {runResults?.find((entry) => entry.label === selectedTestCase.label) ? (
-                      <div className="mt-4 rounded-lg border border-black/10 bg-mist p-3">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-lake">
-                          Last run
-                        </p>
-                        <p className="mt-2 font-mono text-xs leading-6 text-black/72">
-                          actual: {runResults.find((entry) => entry.label === selectedTestCase.label)?.actual}
-                        </p>
-                        <p className="mt-1 font-mono text-xs leading-6 text-black/72">
-                          expected: {runResults.find((entry) => entry.label === selectedTestCase.label)?.expected}
-                        </p>
+                    <button
+                      type="button"
+                      onClick={addCustomTestCase}
+                      className="rounded-[8px] border border-white/10 bg-white/4 px-3 py-2 text-xs font-medium text-white/76"
+                    >
+                      Add custom case
+                    </button>
+                  </div>
+                  <div className="mt-4 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+                    <div className="space-y-2">
+                      {testCases.map((testCase) => {
+                        const result = runResults?.find((entry) => entry.label === testCase.label);
+                        const isActive = selectedTestCase?.id === testCase.id;
+                        return (
+                          <button
+                            key={testCase.id}
+                            type="button"
+                            onClick={() => setSelectedTestCaseId(testCase.id)}
+                            className={`w-full rounded-[8px] border px-3 py-3 text-left transition ${
+                              isActive
+                                ? "border-white/20 bg-white/10"
+                                : "border-white/8 bg-white/4"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-sm font-semibold text-white">{testCase.label}</p>
+                              {result ? (
+                                <span
+                                  className={`text-xs font-semibold ${
+                                    result.passed ? "text-emerald-300" : "text-amber-300"
+                                  }`}
+                                >
+                                  {result.passed ? "Passed" : "Failed"}
+                                </span>
+                              ) : testCase.kind === "custom" ? (
+                                <span className="text-xs font-semibold text-white/50">Custom</span>
+                              ) : null}
+                            </div>
+                            <p className="mt-2 line-clamp-2 font-mono text-xs leading-5 text-white/62">
+                              {testCase.argsExpression}
+                            </p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {selectedTestCase ? (
+                      <div className="rounded-[8px] border border-white/8 bg-[#1b1b1b] p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <p className="text-sm font-semibold text-white">{selectedTestCase.label}</p>
+                          {selectedTestCase.kind === "custom" ? (
+                            <button
+                              type="button"
+                              onClick={() => removeCustomTestCase(selectedTestCase.id)}
+                              className="text-xs font-medium text-red-300"
+                            >
+                              Remove custom case
+                            </button>
+                          ) : null}
+                        </div>
+                        <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-white/56">
+                          Args expression
+                          <textarea
+                            value={selectedTestCase.argsExpression}
+                            onChange={(event) =>
+                              updateTestCase(selectedTestCase.id, "argsExpression", event.target.value)
+                            }
+                            rows={4}
+                            spellCheck={false}
+                            className="mt-2 w-full rounded-[8px] border border-white/8 bg-[#111111] px-3 py-2 font-mono text-xs leading-6 text-white outline-none"
+                          />
+                        </label>
+                        <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-white/56">
+                          Expected expression
+                          <textarea
+                            value={selectedTestCase.expectedExpression}
+                            onChange={(event) =>
+                              updateTestCase(
+                                selectedTestCase.id,
+                                "expectedExpression",
+                                event.target.value
+                              )
+                            }
+                            rows={4}
+                            spellCheck={false}
+                            className="mt-2 w-full rounded-[8px] border border-white/8 bg-[#111111] px-3 py-2 font-mono text-xs leading-6 text-white outline-none"
+                          />
+                        </label>
+                        {runResults?.find((entry) => entry.label === selectedTestCase.label) ? (
+                          <div className="mt-4 rounded-[8px] border border-white/8 bg-white/4 p-3">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-white/56">
+                              Last run
+                            </p>
+                            <p className="mt-2 font-mono text-xs leading-6 text-white/72">
+                              actual: {runResults.find((entry) => entry.label === selectedTestCase.label)?.actual}
+                            </p>
+                            <p className="mt-1 font-mono text-xs leading-6 text-white/72">
+                              expected: {runResults.find((entry) => entry.label === selectedTestCase.label)?.expected}
+                            </p>
+                          </div>
+                        ) : null}
                       </div>
                     ) : null}
                   </div>
-                ) : null}
-              </div>
-            </details>
-          ) : (
-            <div className="rounded-lg border border-dashed border-black/14 bg-mist p-4 text-sm leading-6 text-black/60">
-              This question is part of the roadmap, but it doesn&apos;t have a native starter template yet. You can still talk through it with the coach and use the official problem links above.
-            </div>
-          )}
+                </details>
+              ) : (
+                <div className="rounded-[8px] border border-dashed border-white/14 bg-white/4 p-4 text-sm leading-6 text-white/60">
+                  This question is part of the roadmap, but it doesn&apos;t have a native starter template yet. You can still talk through it with the coach and use the official problem links above.
+                </div>
+              )}
 
-          {runnerError ? (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-700">
-              {runnerError}
-            </div>
-          ) : null}
+              {runnerError ? (
+                <div className="rounded-[8px] border border-red-500/30 bg-red-500/10 p-4 text-sm leading-6 text-red-300">
+                  {runnerError}
+                </div>
+              ) : null}
 
-          {runResults ? (
-            <div className="rounded-lg border border-black/10 bg-white/88 p-4">
-              <p className="text-sm font-semibold text-ink">Run results</p>
-              <div className="mt-3 space-y-3">
-                {runResults.map((result) => (
-                  <div
-                    key={result.label}
-                    className={`rounded-lg border p-3 ${
-                      result.passed
-                        ? "border-emerald-200 bg-emerald-50"
-                        : "border-amber-200 bg-amber-50"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-semibold text-ink">{result.label}</p>
-                      <span className="text-xs font-semibold uppercase tracking-wide text-black/60">
-                        {result.passed ? "Passed" : "Needs work"}
-                      </span>
-                    </div>
-                    <p className="mt-2 font-mono text-xs leading-6 text-black/72">
-                      actual: {result.actual}
-                    </p>
-                    <p className="mt-1 font-mono text-xs leading-6 text-black/72">
-                      expected: {result.expected}
-                    </p>
+              {runResults ? (
+                <div className="rounded-[8px] border border-white/8 bg-white/4 p-4">
+                  <p className="text-sm font-semibold text-white">Run results</p>
+                  <div className="mt-3 space-y-3">
+                    {runResults.map((result) => (
+                      <div
+                        key={result.label}
+                        className={`rounded-[8px] border p-3 ${
+                          result.passed
+                            ? "border-emerald-500/20 bg-emerald-500/10"
+                            : "border-amber-500/20 bg-amber-500/10"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-sm font-semibold text-white">{result.label}</p>
+                          <span className="text-xs font-semibold uppercase tracking-wide text-white/60">
+                            {result.passed ? "Passed" : "Needs work"}
+                          </span>
+                        </div>
+                        <p className="mt-2 font-mono text-xs leading-6 text-white/72">
+                          actual: {result.actual}
+                        </p>
+                        <p className="mt-1 font-mono text-xs leading-6 text-white/72">
+                          expected: {result.expected}
+                        </p>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
+                </div>
+              ) : null}
             </div>
           </div>
         </section>
@@ -1084,18 +1065,20 @@ function ThreadMessage({
       {isCoach ? <Avatar label="Coach" tone="coach" /> : null}
 
       <div
-        className={`w-full max-w-3xl rounded-lg border p-5 shadow-sm ${
-          isCoach ? "border-black/10 bg-white/80" : "border-lake/20 bg-lake/10"
+        className={`w-full max-w-3xl rounded-[8px] border p-5 shadow-sm ${
+          isCoach
+            ? "border-white/8 bg-white/4"
+            : "border-white/12 bg-[#232323]"
         }`}
       >
         <p
           className={`text-xs font-semibold uppercase tracking-wide ${
-            isCoach ? "text-lake" : "text-ember"
+            isCoach ? "text-white/52" : "text-white/52"
           }`}
         >
           {isCoach ? "Coach" : "You"}
         </p>
-        <h2 className="mt-1 text-xl font-semibold text-ink">{title}</h2>
+        <h2 className="mt-1 text-xl font-semibold text-white">{title}</h2>
         <div className="mt-4">{children}</div>
         {controls ? <div className="mt-5">{controls}</div> : null}
       </div>
@@ -1110,8 +1093,8 @@ function Avatar({ label, tone }: { label: string; tone: "coach" | "user" }) {
     <div
       className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-sm font-semibold shadow-sm ${
         tone === "coach"
-          ? "border-coral/18 bg-coral text-white"
-          : "border-black/10 bg-white text-ink"
+          ? "border-white/10 bg-white text-[#111111]"
+          : "border-white/10 bg-[#232323] text-white"
       }`}
     >
       {label.slice(0, 1)}
