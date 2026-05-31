@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { GlobalCoachDock } from "@/components/global-coach-dock";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -99,42 +100,102 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   })();
 
   return (
-    <div className="min-h-screen px-6 py-6 sm:px-8">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
-        {isHome ? null : (
-          <header className="uiverse-panel flex flex-col gap-4 p-5 lg:flex-row lg:items-start lg:justify-between">
-            <div className="max-w-2xl">
-              <Link
-                href={shellMeta.backHref}
-                className="text-sm font-medium text-black/58 transition hover:text-black/84"
-              >
-                ← {shellMeta.backLabel}
+    <div className="min-h-screen">
+      {isHome ? (
+        <div className="px-5 py-6 sm:px-8 sm:py-8">
+          <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 pb-80">
+            {children}
+          </div>
+        </div>
+      ) : (
+        <div className="app-frame px-4 py-4 sm:px-5 sm:py-5">
+          <div className="mx-auto grid min-h-[calc(100vh-2rem)] w-full max-w-[92rem] gap-5 lg:grid-cols-[18rem_minmax(0,1fr)]">
+            <aside className="app-sidebar hidden lg:flex">
+              <Link href="/" className="app-logo">
+                <span className="app-logo-mark">PL</span>
+                <span>
+                  <span className="block text-sm font-semibold text-ink">PatternLift</span>
+                  <span className="block text-xs text-black/54">
+                    LeetCode coach, but calmer
+                  </span>
+                </span>
               </Link>
-              <p className="mt-3 text-sm font-semibold uppercase tracking-[0.18em] text-ember">
-                {shellMeta.eyebrow}
-              </p>
-              <p className="mt-2 text-xl font-semibold text-ink">{shellMeta.title}</p>
-              <p className="mt-2 text-sm leading-6 text-black/66">{shellMeta.body}</p>
-            </div>
 
-            {shellMeta.utilityLinks.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {shellMeta.utilityLinks.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className="rounded-full border border-black/10 bg-white/82 px-4 py-2 text-sm font-medium text-black/70 transition hover:border-black/20 hover:text-black/88"
-                  >
-                    {link.label}
-                  </Link>
-                ))}
+              <nav className="mt-8 space-y-2">
+                {[
+                  { href: "/learn/setup", match: "/learn", label: "Learn", helper: "Pick patterns and start guided reps" },
+                  { href: "/recognize/setup", match: "/recognize", label: "Recognize", helper: "Sharpen pattern instinct fast" },
+                  { href: "/practice/setup", match: "/practice", label: "Practice", helper: "Solve with code and tests" },
+                  { href: "/progress", match: "/progress", label: "Progress", helper: "See what is sticking" },
+                  { href: "/review", match: "/review", label: "Review", helper: "Come back to weak spots" }
+                ].map((item) => {
+                  const active = pathname === item.match || pathname.startsWith(`${item.match}/`);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`sidebar-link ${active ? "sidebar-link-active" : ""}`}
+                    >
+                      <span className="block text-sm font-semibold">{item.label}</span>
+                      <span className={`mt-1 block text-xs ${active ? "text-white/76" : "text-black/52"}`}>
+                        {item.helper}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </nav>
+
+              <div className="mt-auto rounded-[8px] border border-black/8 bg-white/72 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-coral">
+                  Current flow
+                </p>
+                <p className="mt-2 text-sm font-semibold text-ink">{shellMeta.title}</p>
+                <p className="mt-2 text-sm leading-6 text-black/60">{shellMeta.body}</p>
               </div>
-            ) : null}
-          </header>
-        )}
+            </aside>
 
-        {children}
-      </div>
+            <main className="flex min-w-0 flex-col gap-5 pb-80">
+              <header className="page-hero">
+                <div className="max-w-3xl">
+                  <Link
+                    href={shellMeta.backHref}
+                    className="text-sm font-medium text-black/58 transition hover:text-black/84"
+                  >
+                    ← {shellMeta.backLabel}
+                  </Link>
+                  <p className="mt-4 text-xs font-semibold uppercase tracking-[0.22em] text-coral">
+                    {shellMeta.eyebrow}
+                  </p>
+                  <h1 className="mt-3 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
+                    {shellMeta.title}
+                  </h1>
+                  <p className="mt-3 max-w-2xl text-sm leading-7 text-black/64">
+                    {shellMeta.body}
+                  </p>
+                </div>
+
+                {shellMeta.utilityLinks.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {shellMeta.utilityLinks.map((link) => (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        className="coach-chip px-4 py-2 text-sm font-medium text-black/70"
+                      >
+                        {link.label}
+                      </Link>
+                    ))}
+                  </div>
+                ) : null}
+              </header>
+
+              {children}
+            </main>
+          </div>
+        </div>
+      )}
+
+      <GlobalCoachDock />
     </div>
   );
 }

@@ -33,7 +33,7 @@ export function LearnSetup() {
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
       <section className="uiverse-panel px-6 py-7 md:px-8">
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-lake">
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-coral">
           Learning Mode · Step 2
         </p>
         <h1 className="mt-3 text-3xl font-semibold tracking-tight text-ink">
@@ -73,7 +73,7 @@ export function LearnSetup() {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-3">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {patternOptions.map((pattern) => {
               const isActive = selectedPatterns.includes(pattern.id);
 
@@ -82,11 +82,44 @@ export function LearnSetup() {
                   key={pattern.id}
                   type="button"
                   onClick={() => togglePattern(pattern.id)}
-                  className={`uiverse-bubble px-4 py-3 text-sm font-medium transition ${
-                    isActive ? "uiverse-bubble-active text-white" : "text-ink"
+                  className={`pattern-card text-left ${
+                    isActive ? "pattern-card-active text-white" : "text-ink"
                   }`}
                 >
-                  {pattern.label}
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-lg font-semibold">{pattern.label}</p>
+                      <p
+                        className={`mt-2 text-sm leading-6 ${
+                          isActive ? "text-white/80" : "text-black/60"
+                        }`}
+                      >
+                        {pattern.coachPrompt}
+                      </p>
+                    </div>
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                        isActive ? "bg-white/18 text-white" : "bg-black/6 text-black/60"
+                      }`}
+                    >
+                      {selectedPatterns.includes(pattern.id) ? "Selected" : "Tap to add"}
+                    </span>
+                  </div>
+
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    {pattern.clues.slice(0, 2).map((clue) => (
+                      <span
+                        key={`${pattern.id}-${clue}`}
+                        className={`rounded-full px-3 py-2 text-xs ${
+                          isActive
+                            ? "border border-white/16 bg-white/12 text-white/82"
+                            : "border border-black/8 bg-white/76 text-black/60"
+                        }`}
+                      >
+                        {clue}
+                      </span>
+                    ))}
+                  </div>
                 </button>
               );
             })}

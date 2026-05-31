@@ -1289,8 +1289,10 @@ function ThreadMessage({
 function Avatar({ label, tone }: { label: string; tone: "coach" | "user" }) {
   return (
     <div
-      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
-        tone === "coach" ? "bg-mist text-ink" : "bg-lake/18 text-lake"
+      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-sm font-semibold shadow-sm ${
+        tone === "coach"
+          ? "border-coral/18 bg-coral text-white"
+          : "border-black/10 bg-white text-ink"
       }`}
     >
       {label.slice(0, 1)}

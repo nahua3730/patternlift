@@ -87,7 +87,7 @@ export function ModeSetup({ mode }: { mode: SetupMode }) {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
       <section className="uiverse-panel px-6 py-7 md:px-8">
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-lake">
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-coral">
           {content.step}
         </p>
         <h1 className="mt-3 text-3xl font-semibold tracking-tight text-ink">
@@ -107,7 +107,7 @@ export function ModeSetup({ mode }: { mode: SetupMode }) {
               key={style.id}
               type="button"
               onClick={() => setCoachStyle(style.id)}
-              className={`uiverse-choice p-6 text-left transition ${
+              className={`mode-choice p-6 text-left transition ${
                 isActive ? "uiverse-choice-active text-white" : "text-ink"
               }`}
             >

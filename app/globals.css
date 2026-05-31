@@ -12,16 +12,16 @@
 
 html {
   min-height: 100%;
-  background: #f4f1ea;
+  background: #faf8f4;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
   background:
-    radial-gradient(circle at top left, rgba(89, 165, 216, 0.18), transparent 34%),
-    radial-gradient(circle at bottom right, rgba(124, 196, 124, 0.16), transparent 30%),
-    linear-gradient(180deg, #f7f4ec, #f2efe7);
+    radial-gradient(circle at top left, rgba(255, 124, 124, 0.12), transparent 28%),
+    radial-gradient(circle at top right, rgba(255, 232, 188, 0.22), transparent 26%),
+    linear-gradient(180deg, #fcfbf8, #f5f2eb);
   color: #111111;
   font-family: Arial, Helvetica, sans-serif;
 }
@@ -43,9 +43,9 @@ select {
   overflow: hidden;
   border: 1px solid rgba(17, 17, 17, 0.1);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.84);
   box-shadow:
-    0 12px 28px rgba(17, 17, 17, 0.08),
+    0 12px 28px rgba(17, 17, 17, 0.06),
     inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
@@ -69,10 +69,10 @@ select {
 
 .uiverse-field:focus {
   outline: none;
-  border-color: rgba(17, 17, 17, 0.34);
+  border-color: rgba(255, 92, 92, 0.38);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.92),
-    0 0 0 3px rgba(89, 165, 216, 0.12);
+    0 0 0 3px rgba(255, 92, 92, 0.12);
 }
 
 .uiverse-button {
@@ -81,10 +81,10 @@ select {
   border: 1px solid rgba(17, 17, 17, 0.12);
   border-radius: 8px;
   background:
-    linear-gradient(180deg, #7cc47c, #59a5d8);
+    linear-gradient(180deg, #ff7c7c, #ff5c5c);
   color: white;
   box-shadow:
-    0 10px 18px rgba(89, 165, 216, 0.18),
+    0 10px 18px rgba(255, 92, 92, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.22);
   transition:
     transform 160ms ease,
@@ -104,7 +104,7 @@ select {
 .uiverse-button:hover {
   transform: translateY(-1px);
   box-shadow:
-    0 14px 24px rgba(89, 165, 216, 0.22),
+    0 14px 24px rgba(255, 92, 92, 0.24),
     inset 0 1px 0 rgba(255, 255, 255, 0.26);
 }
 
@@ -153,12 +153,12 @@ select {
 }
 
 .uiverse-choice-active {
-  border-color: rgba(89, 165, 216, 0.8);
+  border-color: rgba(255, 92, 92, 0.8);
   background:
-    linear-gradient(180deg, rgba(89, 165, 216, 0.98), rgba(124, 196, 124, 0.98));
+    linear-gradient(180deg, rgba(255, 124, 124, 0.98), rgba(255, 92, 92, 0.98));
   color: white;
   box-shadow:
-    0 12px 24px rgba(89, 165, 216, 0.2),
+    0 12px 24px rgba(255, 92, 92, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
@@ -183,12 +183,12 @@ select {
 }
 
 .uiverse-chip-active {
-  border-color: rgba(124, 196, 124, 0.84);
+  border-color: rgba(255, 92, 92, 0.84);
   background:
-    linear-gradient(180deg, rgba(124, 196, 124, 0.98), rgba(89, 165, 216, 0.98));
+    linear-gradient(180deg, rgba(255, 124, 124, 0.98), rgba(255, 92, 92, 0.98));
   color: white;
   box-shadow:
-    0 10px 18px rgba(124, 196, 124, 0.18),
+    0 10px 18px rgba(255, 92, 92, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.16);
 }
 
@@ -213,10 +213,212 @@ select {
 }
 
 .uiverse-bubble-active {
-  border-color: rgba(89, 165, 216, 0.82);
+  border-color: rgba(255, 92, 92, 0.82);
   background:
-    linear-gradient(180deg, rgba(89, 165, 216, 0.98), rgba(124, 196, 124, 0.98));
+    linear-gradient(180deg, rgba(255, 124, 124, 0.98), rgba(255, 92, 92, 0.98));
   box-shadow:
-    0 12px 22px rgba(89, 165, 216, 0.18),
+    0 12px 22px rgba(255, 92, 92, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.app-frame {
+  min-height: 100vh;
+}
+
+.app-sidebar {
+  flex-direction: column;
+  border: 1px solid rgba(17, 17, 17, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+  padding: 1.15rem;
+  box-shadow:
+    0 14px 32px rgba(17, 17, 17, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+}
+
+.app-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.app-logo-mark {
+  display: inline-flex;
+  height: 2.75rem;
+  width: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #ff7c7c, #ff5c5c);
+  color: white;
+  font-weight: 700;
+  box-shadow: 0 12px 24px rgba(255, 92, 92, 0.22);
+}
+
+.sidebar-link {
+  display: block;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.95rem 1rem;
+  transition:
+    transform 180ms ease,
+    background 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.sidebar-link:hover {
+  transform: translateY(-1px);
+  border-color: rgba(17, 17, 17, 0.08);
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.sidebar-link-active {
+  border-color: rgba(255, 92, 92, 0.18);
+  background: linear-gradient(180deg, rgba(255, 124, 124, 0.98), rgba(255, 92, 92, 0.98));
+  color: white;
+  box-shadow: 0 12px 24px rgba(255, 92, 92, 0.18);
+}
+
+.page-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  border: 1px solid rgba(17, 17, 17, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.84);
+  padding: 1.5rem;
+  box-shadow:
+    0 12px 28px rgba(17, 17, 17, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.74);
+}
+
+@media (min-width: 1024px) {
+  .page-hero {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+}
+
+.home-hero {
+  border: 1px solid rgba(17, 17, 17, 0.08);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at top left, rgba(255, 124, 124, 0.14), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 249, 244, 0.92));
+  box-shadow:
+    0 18px 40px rgba(17, 17, 17, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.mode-card,
+.pattern-card,
+.pattern-cluster,
+.mode-choice,
+.coach-dock,
+.coach-input-shell,
+.coach-chip {
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease,
+    background 180ms ease,
+    opacity 180ms ease;
+}
+
+.mode-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(17, 17, 17, 0.08);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 250, 244, 0.92));
+  box-shadow:
+    0 16px 34px rgba(17, 17, 17, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.mode-card:hover,
+.pattern-card:hover,
+.mode-choice:hover,
+.pattern-cluster:hover {
+  transform: translateY(-2px);
+}
+
+.mode-card::after {
+  content: "";
+  position: absolute;
+  inset: auto -10% -35% auto;
+  height: 9rem;
+  width: 9rem;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(255, 124, 124, 0.16), transparent 70%);
+}
+
+.pattern-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 12.5rem;
+  border: 1px solid rgba(17, 17, 17, 0.08);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 249, 244, 0.92));
+  padding: 1.25rem;
+  box-shadow:
+    0 12px 26px rgba(17, 17, 17, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.pattern-card-active {
+  border-color: rgba(255, 92, 92, 0.22);
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.14), transparent 36%),
+    linear-gradient(180deg, rgba(255, 124, 124, 0.98), rgba(255, 92, 92, 0.98));
+  box-shadow: 0 16px 28px rgba(255, 92, 92, 0.18);
+}
+
+.pattern-cluster {
+  border: 1px solid rgba(17, 17, 17, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow:
+    0 14px 30px rgba(17, 17, 17, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.76);
+}
+
+.mode-choice {
+  border-radius: 8px;
+}
+
+.coach-dock {
+  overflow: hidden;
+  border: 1px solid rgba(17, 17, 17, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow:
+    0 24px 60px rgba(17, 17, 17, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(18px);
+}
+
+.coach-input-shell {
+  border: 1px solid rgba(17, 17, 17, 0.08);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 248, 242, 0.96));
+  padding: 0.9rem;
+}
+
+.coach-chip {
+  border: 1px solid rgba(17, 17, 17, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.coach-chip:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 92, 92, 0.14);
+  box-shadow: 0 8px 16px rgba(17, 17, 17, 0.05);
 }

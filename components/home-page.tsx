@@ -27,16 +27,16 @@ const modeCards = [
 export function HomePage() {
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 pt-6">
-      <section className="px-2 text-center">
-        <p className="text-sm font-semibold uppercase tracking-[0.24em] text-ember">
+      <section className="home-hero px-4 py-10 text-center sm:px-10">
+        <p className="text-sm font-semibold uppercase tracking-[0.24em] text-coral">
           PatternLift
         </p>
         <h1 className="mx-auto mt-4 max-w-4xl text-4xl font-semibold tracking-tight text-ink md:text-5xl">
-          Learn coding patterns through a flow that feels like a real study app.
+          Learn coding patterns through a study flow that actually feels guided.
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-black/68">
-          Start by choosing how you want to work today. Each mode takes you into
-          its own next step instead of dropping everything onto one screen.
+          Start with the kind of help you want today. Each mode takes you into
+          its own path instead of dumping the whole app in your lap at once.
         </p>
       </section>
 
@@ -45,10 +45,10 @@ export function HomePage() {
           <Link
             key={card.href}
             href={card.href}
-            className="uiverse-panel flex min-h-[250px] flex-col justify-between p-7 transition hover:-translate-y-0.5 hover:border-black/18"
+            className="mode-card flex min-h-[270px] flex-col justify-between p-7"
           >
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-lake">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-coral">
                 {card.eyebrow}
               </p>
               <h2 className="mt-4 text-2xl font-semibold text-ink">{card.title}</h2>
@@ -60,6 +60,18 @@ export function HomePage() {
               <span aria-hidden="true">→</span>
             </div>
           </Link>
+        ))}
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-3">
+        {[
+          "Pick one mode instead of juggling everything.",
+          "Keep the coach close even when you are not in guided mode.",
+          "Move from pattern choice to real coding without a messy jump."
+        ].map((line) => (
+          <div key={line} className="uiverse-panel p-5 text-sm leading-6 text-black/64">
+            {line}
+          </div>
         ))}
       </section>
     </div>

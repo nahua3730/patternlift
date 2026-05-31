@@ -13,6 +13,7 @@ const config: Config = {
         mist: "#f4f1ea",
         fern: "#7cc47c",
         ember: "#e85d3d",
+        coral: "#ff5c5c",
         lake: "#59a5d8"
       }
     }
@@ -21,4 +22,3 @@ const config: Config = {
 };
 
 export default config;
-

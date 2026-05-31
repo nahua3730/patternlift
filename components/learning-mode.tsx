@@ -62,7 +62,7 @@ export function LearningMode({ patternIds, coachStyle }: LearningModeProps) {
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
       <section className="uiverse-panel px-6 py-7 md:px-8">
         <div className="max-w-4xl">
-          <p className="text-sm font-semibold uppercase tracking-wide text-lake">
+          <p className="text-sm font-semibold uppercase tracking-wide text-coral">
             Learning Mode
           </p>
           <h1 className="mt-3 text-3xl font-semibold tracking-tight text-ink">
@@ -89,7 +89,7 @@ export function LearningMode({ patternIds, coachStyle }: LearningModeProps) {
           {selectedPatterns.map((pattern) => (
             <span
               key={pattern.id}
-              className="uiverse-bubble uiverse-bubble-active px-4 py-3 text-sm font-medium text-white"
+              className="rounded-full border border-white/14 bg-coral px-4 py-3 text-sm font-medium text-white shadow-[0_10px_20px_rgba(255,92,92,0.18)]"
             >
               {pattern.label}
             </span>
@@ -136,7 +136,7 @@ export function LearningMode({ patternIds, coachStyle }: LearningModeProps) {
                   key={style.id}
                   type="button"
                   onClick={() => setSelectedCoachStyle(style.id as LearningModeProps["coachStyle"])}
-                  className={`uiverse-choice p-5 text-left ${
+                  className={`mode-choice p-5 text-left ${
                     isActive ? "uiverse-choice-active text-white" : "text-ink"
                   }`}
                 >
@@ -168,7 +168,7 @@ export function LearningMode({ patternIds, coachStyle }: LearningModeProps) {
 
       <div className="grid gap-6 xl:grid-cols-2">
         {groupedProblems.map(({ pattern, problems }) => (
-          <section key={pattern.id} className="uiverse-panel p-6">
+          <section key={pattern.id} className="pattern-cluster p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xl font-semibold text-ink">{pattern.label}</p>
@@ -208,7 +208,7 @@ function ProblemSuggestionCard({
   const practiceHref = `/practice?problem=${encodeURIComponent(problem.id)}&mode=learn&coach=${coachStyle}`;
 
   return (
-    <div className="rounded-lg border border-black/10 bg-white/88 p-4">
+    <div className="rounded-[8px] border border-black/10 bg-white/88 p-4 transition duration-200 hover:-translate-y-0.5 hover:border-black/16">
       <div className="flex flex-wrap items-center gap-2">
         <p className="text-sm font-semibold text-ink">{problem.title}</p>
         {roadmapMeta?.leetcodeNumber ? (
