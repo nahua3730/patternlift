@@ -140,7 +140,10 @@ export function PracticeWorkspace({
   const [runnerError, setRunnerError] = useState<string | null>(null);
   const [testCases, setTestCases] = useState<EditableExample[]>([]);
   const [selectedTestCaseId, setSelectedTestCaseId] = useState<string | null>(null);
+  const [splitRatio, setSplitRatio] = useState(44);
+  const [isDesktopSplit, setIsDesktopSplit] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
+  const splitLayoutRef = useRef<HTMLDivElement | null>(null);
 
   const activeProblem = useMemo(
     () => allProblems.find((problem) => problem.id === problemId) ?? allProblems[0],
@@ -193,6 +196,48 @@ export function PracticeWorkspace({
     if (!container) return;
     container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
   }, [chatMessages, isCoachLoading]);
+
+  useEffect(() => {
+    function updateViewportMode() {
+      setIsDesktopSplit(window.innerWidth >= 1280);
+    }
+
+    updateViewportMode();
+    window.addEventListener("resize", updateViewportMode);
+    return () => window.removeEventListener("resize", updateViewportMode);
+  }, []);
+
+  useEffect(() => {
+    function handlePointerMove(event: PointerEvent) {
+      const layout = splitLayoutRef.current;
+      if (!layout || !isDesktopSplit) return;
+
+      const bounds = layout.getBoundingClientRect();
+      const nextRatio = ((event.clientX - bounds.left) / bounds.width) * 100;
+      const clamped = Math.min(62, Math.max(30, nextRatio));
+      setSplitRatio(clamped);
+    }
+
+    function handlePointerUp() {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    }
+
+    function handleStart(event: PointerEvent) {
+      const target = event.target as HTMLElement | null;
+      if (!target?.closest("[data-split-handle='true']")) return;
+      event.preventDefault();
+      window.addEventListener("pointermove", handlePointerMove);
+      window.addEventListener("pointerup", handlePointerUp);
+    }
+
+    window.addEventListener("pointerdown", handleStart);
+    return () => {
+      window.removeEventListener("pointerdown", handleStart);
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+  }, [isDesktopSplit]);
 
   useEffect(() => {
     setActiveCoachStyle(coachStyle);
@@ -563,7 +608,17 @@ export function PracticeWorkspace({
         </div>
       </section>
 
-      <div className="grid flex-1 gap-3 xl:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)]">
+      <div
+        ref={splitLayoutRef}
+        className="grid flex-1 gap-3 xl:grid-cols-[minmax(0,1fr)_10px_minmax(0,1fr)]"
+        style={
+          isDesktopSplit
+            ? {
+                gridTemplateColumns: `minmax(0, ${splitRatio}fr) 10px minmax(0, ${100 - splitRatio}fr)`
+              }
+            : undefined
+        }
+      >
         <section className="flex min-h-[84vh] flex-col overflow-hidden rounded-[8px] border border-white/8 bg-[#171717] xl:h-[calc(100vh-6rem)]">
           <div className="border-b border-white/8 px-4 py-3">
             <div className="flex items-center gap-3 border-b border-white/8 pb-3 text-sm">
@@ -665,6 +720,17 @@ export function PracticeWorkspace({
             </div>
           </div>
         </section>
+
+        <div className="hidden xl:flex items-stretch justify-center">
+          <button
+            type="button"
+            data-split-handle="true"
+            aria-label="Resize panels"
+            className="group flex w-[10px] cursor-col-resize items-center justify-center rounded-full bg-transparent"
+          >
+            <span className="h-20 w-[4px] rounded-full bg-white/10 transition group-hover:bg-white/28 group-active:bg-white/40" />
+          </button>
+        </div>
 
         <section className="flex min-h-[84vh] flex-col overflow-hidden rounded-[8px] border border-white/8 bg-[#171717] xl:h-[calc(100vh-6rem)]">
           <div className="border-b border-white/8 px-4 py-3">
