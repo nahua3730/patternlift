@@ -235,13 +235,29 @@ export function GlobalCoachDock() {
 
   const quickActions = coachQuickActions[pageKind];
 
+  if (pathname === "/practice") {
+    return null;
+  }
+
   return (
     <aside
-      className={`fixed bottom-4 right-4 z-40 w-[min(28rem,calc(100vw-1.5rem))] transition-all duration-300 ${
-        isOpen ? "translate-y-0 opacity-100" : "translate-y-3 opacity-96"
+      className={`fixed bottom-4 right-4 z-40 transition-all duration-300 ${
+        isOpen
+          ? "w-[min(28rem,calc(100vw-1.5rem))] translate-y-0 opacity-100"
+          : "w-auto translate-y-0 opacity-100"
       }`}
     >
-      <div className="coach-dock">
+      <div className={`${isOpen ? "coach-dock" : ""}`}>
+        {!isOpen ? (
+          <button
+            type="button"
+            onClick={() => setIsOpen(true)}
+            className="uiverse-button inline-flex items-center gap-2 rounded-full px-4 py-3 text-sm font-medium"
+          >
+            Ask the coach
+          </button>
+        ) : (
+          <div className="coach-dock">
         <div className="flex items-center justify-between gap-4 border-b border-black/8 px-4 py-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-coral">
@@ -260,7 +276,6 @@ export function GlobalCoachDock() {
           </button>
         </div>
 
-        {isOpen ? (
           <>
             <div className="max-h-72 space-y-3 overflow-y-auto px-4 py-4">
               {messages.map((message) => (
@@ -331,9 +346,6 @@ export function GlobalCoachDock() {
               </div>
             </div>
           </>
-        ) : (
-          <div className="px-4 py-3 text-sm text-black/62">
-            {introMessage}
           </div>
         )}
       </div>

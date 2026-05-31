@@ -5,10 +5,7 @@ import { useMemo, useState } from "react";
 import { patternOptions } from "@/lib/product";
 
 export function LearnSetup() {
-  const [selectedPatterns, setSelectedPatterns] = useState<string[]>([
-    "sliding-window",
-    "two-pointers"
-  ]);
+  const [selectedPatterns, setSelectedPatterns] = useState<string[]>([]);
 
   const nextHref = useMemo(() => {
     const params = new URLSearchParams();
@@ -34,7 +31,7 @@ export function LearnSetup() {
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
       <section className="uiverse-panel px-6 py-7 md:px-8">
         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-coral">
-          Learning Mode · Step 2
+          Learning Mode
         </p>
         <h1 className="mt-3 text-3xl font-semibold tracking-tight text-ink">
           Choose the patterns you want to focus on first.
@@ -148,7 +145,15 @@ export function LearnSetup() {
             </Link>
             <Link
               href={nextHref}
-              className="uiverse-button inline-flex items-center justify-center px-5 py-3 text-sm font-medium"
+              aria-disabled={selectedCount === 0}
+              className={`inline-flex items-center justify-center px-5 py-3 text-sm font-medium ${
+                selectedCount === 0
+                  ? "cursor-not-allowed rounded-[8px] border border-black/10 bg-white/70 text-black/34"
+                  : "uiverse-button"
+              }`}
+              onClick={(event) => {
+                if (selectedCount === 0) event.preventDefault();
+              }}
             >
               Continue
             </Link>

@@ -9,11 +9,13 @@ import { usePatternLiftState } from "@/components/patternlift-state";
 export function PracticePageView({
   initialProblemId,
   mode,
-  coachStyle
+  coachStyle,
+  selectedPatternIds
 }: {
   initialProblemId?: string;
   mode?: "learn" | "recognize" | "practice";
   coachStyle?: "beginner" | "guided" | "optional" | "off";
+  selectedPatternIds?: string[];
 }) {
   const { addAttempt } = usePatternLiftState();
   return (
@@ -22,6 +24,7 @@ export function PracticePageView({
       initialProblemId={initialProblemId}
       mode={mode}
       coachStyle={coachStyle}
+      selectedPatternIds={selectedPatternIds}
     />
   );
 }

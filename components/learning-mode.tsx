@@ -100,7 +100,7 @@ export function LearningMode({ patternIds, coachStyle }: LearningModeProps) {
       <section className="uiverse-panel px-6 py-6 md:px-8">
         <div className="flex flex-col gap-4">
           <div>
-            <p className="text-lg font-semibold text-ink">Step 3: choose how the coach behaves</p>
+            <p className="text-lg font-semibold text-ink">Choose how the coach behaves</p>
             <p className="mt-1 text-sm leading-6 text-black/64">
               Pick the teaching style first, then open one of the suggested questions below.
             </p>
@@ -187,6 +187,7 @@ export function LearningMode({ patternIds, coachStyle }: LearningModeProps) {
                   key={problem.id}
                   problem={problem}
                   coachStyle={selectedCoachStyle}
+                  patternIds={selectedPatternIds}
                 />
               ))}
             </div>
@@ -199,13 +200,22 @@ export function LearningMode({ patternIds, coachStyle }: LearningModeProps) {
 
 function ProblemSuggestionCard({
   problem,
-  coachStyle
+  coachStyle,
+  patternIds
 }: {
   problem: AppProblem;
   coachStyle: "beginner" | "guided" | "optional" | "off";
+  patternIds: string[];
 }) {
   const roadmapMeta = getOfficialProblemRoadmapMeta(problem.id);
-  const practiceHref = `/practice?problem=${encodeURIComponent(problem.id)}&mode=learn&coach=${coachStyle}`;
+  const params = new URLSearchParams();
+  params.set("problem", problem.id);
+  params.set("mode", "learn");
+  params.set("coach", coachStyle);
+  if (patternIds.length > 0) {
+    params.set("patterns", patternIds.join(","));
+  }
+  const practiceHref = `/practice?${params.toString()}`;
 
   return (
     <div className="rounded-[8px] border border-black/10 bg-white/88 p-4 transition duration-200 hover:-translate-y-0.5 hover:border-black/16">

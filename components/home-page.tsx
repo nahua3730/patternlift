@@ -3,21 +3,21 @@ import Link from "next/link";
 const modeCards = [
   {
     href: "/learn/setup",
-    eyebrow: "Step 1",
+    eyebrow: "Mode",
     title: "Learning Mode",
     body:
       "Pick the patterns you actually want to learn, then move into a guided path of problems from easier reps into harder ones."
   },
   {
     href: "/recognize/setup",
-    eyebrow: "Step 1",
+    eyebrow: "Mode",
     title: "Pattern Recognition",
     body:
       "Bring in a question, name the pattern you suspect, and let the coach sharpen your instinct before the code takes over."
   },
   {
     href: "/practice/setup",
-    eyebrow: "Step 1",
+    eyebrow: "Mode",
     title: "Pure Practice",
     body:
       "Open the workspace, run code, and decide how much help you want sitting beside you while you solve."

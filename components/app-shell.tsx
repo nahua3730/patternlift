@@ -34,7 +34,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (pathname === "/recognize/setup") {
       return {
         eyebrow: "Pattern Recognition",
-        title: "Set up your coaching style",
+        title: "Choose how the coach should help",
         body: "Choose how active the coach should be before the recognition workspace opens.",
         backHref: "/",
         backLabel: "Back to modes",
@@ -45,10 +45,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (pathname === "/practice/setup") {
       return {
         eyebrow: "Pure Practice",
-        title: "Set up your practice workspace",
+        title: "Choose how the coach should help",
         body: "Choose how much help stays nearby while you solve.",
         backHref: "/",
         backLabel: "Back to modes",
+        utilityLinks: []
+      };
+    }
+
+    if (pathname === "/practice/select") {
+      return {
+        eyebrow: "Question Selection",
+        title: "Pick one problem first",
+        body: "Choose the question here so the workspace can stay focused on chat and code.",
+        backHref: "/practice/setup",
+        backLabel: "Back to coach settings",
         utilityLinks: []
       };
     }

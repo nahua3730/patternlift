@@ -51,10 +51,10 @@ const modeContent: Record<
 > = {
   recognize: {
     title: "Decide how the coach should help you read the problem.",
-    step: "Pattern Recognition · Step 2",
+    step: "Pattern Recognition",
     body:
-      "The next page is where you’ll bring in a question, call your shot on the pattern, and get help distinguishing lookalike approaches.",
-    nextLabel: "Open recognition workspace",
+      "The next page is where you’ll choose a problem first, then open a cleaner recognition workspace.",
+    nextLabel: "Continue",
     defaultCoach: "guided",
     supportTitle: "Best for",
     supportBody:
@@ -62,10 +62,10 @@ const modeContent: Record<
   },
   practice: {
     title: "Set the coaching level before you start solving.",
-    step: "Pure Practice · Step 2",
+    step: "Pure Practice",
     body:
-      "The next page opens the coding workspace directly, so this is where you decide whether the coach stays active, quiet, or completely off.",
-    nextLabel: "Open practice workspace",
+      "Choose how close the coach should stay, then pick the question before you open the workspace.",
+    nextLabel: "Continue",
     defaultCoach: "off",
     supportTitle: "Best for",
     supportBody:
@@ -81,7 +81,7 @@ export function ModeSetup({ mode }: { mode: SetupMode }) {
     const params = new URLSearchParams();
     params.set("mode", mode);
     params.set("coach", coachStyle);
-    return `/practice?${params.toString()}`;
+    return `/practice/select?${params.toString()}`;
   }, [coachStyle, mode]);
 
   return (

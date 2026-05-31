@@ -5,10 +5,7 @@ import type { CoachRequest, CoachResponse } from "@/lib/coach";
 import {
   allProblems,
   getOfficialProblemRoadmapMeta,
-  patternOptions,
-  roadmapTrackTotals,
-  type AppProblem,
-  type RoadmapTrack
+  patternOptions
 } from "@/lib/product";
 import {
   getAvailableLanguages,
@@ -18,11 +15,10 @@ import {
   type SupportedLanguage
 } from "@/lib/problem-code";
 import { buildTechniqueBriefs, getSuggestedTechniques } from "@/lib/techniques";
-import { usePatternLiftState } from "@/components/patternlift-state";
+import Link from "next/link";
 
 type PatternId = (typeof patternOptions)[number]["id"];
 type CoachStyle = "beginner" | "guided" | "optional" | "off";
-type RoadmapFilter = "all" | "official" | RoadmapTrack;
 type ChatMessage = {
   id: string;
   speaker: "coach" | "user";
@@ -53,6 +49,7 @@ type PracticeWorkspaceProps = {
   initialProblemId?: string;
   mode?: "learn" | "recognize" | "practice";
   coachStyle?: CoachStyle;
+  selectedPatternIds?: string[];
 };
 
 type RunResult = {
@@ -114,12 +111,10 @@ export function PracticeWorkspace({
   onComplete,
   initialProblemId,
   mode = "recognize",
-  coachStyle = "guided"
+  coachStyle = "guided",
+  selectedPatternIds = []
 }: PracticeWorkspaceProps) {
-  const { history } = usePatternLiftState();
   const [problemId, setProblemId] = useState<string>(initialProblemId ?? allProblems[0].id);
-  const [problemQuery, setProblemQuery] = useState("");
-  const [roadmapFilter, setRoadmapFilter] = useState<RoadmapFilter>("all");
   const [problemText, setProblemText] = useState(allProblems[0].prompt);
   const [activeCoachStyle, setActiveCoachStyle] = useState<CoachStyle>(coachStyle);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -166,69 +161,6 @@ export function PracticeWorkspace({
     () => getAvailableLanguages(activeCodeConfig),
     [activeCodeConfig]
   );
-  const completedProblemIds = useMemo(
-    () => new Set(history.map((item) => item.problemId)),
-    [history]
-  );
-
-  const problemsByCategory = useMemo(() => {
-    return allProblems.reduce<Record<string, AppProblem[]>>((groups, problem) => {
-      const current = groups[problem.category] ?? [];
-      groups[problem.category] = [...current, problem];
-      return groups;
-    }, {});
-  }, []);
-
-  const filteredProblems = useMemo(() => {
-    const normalizedQuery = problemQuery.trim().toLowerCase();
-
-    return allProblems
-      .filter((problem) => {
-        if (roadmapFilter === "all") return true;
-        const meta = getOfficialProblemRoadmapMeta(problem.id);
-        if (roadmapFilter === "official") return Boolean(meta);
-        return Boolean(meta?.tracks.includes(roadmapFilter));
-      })
-      .map((problem) => {
-        const haystack = [
-          problem.title,
-          problem.category,
-          problem.prompt,
-          problem.targetPatternId,
-          problem.difficulty
-        ]
-          .join(" ")
-          .toLowerCase();
-
-        const score =
-          (problem.title.toLowerCase().includes(normalizedQuery) ? 4 : 0) +
-          (problem.category.toLowerCase().includes(normalizedQuery) ? 2 : 0) +
-          (problem.prompt.toLowerCase().includes(normalizedQuery) ? 1 : 0) +
-          (haystack.includes(normalizedQuery) ? 1 : 0);
-
-        return { problem, score };
-      })
-      .filter((entry) => (normalizedQuery ? entry.score > 0 : true))
-      .sort((left, right) => right.score - left.score || left.problem.title.localeCompare(right.problem.title))
-      .slice(0, 8)
-      .map((entry) => entry.problem);
-  }, [problemQuery, roadmapFilter]);
-
-  const roadmapCoverage = useMemo(() => {
-    const tracks: RoadmapTrack[] = ["blind75", "neetcode150"];
-    return tracks.map((track) => {
-      const included = allProblems.filter((problem) =>
-        getOfficialProblemRoadmapMeta(problem.id)?.tracks.includes(track)
-      );
-      const completed = included.filter((problem) => completedProblemIds.has(problem.id)).length;
-      return {
-        track,
-        includedCount: included.length,
-        totalCount: roadmapTrackTotals[track],
-        completedCount: completed
-      };
-    });
-  }, [completedProblemIds]);
 
   const selectedTestCase =
     testCases.find((testCase) => testCase.id === selectedTestCaseId) ?? testCases[0] ?? null;
@@ -326,12 +258,6 @@ export function PracticeWorkspace({
     setTestCases(nextCases);
     setSelectedTestCaseId(nextCases[0]?.id ?? null);
   }, [activeCodeConfig, activeProblem, availableLanguages, contrastPatternLabel, correctPattern.label, mode]);
-
-  function chooseProblem(nextProblemId: string) {
-    const nextProblem =
-      allProblems.find((problem) => problem.id === nextProblemId) ?? allProblems[0];
-    setProblemId(nextProblem.id);
-  }
 
   function updateProblemText(value: string) {
     setProblemText(value);
@@ -571,329 +497,209 @@ export function PracticeWorkspace({
     }
   }
 
+  const selectionBackHref = useMemo(() => {
+    if (mode === "practice" || mode === "recognize") {
+      const params = new URLSearchParams();
+      params.set("mode", mode);
+      params.set("coach", activeCoachStyle);
+      return `/practice/select?${params.toString()}`;
+    }
+
+    const params = new URLSearchParams();
+    params.set("coach", activeCoachStyle);
+    if (selectedPatternIds.length > 0) {
+      params.set("patterns", selectedPatternIds.join(","));
+    }
+    return `/learn?${params.toString()}`;
+  }, [activeCoachStyle, mode, selectedPatternIds]);
+
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
-      <ThreadMessage speaker="coach" title={modeCopy[mode].title}>
-        <p className="text-sm leading-7 text-black/72">{modeCopy[mode].body}</p>
-
-        <div className="mt-5 rounded-lg border border-black/10 bg-white/90 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold text-ink">Coach style</p>
-              <p className="mt-1 text-sm leading-6 text-black/62">
-                Keep this lightweight if you want, but the interaction stays chat-first.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {coachStyles.map((style) => {
-                const isActive = activeCoachStyle === style.id;
-                return (
-                  <button
-                    key={style.id}
-                    type="button"
-                    onClick={() => setActiveCoachStyle(style.id)}
-                    className={`rounded-full px-3 py-2 text-xs font-medium transition ${
-                      isActive
-                        ? "bg-ink text-white"
-                        : "border border-black/10 bg-white text-black/68"
-                    }`}
-                  >
-                    {style.label}
-                  </button>
-                );
-              })}
-            </div>
+    <div className="mx-auto flex w-full max-w-[92rem] flex-col gap-5">
+      <section className="uiverse-panel px-6 py-6 md:px-8">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-3xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-coral">
+              {mode === "learn" ? "Learning workspace" : mode === "recognize" ? "Recognition workspace" : "Practice workspace"}
+            </p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-ink">
+              {activeProblem.title}
+            </h2>
+            <p className="mt-3 text-base leading-7 text-black/68">{modeCopy[mode].body}</p>
           </div>
+
+          <Link href={selectionBackHref} className="coach-chip px-4 py-3 text-sm font-medium text-black/66">
+            Choose another problem
+          </Link>
         </div>
 
-        <div className="mt-5 flex flex-wrap items-end gap-3">
-          <label className="min-w-[18rem] flex-1 text-sm text-black/68">
-            Search questions
-            <input
-              value={problemQuery}
-              onChange={(event) => setProblemQuery(event.target.value)}
-              className="uiverse-field mt-2 block w-full px-3 py-2 text-sm text-ink"
-              placeholder="Try: sliding window, binary search, tree, shortest, graph..."
-            />
-          </label>
-
-          <label className="text-sm text-black/68">
-            Sample problem
-            <select
-              value={problemId}
-              onChange={(event) => chooseProblem(event.target.value)}
-              className="uiverse-field mt-2 block min-w-64 px-3 py-2 text-sm text-ink"
-            >
-              {Object.entries(problemsByCategory).map(([category, problems]) => (
-                <optgroup key={category} label={category}>
-                  {problems.map((problem) => (
-                    <option key={problem.id} value={problem.id}>
-                      {problem.title}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-          </label>
-
-          <button
-            type="button"
-            onClick={() => {
-              setProblemText(activeProblem.prompt);
-              setCoachError(null);
-            }}
-            className="uiverse-button-secondary px-4 py-2 text-sm font-medium"
-          >
-            Reset question
-          </button>
-        </div>
-
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
-          {roadmapCoverage.map((coverage) => (
-            <div key={coverage.track} className="rounded-lg border border-black/10 bg-white/90 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-lake">
-                {coverage.track === "blind75" ? "75 Track" : "150 Track"}
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-ink">
-                {coverage.completedCount}/{coverage.includedCount}
-              </p>
-              <p className="mt-1 text-sm leading-6 text-black/64">
-                Completed in app / included here
-              </p>
-              <p className="mt-2 text-xs text-black/54">
-                {coverage.includedCount} of {coverage.totalCount} official roadmap problems currently loaded
-              </p>
-            </div>
-          ))}
-          <div className="rounded-lg border border-black/10 bg-white/90 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-ember">Filters</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {[
-                { id: "all" as const, label: "All questions" },
-                { id: "official" as const, label: "Official only" },
-                { id: "blind75" as const, label: "75 track" },
-                { id: "neetcode150" as const, label: "150 track" }
-              ].map((filterOption) => {
-                const isActive = roadmapFilter === filterOption.id;
-                return (
-                  <button
-                    key={filterOption.id}
-                    type="button"
-                    onClick={() => setRoadmapFilter(filterOption.id)}
-                    className={`rounded-full px-3 py-2 text-xs font-medium transition ${
-                      isActive
-                        ? "bg-ink text-white"
-                        : "border border-black/10 bg-white text-black/68"
-                    }`}
-                  >
-                    {filterOption.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-4 rounded-lg border border-black/10 bg-white/88 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold text-ink">Matching questions</p>
-            <span className="text-xs font-medium text-black/56">
-              {filteredProblems.length} match{filteredProblems.length === 1 ? "" : "es"}
-            </span>
-          </div>
-          <div className="mt-3 flex flex-col gap-2">
-            {filteredProblems.length > 0 ? (
-              filteredProblems.map((problem) => {
-                const isActive = problem.id === activeProblem.id;
-                const problemMeta = getOfficialProblemRoadmapMeta(problem.id);
-
-                return (
-                  <button
-                    key={problem.id}
-                    type="button"
-                    onClick={() => chooseProblem(problem.id)}
-                    className={`rounded-lg border px-4 py-3 text-left transition ${
-                      isActive
-                        ? "border-lake/30 bg-lake/10"
-                        : "border-black/10 bg-mist hover:border-black/20"
-                    }`}
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-semibold text-ink">{problem.title}</p>
-                      {completedProblemIds.has(problem.id) ? (
-                        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700">
-                          Completed
-                        </span>
-                      ) : null}
-                      {problemMeta?.leetcodeNumber ? (
-                        <span className="rounded-full border border-black/10 bg-white px-2 py-1 text-[11px] font-medium text-black/60">
-                          #{problemMeta.leetcodeNumber}
-                        </span>
-                      ) : null}
-                      {problemMeta?.tracks.map((track) => (
-                        <span
-                          key={`${problem.id}-${track}`}
-                          className="rounded-full border border-black/10 bg-white px-2 py-1 text-[11px] font-medium text-black/60"
-                        >
-                          {track === "blind75" ? "75" : "150"}
-                        </span>
-                      ))}
-                      <span className="rounded-full border border-black/10 bg-white px-2 py-1 text-[11px] font-medium text-black/60">
-                        {problem.category}
-                      </span>
-                      <span className="rounded-full border border-black/10 bg-white px-2 py-1 text-[11px] font-medium text-black/60">
-                        {problem.difficulty}
-                      </span>
-                    </div>
-                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-black/66">
-                      {problem.prompt}
-                    </p>
-                  </button>
-                );
-              })
-            ) : (
-              <div className="rounded-lg border border-dashed border-black/14 bg-mist p-4 text-sm leading-6 text-black/60">
-                No question matches that search yet. Try a pattern name like <span className="font-semibold text-ink">binary search</span> or a keyword like <span className="font-semibold text-ink">substring</span>.
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="mt-4 rounded-lg border border-black/10 bg-white/90 p-4">
-          <p className="text-sm font-semibold text-ink">Problem statement</p>
-          <textarea
-            value={problemText}
-            onChange={(event) => updateProblemText(event.target.value)}
-            rows={7}
-            className="uiverse-field mt-3 w-full px-4 py-3 text-sm leading-6 text-ink"
-            placeholder="Paste a LeetCode problem here."
-          />
-        </div>
-      </ThreadMessage>
-
-      <ThreadMessage speaker="user" title={activeProblem.title}>
-        <p className="whitespace-pre-wrap text-sm leading-7 text-black/78">{problemText}</p>
-        {activeRoadmapMeta ? (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {activeRoadmapMeta.leetcodeNumber ? (
-              <span className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/68">
-                LeetCode #{activeRoadmapMeta.leetcodeNumber}
-              </span>
-            ) : null}
-            {activeRoadmapMeta.tracks.map((track) => (
-              <span
-                key={`${activeProblem.id}-${track}`}
-                className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/68"
+        <div className="mt-5 flex flex-wrap gap-2">
+          <span className="rounded-full border border-black/10 bg-white px-3 py-2 text-xs font-medium text-black/66">
+            Coach style
+          </span>
+          {coachStyles.map((style) => {
+            const isActive = activeCoachStyle === style.id;
+            return (
+              <button
+                key={style.id}
+                type="button"
+                onClick={() => setActiveCoachStyle(style.id)}
+                className={`rounded-full px-3 py-2 text-xs font-medium transition ${
+                  isActive
+                    ? "bg-ink text-white"
+                    : "border border-black/10 bg-white text-black/68"
+                }`}
               >
-                {track === "blind75" ? "Blind 75" : "NeetCode 150"}
-              </span>
-            ))}
-          </div>
-        ) : null}
-      </ThreadMessage>
-
-      <ThreadMessage speaker="coach" title="Before we dive in, here’s what stands out to me.">
-        <ul className="space-y-2 text-sm leading-6 text-black/72">
-          {quickRead.map((signal) => (
-            <li key={signal}>{signal}</li>
-          ))}
-        </ul>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <span className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/66">
-            Strongest pattern signal: {correctPattern.label}
-          </span>
-          <span className="rounded-full border border-black/10 bg-mist px-3 py-1 text-xs font-medium text-black/66">
-            Easy to confuse with {contrastPatternLabel}
-          </span>
-          {suggestedTechniques.slice(0, 2).map((technique) => (
-            <span
-              key={technique.id}
-              className="rounded-full border border-black/10 bg-mist px-3 py-1 text-xs font-medium text-black/66"
-            >
-              {technique.title}
-            </span>
-          ))}
+                {style.label}
+              </button>
+            );
+          })}
         </div>
-      </ThreadMessage>
+      </section>
 
-      {chatMessages.map((message) => (
-        <ThreadMessage key={message.id} speaker={message.speaker} title={message.title}>
-          <p className="whitespace-pre-wrap text-sm leading-7 text-black/74">{message.body}</p>
-        </ThreadMessage>
-      ))}
-
-      {isCoachLoading ? (
-        <ThreadMessage speaker="coach" title="Coach is thinking...">
-          <p className="text-sm leading-6 text-black/68">
-            I&apos;m reading your last message and shaping the next step.
-          </p>
-        </ThreadMessage>
-      ) : null}
-
-      {coachError ? (
-        <ThreadMessage speaker="coach" title="AI coaching unavailable">
-          <p className="text-sm leading-6 text-red-700">{coachError}</p>
-        </ThreadMessage>
-      ) : null}
-
-      <ThreadMessage
-        speaker="user"
-        title="Reply to the coach"
-        controls={
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={() => void sendCoachMessage()}
-              disabled={coachDraft.trim().length === 0 || isCoachLoading}
-              className="uiverse-button px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isCoachLoading ? "Sending..." : "Send"}
-            </button>
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+        <section className="uiverse-panel flex min-h-[72vh] flex-col overflow-hidden">
+          <div className="border-b border-black/8 px-5 py-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-coral">
+              Coach chat
+            </p>
+            <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-black/68">{problemText}</p>
+            {activeRoadmapMeta ? (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {activeRoadmapMeta.leetcodeNumber ? (
+                  <span className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/68">
+                    LeetCode #{activeRoadmapMeta.leetcodeNumber}
+                  </span>
+                ) : null}
+                {activeRoadmapMeta.tracks.map((track) => (
+                  <span
+                    key={`${activeProblem.id}-${track}`}
+                    className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/68"
+                  >
+                    {track === "blind75" ? "Blind 75" : "NeetCode 150"}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            <div className="mt-4 flex flex-wrap gap-2">
+              <span className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/66">
+                Strongest pattern: {correctPattern.label}
+              </span>
+              <span className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/66">
+                Easy to confuse with {contrastPatternLabel}
+              </span>
+              {suggestedTechniques.slice(0, 2).map((technique) => (
+                <span
+                  key={technique.id}
+                  className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/66"
+                >
+                  {technique.title}
+                </span>
+              ))}
+            </div>
           </div>
-        }
-      >
-        <p className="text-sm leading-6 text-black/72">
-          Answer naturally. Tell the coach what pattern you suspect, what feels confusing,
-          what first move you want to try, or ask for a hint or code review.
-        </p>
-        <textarea
-          value={coachDraft}
-          onChange={(event) => setCoachDraft(event.target.value)}
-          rows={4}
-          className="uiverse-field mt-3 w-full px-4 py-3 text-sm leading-6 text-ink"
-          placeholder={
-            mode === "recognize"
-              ? "Example: I think this is sliding window because the question talks about a substring, but I’m not sure when the left side should move."
-              : mode === "learn"
-                ? "Example: I think the pattern is hash map / set because I want fast lookup for complements. My first move would be storing seen values."
-                : "Example: I wrote a first pass with two pointers. Can you tell me if that direction makes sense before I go further?"
-          }
-        />
-      </ThreadMessage>
 
-      <ThreadMessage
-        speaker="coach"
-        title="Code workspace"
-        controls={
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={runExamples}
-              className="uiverse-button px-4 py-2 text-sm font-medium"
-            >
-              Run examples
-            </button>
-            <button
-              type="button"
-              onClick={resetCodeEditor}
-              className="uiverse-button-secondary px-4 py-2 text-sm font-medium"
-            >
-              Reset starter code
-            </button>
+          <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
+            <div className="rounded-[8px] border border-black/8 bg-white/84 p-4">
+              <p className="text-sm font-semibold text-ink">What stands out right away</p>
+              <ul className="mt-3 space-y-2 text-sm leading-6 text-black/68">
+                {quickRead.map((signal) => (
+                  <li key={signal}>{signal}</li>
+                ))}
+              </ul>
+            </div>
+
+            {chatMessages.map((message) => (
+              <ThreadMessage key={message.id} speaker={message.speaker} title={message.title}>
+                <p className="whitespace-pre-wrap text-sm leading-7 text-black/74">{message.body}</p>
+              </ThreadMessage>
+            ))}
+
+            {isCoachLoading ? (
+              <ThreadMessage speaker="coach" title="Coach is thinking...">
+                <p className="text-sm leading-6 text-black/68">
+                  I&apos;m reading your last message and shaping the next step.
+                </p>
+              </ThreadMessage>
+            ) : null}
+
+            {coachError ? (
+              <ThreadMessage speaker="coach" title="AI coaching unavailable">
+                <p className="text-sm leading-6 text-red-700">{coachError}</p>
+              </ThreadMessage>
+            ) : null}
           </div>
-        }
-      >
-        <div className="space-y-4">
+
+          <div className="border-t border-black/8 px-5 py-5">
+            <div className="coach-input-shell">
+              <textarea
+                value={coachDraft}
+                onChange={(event) => setCoachDraft(event.target.value)}
+                rows={4}
+                className="w-full resize-none border-0 bg-transparent text-sm leading-7 text-ink outline-none placeholder:text-black/34"
+                placeholder={
+                  mode === "recognize"
+                    ? "Tell the coach what pattern you suspect, what clues led you there, or what feels ambiguous."
+                    : mode === "learn"
+                      ? "Tell the coach what seems confusing, what first move you want to try, or ask for a nudge."
+                      : "Ask for a hint, a sanity check on your approach, or feedback on your code direction."
+                }
+              />
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProblemText(activeProblem.prompt);
+                    setCoachError(null);
+                  }}
+                  className="uiverse-button-secondary px-4 py-2 text-sm font-medium"
+                >
+                  Reset problem text
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void sendCoachMessage()}
+                  disabled={coachDraft.trim().length === 0 || isCoachLoading}
+                  className="uiverse-button px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isCoachLoading ? "Sending..." : "Send"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="uiverse-panel overflow-hidden">
+          <div className="border-b border-black/8 px-5 py-5">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-coral">
+                  Code workspace
+                </p>
+                <p className="mt-2 text-sm leading-6 text-black/64">
+                  Keep the conversation on the left and your implementation on the right.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={runExamples}
+                  className="uiverse-button px-4 py-2 text-sm font-medium"
+                >
+                  Run examples
+                </button>
+                <button
+                  type="button"
+                  onClick={resetCodeEditor}
+                  className="uiverse-button-secondary px-4 py-2 text-sm font-medium"
+                >
+                  Reset starter code
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="px-5 py-5">
+            <div className="space-y-4">
           <div className="rounded-lg border border-black/10 bg-white/92 p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm font-semibold text-ink">
@@ -1100,8 +906,10 @@ export function PracticeWorkspace({
               </div>
             </div>
           ) : null}
-        </div>
-      </ThreadMessage>
+            </div>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

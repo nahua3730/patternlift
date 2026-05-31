@@ -8,9 +8,17 @@ export default function PracticePage({
     problem?: string;
     mode?: "learn" | "recognize" | "practice";
     coach?: "beginner" | "guided" | "optional" | "off";
+    patterns?: string;
   };
 }) {
-  if (!searchParams?.mode && !searchParams?.problem) {
+  if (!searchParams?.problem) {
+    if (searchParams?.mode === "recognize" || searchParams?.mode === "practice") {
+      const params = new URLSearchParams();
+      params.set("mode", searchParams.mode);
+      if (searchParams.coach) params.set("coach", searchParams.coach);
+      redirect(`/practice/select?${params.toString()}`);
+    }
+
     redirect("/practice/setup");
   }
 
@@ -19,6 +27,7 @@ export default function PracticePage({
       initialProblemId={searchParams?.problem}
       mode={searchParams?.mode}
       coachStyle={searchParams?.coach}
+      selectedPatternIds={searchParams?.patterns?.split(",").filter(Boolean) ?? []}
     />
   );
 }
