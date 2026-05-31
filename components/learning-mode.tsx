@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   allProblems,
   getOfficialProblemRoadmapMeta,
@@ -22,6 +22,7 @@ const difficultyRank: Record<string, number> = {
 };
 
 export function LearningMode({ patternIds, coachStyle }: LearningModeProps) {
+  const [selectedCoachStyle, setSelectedCoachStyle] = useState(coachStyle);
   const selectedPatterns = useMemo(() => {
     return patternOptions.filter((pattern) =>
       patternIds.length > 0 ? patternIds.includes(pattern.id) : true
@@ -72,11 +73,11 @@ export function LearningMode({ patternIds, coachStyle }: LearningModeProps) {
             suggest problems from the patterns you picked, and the coach style stays
             on{" "}
             <span className="font-semibold text-ink">
-              {coachStyle === "beginner"
+              {selectedCoachStyle === "beginner"
                 ? "Beginner Guided"
-                : coachStyle === "guided"
+                : selectedCoachStyle === "guided"
                   ? "Guided"
-                  : coachStyle === "optional"
+                  : selectedCoachStyle === "optional"
                     ? "Hints On Demand"
                     : "Coach Off"}
             </span>
@@ -93,6 +94,60 @@ export function LearningMode({ patternIds, coachStyle }: LearningModeProps) {
               {pattern.label}
             </span>
           ))}
+        </div>
+      </section>
+
+      <section className="uiverse-panel px-6 py-6 md:px-8">
+        <div className="flex flex-col gap-4">
+          <div>
+            <p className="text-lg font-semibold text-ink">Step 3: choose how the coach behaves</p>
+            <p className="mt-1 text-sm leading-6 text-black/64">
+              Pick the teaching style first, then open one of the suggested questions below.
+            </p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {[
+              {
+                id: "beginner",
+                title: "Beginner Guided",
+                body: "Stronger teaching, clearer nudges, and more explanation of why choices work."
+              },
+              {
+                id: "guided",
+                title: "Guided",
+                body: "Balanced support that still leaves the main solving work in your hands."
+              },
+              {
+                id: "optional",
+                title: "Hints On Demand",
+                body: "Mostly self-driven, with help ready whenever you want it."
+              },
+              {
+                id: "off",
+                title: "Coach Off",
+                body: "A quieter coding run with no extra teaching until you ask for it."
+              }
+            ].map((style) => {
+              const isActive = selectedCoachStyle === style.id;
+
+              return (
+                <button
+                  key={style.id}
+                  type="button"
+                  onClick={() => setSelectedCoachStyle(style.id as LearningModeProps["coachStyle"])}
+                  className={`uiverse-choice p-5 text-left ${
+                    isActive ? "uiverse-choice-active text-white" : "text-ink"
+                  }`}
+                >
+                  <p className="text-sm font-semibold">{style.title}</p>
+                  <p className={`mt-3 text-sm leading-6 ${isActive ? "text-white/80" : "text-black/64"}`}>
+                    {style.body}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </section>
 
@@ -131,7 +186,7 @@ export function LearningMode({ patternIds, coachStyle }: LearningModeProps) {
                 <ProblemSuggestionCard
                   key={problem.id}
                   problem={problem}
-                  coachStyle={coachStyle}
+                  coachStyle={selectedCoachStyle}
                 />
               ))}
             </div>
