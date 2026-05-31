@@ -1,3 +1,5 @@
+import { officialRoadmapCatalog } from "@/lib/official-roadmap-catalog";
+
 export const productFeatures = [
   {
     title: "Pattern Contrast",
@@ -207,14 +209,19 @@ export type ProblemCategory =
   | "Stack"
   | "Binary Search"
   | "Linked Lists"
+  | "Linked List"
   | "Trees"
   | "Heap / Priority Queue"
   | "Backtracking"
   | "Graphs"
+  | "Advanced Graphs"
+  | "Tries"
   | "1-D Dynamic Programming"
   | "2-D Dynamic Programming"
   | "Greedy"
-  | "Intervals";
+  | "Intervals"
+  | "Math & Geometry"
+  | "Bit Manipulation";
 
 export const sampleProblems = [
   {
@@ -972,4 +979,211 @@ export const problemRoadmapMeta: Record<
 
 export function getProblemRoadmapMeta(problemId: string) {
   return problemRoadmapMeta[problemId] ?? null;
+}
+
+
+type UnifiedRoadmapProblemMeta = {
+  leetcodeNumber?: number;
+  tracks: RoadmapTrack[];
+  category: string;
+  leetcodeUrl?: string | null;
+  neetcodeUrls: { blind75?: string; neetcode150?: string };
+};
+
+function normalizeRoadmapTitle(title: string) {
+  return title.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function slugifyRoadmapTitle(title: string) {
+  return (
+    title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "official-problem"
+  );
+}
+
+const categoryDefaults: Record<string, {
+  targetPatternId: (typeof patternOptions)[number]["id"];
+  contrastPatternId: (typeof patternOptions)[number]["id"];
+  recommendedClues: string[];
+  recommendedFirstStep: string;
+  reviewQuestion: string;
+}> = {
+  "Arrays & Hashing": {
+    targetPatternId: "hashing",
+    contrastPatternId: "two-pointers",
+    recommendedClues: ["need instant lookup", "count frequencies or duplicates"],
+    recommendedFirstStep: "Store values in a hash map or set",
+    reviewQuestion: "What lookup or count would save you from rescanning old work here?"
+  },
+  "Two Pointers": {
+    targetPatternId: "two-pointers",
+    contrastPatternId: "sliding-window",
+    recommendedClues: ["sorted input", "pair or complement relationship"],
+    recommendedFirstStep: "Track left and right pointers",
+    reviewQuestion: "What direct comparison tells you which pointer should move next?"
+  },
+  "Sliding Window": {
+    targetPatternId: "sliding-window",
+    contrastPatternId: "two-pointers",
+    recommendedClues: ["contiguous subarray", "need to shrink after expanding"],
+    recommendedFirstStep: "Maintain a running sum or frequency state",
+    reviewQuestion: "What needs to stay true inside the current window before you shrink it?"
+  },
+  Stack: {
+    targetPatternId: "stack",
+    contrastPatternId: "hashing",
+    recommendedClues: ["matching pairs or reversible order", "next greater or smaller signal"],
+    recommendedFirstStep: "Push candidates onto a stack and pop when the rule breaks",
+    reviewQuestion: "What unfinished item belongs on the stack, and what event should resolve it?"
+  },
+  "Binary Search": {
+    targetPatternId: "binary-search",
+    contrastPatternId: "two-pointers",
+    recommendedClues: ["sorted or monotonic search space", "minimum feasible / maximum feasible"],
+    recommendedFirstStep: "Set a left/right search interval and test the midpoint",
+    reviewQuestion: "What monotonic property lets you safely discard half the search space?"
+  },
+  "Linked List": {
+    targetPatternId: "two-pointers",
+    contrastPatternId: "dfs",
+    recommendedClues: ["pair or complement relationship"],
+    recommendedFirstStep: "Track left and right pointers",
+    reviewQuestion: "What pointer relationship or invariant matters most before you start rewiring nodes?"
+  },
+  Trees: {
+    targetPatternId: "dfs",
+    contrastPatternId: "bfs",
+    recommendedClues: ["explore one branch fully"],
+    recommendedFirstStep: "Go deeper recursively before trying alternatives",
+    reviewQuestion: "What should one recursive call know or return for the parent to continue correctly?"
+  },
+  "Heap / Priority Queue": {
+    targetPatternId: "heap",
+    contrastPatternId: "greedy",
+    recommendedClues: ["top k ranking", "repeated best choice"],
+    recommendedFirstStep: "Push candidates into a heap",
+    reviewQuestion: "Why do you need the current best candidate again and again instead of only once?"
+  },
+  Backtracking: {
+    targetPatternId: "dfs",
+    contrastPatternId: "dynamic-programming",
+    recommendedClues: ["overlapping subproblems"],
+    recommendedFirstStep: "Go deeper recursively before trying alternatives",
+    reviewQuestion: "What choice gets added and then undone as you explore each branch?"
+  },
+  Graphs: {
+    targetPatternId: "bfs",
+    contrastPatternId: "dfs",
+    recommendedClues: ["level-order traversal"],
+    recommendedFirstStep: "Use a queue for level order expansion",
+    reviewQuestion: "Does the problem care more about minimum steps, reachability, or exploring every branch?"
+  },
+  "Advanced Graphs": {
+    targetPatternId: "heap",
+    contrastPatternId: "bfs",
+    recommendedClues: ["top k ranking", "repeated best choice"],
+    recommendedFirstStep: "Push candidates into a heap",
+    reviewQuestion: "What weighted or prioritized state makes a plain queue too weak here?"
+  },
+  Tries: {
+    targetPatternId: "dfs",
+    contrastPatternId: "hashing",
+    recommendedClues: ["count frequencies or duplicates"],
+    recommendedFirstStep: "Go deeper recursively before trying alternatives",
+    reviewQuestion: "What shared prefix structure is being reused instead of rebuilding work for every string?"
+  },
+  "1-D Dynamic Programming": {
+    targetPatternId: "dynamic-programming",
+    contrastPatternId: "greedy",
+    recommendedClues: ["overlapping subproblems"],
+    recommendedFirstStep: "Define a DP state and recurrence",
+    reviewQuestion: "What smaller one-dimensional state already contains most of the answer you need?"
+  },
+  "2-D Dynamic Programming": {
+    targetPatternId: "dynamic-programming",
+    contrastPatternId: "dfs",
+    recommendedClues: ["overlapping subproblems"],
+    recommendedFirstStep: "Define a DP state and recurrence",
+    reviewQuestion: "Which pair of indices or coordinates defines the repeating subproblem here?"
+  },
+  Greedy: {
+    targetPatternId: "greedy",
+    contrastPatternId: "dynamic-programming",
+    recommendedClues: ["commit best local choice"],
+    recommendedFirstStep: "Sort or scan for the best safe local choice",
+    reviewQuestion: "Why is the local decision safe before you know the entire future?"
+  },
+  Intervals: {
+    targetPatternId: "intervals",
+    contrastPatternId: "greedy",
+    recommendedClues: ["overlapping ranges"],
+    recommendedFirstStep: "Sort intervals, then compare and merge boundaries",
+    reviewQuestion: "Which boundary should drive the scan so overlap decisions become local?"
+  },
+  "Math & Geometry": {
+    targetPatternId: "greedy",
+    contrastPatternId: "hashing",
+    recommendedClues: ["commit best local choice"],
+    recommendedFirstStep: "Sort or scan for the best safe local choice",
+    reviewQuestion: "What core mathematical relationship or invariant should you name before coding?"
+  },
+  "Bit Manipulation": {
+    targetPatternId: "hashing",
+    contrastPatternId: "greedy",
+    recommendedClues: ["need instant lookup"],
+    recommendedFirstStep: "Store values in a hash map or set",
+    reviewQuestion: "What binary invariant or bit trick would simplify the repeated work here?"
+  }
+};
+
+const existingProblemIdByTitle = new Map(sampleProblems.map((problem) => [normalizeRoadmapTitle(problem.title), problem.id]));
+
+const generatedRoadmapProblems = officialRoadmapCatalog
+  .map((entry) => {
+    const existingId = existingProblemIdByTitle.get(normalizeRoadmapTitle(entry.title));
+    if (existingId) return null;
+    const category = entry.categories.neetcode150 ?? entry.categories.blind75 ?? "Arrays & Hashing";
+    const defaults = categoryDefaults[category] ?? categoryDefaults["Arrays & Hashing"];
+    const tracksLabel = entry.tracks.includes("blind75")
+      ? (entry.tracks.length === 2 ? "Blind 75 and NeetCode 150" : "Blind 75")
+      : "NeetCode 150";
+
+    return {
+      id: "official-" + slugifyRoadmapTitle(entry.title),
+      category: category as ProblemCategory,
+      title: entry.title,
+      difficulty: "Official",
+      prompt: entry.title + " is part of the official " + tracksLabel + " roadmap in " + category + ". Paste the full prompt here to start coaching, or use the official links below while we build richer native support.",
+      targetPatternId: defaults.targetPatternId,
+      recommendedClues: defaults.recommendedClues,
+      recommendedFirstStep: defaults.recommendedFirstStep,
+      reviewQuestion: defaults.reviewQuestion,
+      contrastPatternId: defaults.contrastPatternId
+    };
+  })
+  .filter(Boolean) as unknown as Array<(typeof sampleProblems)[number]>;
+
+export const allProblems = [...sampleProblems, ...generatedRoadmapProblems] as const;
+
+export const officialProblemRoadmapMeta = Object.fromEntries(
+  officialRoadmapCatalog.map((entry) => {
+    const problemId = existingProblemIdByTitle.get(normalizeRoadmapTitle(entry.title)) ?? ("official-" + slugifyRoadmapTitle(entry.title));
+    const manual = problemRoadmapMeta[problemId];
+    return [
+      problemId,
+      {
+        leetcodeNumber: manual?.leetcodeNumber,
+        tracks: entry.tracks,
+        category: entry.categories.neetcode150 ?? entry.categories.blind75 ?? "Arrays & Hashing",
+        leetcodeUrl: entry.leetcodeUrl,
+        neetcodeUrls: entry.neetcodeUrls
+      }
+    ];
+  })
+) as Record<string, UnifiedRoadmapProblemMeta>;
+
+export function getOfficialProblemRoadmapMeta(problemId: string) {
+  return officialProblemRoadmapMeta[problemId] ?? null;
 }

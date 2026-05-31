@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { CoachRequest, CoachResponse } from "@/lib/coach";
 import {
-  getProblemRoadmapMeta,
+  allProblems,
+  getOfficialProblemRoadmapMeta,
   patternOptions,
   roadmapTrackTotals,
-  sampleProblems,
   type RoadmapTrack
 } from "@/lib/product";
 import {
@@ -112,10 +112,10 @@ const editorLanguages: Array<{ id: SupportedLanguage; label: string }> = [
 
 export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
   const { history } = usePatternLiftState();
-  const [problemId, setProblemId] = useState<string>(sampleProblems[0].id);
+  const [problemId, setProblemId] = useState<string>(allProblems[0].id);
   const [problemQuery, setProblemQuery] = useState<string>("");
   const [roadmapFilter, setRoadmapFilter] = useState<RoadmapFilter>("all");
-  const [problemText, setProblemText] = useState<string>(sampleProblems[0].prompt);
+  const [problemText, setProblemText] = useState<string>(allProblems[0].prompt);
   const [selectedPattern, setSelectedPattern] = useState<PatternId | null>(null);
   const [selectedClues, setSelectedClues] = useState<string[]>([]);
   const [selectedFirstStep, setSelectedFirstStep] = useState<string | null>(null);
@@ -145,7 +145,7 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
   const [selectedTestCaseId, setSelectedTestCaseId] = useState<string | null>(null);
 
   const activeProblem = useMemo(
-    () => sampleProblems.find((problem) => problem.id === problemId) ?? sampleProblems[0],
+    () => allProblems.find((problem) => problem.id === problemId) ?? allProblems[0],
     [problemId]
   );
 
@@ -167,7 +167,7 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
 
   const contrastPatternLabel = contrastPattern?.label ?? "Neighboring pattern";
   const activeCodeConfig = problemCodeMap[activeProblem.id];
-  const activeRoadmapMeta = getProblemRoadmapMeta(activeProblem.id);
+  const activeRoadmapMeta = getOfficialProblemRoadmapMeta(activeProblem.id);
   const availableLanguages = useMemo(
     () => getAvailableLanguages(activeCodeConfig),
     [activeCodeConfig]
@@ -178,7 +178,7 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
   );
 
   const problemsByCategory = useMemo(() => {
-    return sampleProblems.reduce<Record<string, Array<(typeof sampleProblems)[number]>>>((groups, problem) => {
+    return allProblems.reduce<Record<string, Array<(typeof allProblems)[number]>>>((groups, problem) => {
       const current = groups[problem.category] ?? [];
       groups[problem.category] = [...current, problem];
       return groups;
@@ -188,10 +188,10 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
   const filteredProblems = useMemo(() => {
     const normalizedQuery = problemQuery.trim().toLowerCase();
 
-    return sampleProblems
+    return allProblems
       .filter((problem) => {
         if (roadmapFilter === "all") return true;
-        const meta = getProblemRoadmapMeta(problem.id);
+        const meta = getOfficialProblemRoadmapMeta(problem.id);
         if (roadmapFilter === "official") return Boolean(meta);
         return Boolean(meta?.tracks.includes(roadmapFilter));
       })
@@ -223,8 +223,8 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
   const roadmapCoverage = useMemo(() => {
     const tracks: RoadmapTrack[] = ["blind75", "neetcode150"];
     return tracks.map((track) => {
-      const included = sampleProblems.filter((problem) =>
-        getProblemRoadmapMeta(problem.id)?.tracks.includes(track)
+      const included = allProblems.filter((problem) =>
+        getOfficialProblemRoadmapMeta(problem.id)?.tracks.includes(track)
       );
       const completed = included.filter((problem) => completedProblemIds.has(problem.id)).length;
       return {
@@ -411,7 +411,7 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
 
   function chooseProblem(nextProblemId: string) {
     const nextProblem =
-      sampleProblems.find((problem) => problem.id === nextProblemId) ?? sampleProblems[0];
+      allProblems.find((problem) => problem.id === nextProblemId) ?? allProblems[0];
     setProblemId(nextProblem.id);
   }
 
@@ -714,12 +714,14 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
                           Completed
                         </span>
                       ) : null}
-                      {getProblemRoadmapMeta(problem.id) ? (
+                      {getOfficialProblemRoadmapMeta(problem.id) ? (
                         <>
-                          <span className="rounded-full border border-black/10 bg-white px-2 py-1 text-[11px] font-medium text-black/60">
-                            #{getProblemRoadmapMeta(problem.id)?.leetcodeNumber}
-                          </span>
-                          {getProblemRoadmapMeta(problem.id)?.tracks.map((track) => (
+                          {getOfficialProblemRoadmapMeta(problem.id)?.leetcodeNumber ? (
+                            <span className="rounded-full border border-black/10 bg-white px-2 py-1 text-[11px] font-medium text-black/60">
+                              #{getOfficialProblemRoadmapMeta(problem.id)?.leetcodeNumber}
+                            </span>
+                          ) : null}
+                          {getOfficialProblemRoadmapMeta(problem.id)?.tracks.map((track) => (
                             <span
                               key={`${problem.id}-${track}`}
                               className="rounded-full border border-black/10 bg-white px-2 py-1 text-[11px] font-medium text-black/60"
@@ -772,9 +774,11 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
         <p className="text-sm leading-7 text-black/78 whitespace-pre-wrap">{problemText}</p>
         {activeRoadmapMeta ? (
           <div className="mt-4 flex flex-wrap gap-2">
-            <span className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/68">
-              LeetCode #{activeRoadmapMeta.leetcodeNumber}
-            </span>
+            {activeRoadmapMeta.leetcodeNumber ? (
+              <span className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/68">
+                LeetCode #{activeRoadmapMeta.leetcodeNumber}
+              </span>
+            ) : null}
             {activeRoadmapMeta.tracks.map((track) => (
               <span
                 key={`${activeProblem.id}-${track}`}
@@ -783,6 +787,26 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
                 {track === "blind75" ? "Blind 75" : "NeetCode 150"}
               </span>
             ))}
+            {activeRoadmapMeta.neetcodeUrls.blind75 || activeRoadmapMeta.neetcodeUrls.neetcode150 ? (
+              <a
+                href={activeRoadmapMeta.neetcodeUrls.neetcode150 ?? activeRoadmapMeta.neetcodeUrls.blind75}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-lake"
+              >
+                Open on NeetCode
+              </a>
+            ) : null}
+            {activeRoadmapMeta.leetcodeUrl ? (
+              <a
+                href={activeRoadmapMeta.leetcodeUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-lake"
+              >
+                Open on LeetCode
+              </a>
+            ) : null}
           </div>
         ) : null}
       </ThreadMessage>
