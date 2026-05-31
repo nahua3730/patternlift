@@ -573,14 +573,16 @@ export function PracticeWorkspace({
         </div>
       </section>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-        <section className="uiverse-panel flex min-h-[80vh] flex-col overflow-hidden xl:h-[calc(100vh-9.5rem)]">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
+        <section className="uiverse-panel flex min-h-[86vh] flex-col overflow-hidden xl:h-[calc(100vh-7.5rem)]">
           <div className="border-b border-black/8 px-5 py-5">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-coral">
               Coach chat
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <p className="text-lg font-semibold text-ink">{activeProblem.title}</p>
+              <p className="text-[1.75rem] font-semibold leading-tight text-ink">
+                {activeProblem.title}
+              </p>
               <span className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/66">
                 {mode === "learn"
                   ? "Learning mode"
@@ -613,20 +615,29 @@ export function PracticeWorkspace({
               <span className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/66">
                 Easy to confuse with {contrastPatternLabel}
               </span>
-              {suggestedTechniques.slice(0, 2).map((technique) => (
-                <span
-                  key={technique.id}
-                  className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/66"
-                >
-                  {technique.title}
-                </span>
-              ))}
             </div>
+            {suggestedTechniques.length > 0 ? (
+              <details className="mt-3 rounded-lg border border-black/8 bg-white/70 px-3 py-3">
+                <summary className="cursor-pointer text-sm font-medium text-black/70">
+                  Learning context
+                </summary>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {suggestedTechniques.slice(0, 4).map((technique) => (
+                    <span
+                      key={technique.id}
+                      className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/66"
+                    >
+                      {technique.title}
+                    </span>
+                  ))}
+                </div>
+              </details>
+            ) : null}
           </div>
 
           <div
             ref={chatScrollRef}
-            className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5 overscroll-contain"
+            className="min-h-[34rem] flex-1 space-y-4 overflow-y-auto px-5 py-5 overscroll-contain"
           >
             {chatMessages.map((message) => (
               <ThreadMessage key={message.id} speaker={message.speaker} title={message.title}>
@@ -654,7 +665,7 @@ export function PracticeWorkspace({
               <textarea
                 value={coachDraft}
                 onChange={(event) => setCoachDraft(event.target.value)}
-                rows={4}
+                rows={3}
                 className="w-full resize-none border-0 bg-transparent text-lg leading-8 text-ink outline-none placeholder:text-black/34"
                 placeholder={
                   mode === "recognize"
@@ -665,16 +676,9 @@ export function PracticeWorkspace({
                 }
               />
               <div className="mt-3 flex items-center justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setProblemText(activeProblem.prompt);
-                    setCoachError(null);
-                  }}
-                  className="uiverse-button-secondary px-4 py-2 text-sm font-medium"
-                >
-                  Reset problem text
-                </button>
+                <p className="text-sm text-black/48">
+                  Ask naturally. The coach will react to what you actually say.
+                </p>
                 <button
                   type="button"
                   onClick={() => void sendCoachMessage()}
@@ -688,7 +692,7 @@ export function PracticeWorkspace({
           </div>
         </section>
 
-        <section className="uiverse-panel flex min-h-[80vh] flex-col overflow-hidden xl:h-[calc(100vh-9.5rem)]">
+        <section className="uiverse-panel flex min-h-[86vh] flex-col overflow-hidden xl:h-[calc(100vh-7.5rem)]">
           <div className="border-b border-black/8 px-5 py-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
