@@ -26,34 +26,6 @@ type ChatMessage = {
   body: string;
 };
 
-type SpeechRecognitionEventLike = Event & {
-  results: ArrayLike<{
-    isFinal: boolean;
-    0: {
-      transcript: string;
-    };
-    length: number;
-  }>;
-};
-
-type BrowserSpeechRecognition = {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
-  onerror: ((event: Event & { error?: string }) => void) | null;
-  onend: (() => void) | null;
-  start: () => void;
-  stop: () => void;
-};
-
-declare global {
-  interface Window {
-    SpeechRecognition?: new () => BrowserSpeechRecognition;
-    webkitSpeechRecognition?: new () => BrowserSpeechRecognition;
-  }
-}
-
 export type AttemptResult = {
   problemId: string;
   problemTitle: string;
@@ -149,7 +121,9 @@ export function PracticeWorkspace({
   const [coachDraft, setCoachDraft] = useState("");
   const [coachError, setCoachError] = useState<string | null>(null);
   const [isCoachLoading, setIsCoachLoading] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
+  const [recordingState, setRecordingState] = useState<"idle" | "recording" | "transcribing">(
+    "idle"
+  );
   const [hasLoggedAttempt, setHasLoggedAttempt] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>("javascript");
   const [codeByLanguage, setCodeByLanguage] = useState<Record<SupportedLanguage, string>>({
@@ -173,8 +147,9 @@ export function PracticeWorkspace({
   const [isDesktopSplit, setIsDesktopSplit] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const splitLayoutRef = useRef<HTMLDivElement | null>(null);
-  const speechRecognitionRef = useRef<BrowserSpeechRecognition | null>(null);
-  const recordingBaseDraftRef = useRef("");
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordingChunksRef = useRef<Blob[]>([]);
+  const recordingStreamRef = useRef<MediaStream | null>(null);
 
   const activeProblem = useMemo(
     () => allProblems.find((problem) => problem.id === problemId) ?? allProblems[0],
@@ -320,7 +295,8 @@ export function PracticeWorkspace({
 
   useEffect(() => {
     return () => {
-      speechRecognitionRef.current?.stop();
+      mediaRecorderRef.current?.stop();
+      recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
     };
   }, []);
 
@@ -536,65 +512,112 @@ export function PracticeWorkspace({
     }
   }
 
-  function toggleVoiceInput() {
-    const SpeechRecognitionCtor =
-      window.SpeechRecognition ?? window.webkitSpeechRecognition;
-
-    if (!SpeechRecognitionCtor) {
-      setCoachError("Voice transcription is not supported in this browser.");
+  async function toggleVoiceInput() {
+    if (recordingState === "transcribing") {
       return;
     }
 
-    if (isRecording) {
-      speechRecognitionRef.current?.stop();
-      setIsRecording(false);
+    if (recordingState === "recording") {
+      mediaRecorderRef.current?.stop();
+      setRecordingState("transcribing");
       return;
     }
 
-    const recognition = new SpeechRecognitionCtor();
-    recordingBaseDraftRef.current = coachDraft.trim();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = "en-US";
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      setCoachError("Audio recording is not supported in this browser.");
+      return;
+    }
 
-    recognition.onresult = (event) => {
-      let transcript = "";
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = pickRecordingMimeType();
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
 
-      for (let index = 0; index < event.results.length; index += 1) {
-        const result = event.results[index];
-        const chunk = result[0]?.transcript?.trim();
-        if (chunk) {
-          transcript += `${chunk} `;
+      recordingStreamRef.current = stream;
+      recordingChunksRef.current = [];
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          recordingChunksRef.current.push(event.data);
         }
+      };
+
+      recorder.onerror = () => {
+        setCoachError("Recording ran into a problem. Please try again.");
+        setRecordingState("idle");
+      };
+
+      recorder.onstop = () => {
+        void transcribeRecordedAudio(recorder.mimeType);
+      };
+
+      setCoachError(null);
+      setRecordingState("recording");
+      recorder.start();
+    } catch (error) {
+      const message =
+        error instanceof DOMException && error.name === "NotAllowedError"
+          ? "Microphone access was blocked. Allow microphone access to record a note."
+          : "I couldn't start recording. Please try again.";
+      setCoachError(message);
+      setRecordingState("idle");
+    }
+  }
+
+  async function transcribeRecordedAudio(mimeType: string) {
+    const chunks = recordingChunksRef.current;
+    const stream = recordingStreamRef.current;
+    recordingStreamRef.current = null;
+    mediaRecorderRef.current = null;
+    stream?.getTracks().forEach((track) => track.stop());
+
+    if (chunks.length === 0) {
+      setRecordingState("idle");
+      setCoachError("No audio was captured. Try recording again.");
+      return;
+    }
+
+    const extension = mimeTypeToExtension(mimeType);
+    const blob = new Blob(chunks, {
+      type: mimeType || "audio/webm"
+    });
+    const file = new File([blob], `patternlift-note.${extension}`, {
+      type: blob.type
+    });
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await fetch("/api/transcribe", {
+        method: "POST",
+        body: formData
+      });
+      const payload = (await response.json()) as { text?: string; error?: string };
+
+      if (!response.ok || !payload.text) {
+        throw new Error(payload.error ?? "Transcription failed.");
       }
 
-      const normalizedTranscript = transcript.trim();
-      const prefix = recordingBaseDraftRef.current;
-      setCoachDraft(
-        normalizedTranscript
-          ? [prefix, normalizedTranscript].filter(Boolean).join(prefix ? " " : "")
-          : prefix
-      );
-    };
+      const transcript = payload.text.trim();
+      if (!transcript) {
+        throw new Error("The recording came back empty. Try a slightly longer note.");
+      }
 
-    recognition.onerror = (event) => {
+      setCoachDraft((current) => [current.trim(), transcript].filter(Boolean).join(current.trim() ? " " : ""));
+      setCoachError(null);
+    } catch (error) {
       setCoachError(
-        event.error === "not-allowed"
-          ? "Microphone access was blocked. Allow microphone access to dictate to the coach."
-          : "Voice transcription hit a problem. Try again in a moment."
+        error instanceof Error
+          ? error.message
+          : "I couldn't transcribe that recording. Please try again."
       );
-      setIsRecording(false);
-    };
-
-    recognition.onend = () => {
-      setIsRecording(false);
-      speechRecognitionRef.current = null;
-    };
-
-    speechRecognitionRef.current = recognition;
-    setCoachError(null);
-    setIsRecording(true);
-    recognition.start();
+    } finally {
+      recordingChunksRef.current = [];
+      setRecordingState("idle");
+    }
   }
 
   function runExamples() {
@@ -804,24 +827,45 @@ export function PracticeWorkspace({
               />
               <div className="mt-2 flex items-center justify-between gap-3">
                 <p className="text-xs text-black/48">
-                  {isRecording
-                    ? "Listening now. Keep talking, then tap the mic again to stop."
+                  {recordingState === "recording"
+                    ? "Recording now. Tap the mic again when you want me to transcribe it."
+                    : recordingState === "transcribing"
+                      ? "Transcribing your recording..."
                     : "Ask naturally. The coach will react to what you actually say."}
                 </p>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={toggleVoiceInput}
-                    aria-label={isRecording ? "Stop voice dictation" : "Start voice dictation"}
-                    title={isRecording ? "Stop voice dictation" : "Start voice dictation"}
+                    onClick={() => void toggleVoiceInput()}
+                    aria-label={
+                      recordingState === "recording"
+                        ? "Stop recording and transcribe"
+                        : recordingState === "transcribing"
+                          ? "Transcribing recording"
+                          : "Start recording for transcription"
+                    }
+                    title={
+                      recordingState === "recording"
+                        ? "Stop recording and transcribe"
+                        : recordingState === "transcribing"
+                          ? "Transcribing recording"
+                          : "Start recording for transcription"
+                    }
+                    disabled={recordingState === "transcribing"}
                     className={`rounded-[8px] border px-3 py-2 text-sm font-medium transition ${
-                      isRecording
+                      recordingState === "recording"
                         ? "border-coral/20 bg-coral text-white shadow-[0_10px_18px_rgba(255,92,92,0.18)]"
+                        : recordingState === "transcribing"
+                          ? "cursor-wait border-black/10 bg-black/6 text-black/40"
                         : "border-black/10 bg-white text-black/68"
                     }`}
                   >
                     <span aria-hidden="true" className="block text-lg leading-none">
-                      {isRecording ? "◼" : "🎙"}
+                      {recordingState === "recording"
+                        ? "◼"
+                        : recordingState === "transcribing"
+                          ? "⋯"
+                          : "🎙"}
                     </span>
                   </button>
                   <button
@@ -1316,6 +1360,23 @@ function compareNormalized(
   normalizer: (value: unknown) => unknown
 ) {
   return JSON.stringify(normalizer(actual)) === JSON.stringify(normalizer(expected));
+}
+
+function pickRecordingMimeType() {
+  const candidates = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/mp4",
+    "audio/mpeg"
+  ];
+
+  return candidates.find((candidate) => MediaRecorder.isTypeSupported(candidate)) ?? "";
+}
+
+function mimeTypeToExtension(mimeType: string) {
+  if (mimeType.includes("mp4")) return "m4a";
+  if (mimeType.includes("mpeg")) return "mp3";
+  return "webm";
 }
 
 function sortPrimitiveArray(value: unknown) {
