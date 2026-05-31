@@ -567,8 +567,8 @@ export function PracticeWorkspace({
       </section>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)]">
-        <section className="uiverse-panel flex min-h-[78vh] flex-col overflow-hidden xl:sticky xl:top-4 xl:h-[calc(100vh-6.5rem)] xl:self-start">
-          <div className="border-b border-black/8 px-5 py-4">
+        <section className="uiverse-panel flex min-h-[84vh] flex-col overflow-hidden xl:sticky xl:top-2 xl:h-[calc(100vh-4.25rem)] xl:self-start">
+          <div className="border-b border-black/8 px-5 py-3">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-coral">
               Coach chat
             </p>
@@ -630,7 +630,7 @@ export function PracticeWorkspace({
 
           <div
             ref={chatScrollRef}
-            className="min-h-[26rem] flex-[1_1_0] space-y-4 overflow-y-auto px-5 py-5 pb-36 overscroll-contain"
+            className="min-h-[34rem] flex-[1_1_0] space-y-4 overflow-y-auto px-5 py-5 pb-32 overscroll-contain"
           >
             {chatMessages.map((message) => (
               <ThreadMessage key={message.id} speaker={message.speaker} title={message.title}>
@@ -653,7 +653,7 @@ export function PracticeWorkspace({
             ) : null}
           </div>
 
-          <div className="sticky bottom-0 z-10 border-t border-black/8 bg-white/95 px-5 py-3 backdrop-blur">
+          <div className="sticky bottom-0 z-10 border-t border-black/8 bg-white/95 px-5 py-2 backdrop-blur">
             <div className="coach-input-shell">
               <textarea
                 value={coachDraft}
@@ -685,8 +685,8 @@ export function PracticeWorkspace({
           </div>
         </section>
 
-        <section className="uiverse-panel flex min-h-[78vh] flex-col overflow-hidden xl:sticky xl:top-4 xl:h-[calc(100vh-6.5rem)] xl:self-start">
-          <div className="border-b border-black/8 px-5 py-4">
+        <section className="uiverse-panel flex min-h-[84vh] flex-col overflow-hidden xl:sticky xl:top-2 xl:h-[calc(100vh-4.25rem)] xl:self-start">
+          <div className="border-b border-black/8 px-5 py-3">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-coral">
@@ -775,7 +775,7 @@ export function PracticeWorkspace({
               }}
               rows={26}
               spellCheck={false}
-              className="uiverse-field mt-3 min-h-[24rem] w-full px-4 py-4 font-mono text-[15px] leading-7 text-ink xl:min-h-[30rem]"
+              className="uiverse-field mt-3 min-h-[28rem] w-full px-4 py-4 font-mono text-[15px] leading-7 text-ink xl:min-h-[38rem]"
             />
           </div>
 
