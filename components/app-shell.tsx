@@ -120,14 +120,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       ) : isPracticeWorkspace ? (
-        <div className="min-h-screen bg-[#111111] px-3 py-3 text-white sm:px-4 sm:py-4">
+        <div className="min-h-screen px-3 py-3 sm:px-4 sm:py-4">
           <div className="mx-auto grid min-h-[calc(100vh-1.5rem)] w-full max-w-[110rem] gap-3 lg:grid-cols-[15rem_minmax(0,1fr)]">
-            <aside className="hidden rounded-[8px] border border-white/8 bg-[#171717] p-4 lg:flex lg:flex-col">
+            <aside className="app-sidebar hidden lg:flex">
               <Link href="/" className="app-logo">
                 <span className="app-logo-mark">PL</span>
                 <span>
-                  <span className="block text-sm font-semibold text-white">PatternLift</span>
-                  <span className="block text-xs text-white/54">
+                  <span className="block text-sm font-semibold text-ink">PatternLift</span>
+                  <span className="block text-xs text-black/54">
                     Interview prep workspace
                   </span>
                 </span>
@@ -149,7 +149,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       className={`sidebar-link ${active ? "sidebar-link-active" : ""}`}
                     >
                       <span className="block text-sm font-semibold">{item.label}</span>
-                      <span className={`mt-1 block text-xs ${active ? "text-white/76" : "text-white/52"}`}>
+                      <span className={`mt-1 block text-xs ${active ? "text-white/76" : "text-black/52"}`}>
                         {item.helper}
                       </span>
                     </Link>
@@ -157,12 +157,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 })}
               </nav>
 
-              <div className="mt-auto rounded-[8px] border border-white/8 bg-white/4 p-4">
+              <div className="mt-auto rounded-[8px] border border-black/8 bg-white/72 p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-coral">
                   Workspace
                 </p>
-                <p className="mt-2 text-sm font-semibold text-white">{shellMeta.title}</p>
-                <p className="mt-2 text-sm leading-6 text-white/60">{shellMeta.body}</p>
+                <p className="mt-2 text-sm font-semibold text-ink">{shellMeta.title}</p>
+                <p className="mt-2 text-sm leading-6 text-black/60">{shellMeta.body}</p>
               </div>
             </aside>
 

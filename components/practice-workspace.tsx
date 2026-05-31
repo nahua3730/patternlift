@@ -576,8 +576,8 @@ export function PracticeWorkspace({
   }, [activeCoachStyle, mode, selectedPatternIds]);
 
   return (
-    <div className="flex min-h-[calc(100vh-1.5rem)] w-full flex-col gap-3 text-white">
-      <section className="rounded-[8px] border border-white/8 bg-[#171717] px-4 py-3">
+    <div className="flex min-h-[calc(100vh-1.5rem)] w-full flex-col gap-3">
+      <section className="uiverse-panel px-4 py-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
             {coachStyles.map((style) => {
@@ -586,11 +586,11 @@ export function PracticeWorkspace({
                 <button
                   key={style.id}
                   type="button"
-                  onClick={() => setActiveCoachStyle(style.id)}
-                  className={`rounded-[8px] px-3 py-2 text-xs font-medium transition ${
-                    isActive
-                      ? "bg-white text-[#111111]"
-                      : "border border-white/10 bg-white/4 text-white/68"
+                onClick={() => setActiveCoachStyle(style.id)}
+                className={`rounded-[8px] px-3 py-2 text-xs font-medium transition ${
+                  isActive
+                      ? "bg-ink text-white"
+                      : "border border-black/10 bg-white text-black/68"
                   }`}
                 >
                   {style.label}
@@ -601,7 +601,7 @@ export function PracticeWorkspace({
 
           <Link
             href={selectionBackHref}
-            className="rounded-[8px] border border-white/10 bg-white/4 px-4 py-2 text-sm font-medium text-white/66"
+            className="coach-chip px-4 py-2 text-sm font-medium text-black/66"
           >
             Choose another problem
           </Link>
@@ -619,20 +619,20 @@ export function PracticeWorkspace({
             : undefined
         }
       >
-        <section className="flex min-h-[84vh] flex-col overflow-hidden rounded-[8px] border border-white/8 bg-[#171717] xl:h-[calc(100vh-6rem)]">
-          <div className="border-b border-white/8 px-4 py-3">
-            <div className="flex items-center gap-3 border-b border-white/8 pb-3 text-sm">
-              <span className="rounded-[6px] bg-white/8 px-3 py-2 font-medium text-white">
+        <section className="uiverse-panel flex min-h-[84vh] flex-col overflow-hidden xl:h-[calc(100vh-6rem)]">
+          <div className="border-b border-black/8 px-4 py-3">
+            <div className="flex items-center gap-3 border-b border-black/8 pb-3 text-sm">
+              <span className="rounded-[6px] bg-mist px-3 py-2 font-medium text-ink">
                 Coach
               </span>
-              <span className="text-white/46">Conversation</span>
+              <span className="text-black/46">Conversation</span>
             </div>
 
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <p className="text-[1.35rem] font-semibold leading-tight text-white">
+              <p className="text-[1.35rem] font-semibold leading-tight text-ink">
                 {activeProblem.title}
               </p>
-              <span className="rounded-full border border-white/10 bg-white/6 px-3 py-1 text-xs font-medium text-white/66">
+              <span className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/66">
                 {mode === "learn"
                   ? "Learning mode"
                   : mode === "recognize"
@@ -643,22 +643,22 @@ export function PracticeWorkspace({
 
             <div className="mt-2 flex flex-wrap gap-2 text-xs">
               {activeRoadmapMeta?.leetcodeNumber ? (
-                <span className="rounded-full border border-white/10 bg-white/6 px-3 py-1 font-medium text-white/68">
+                <span className="rounded-full border border-black/10 bg-white px-3 py-1 font-medium text-black/68">
                   LeetCode #{activeRoadmapMeta.leetcodeNumber}
                 </span>
               ) : null}
               {activeRoadmapMeta?.tracks.map((track) => (
                 <span
                   key={`${activeProblem.id}-${track}`}
-                  className="rounded-full border border-white/10 bg-white/6 px-3 py-1 font-medium text-white/68"
+                  className="rounded-full border border-black/10 bg-white px-3 py-1 font-medium text-black/68"
                 >
                   {track === "blind75" ? "Blind 75" : "NeetCode 150"}
                 </span>
               ))}
-              <span className="rounded-full border border-white/10 bg-white/6 px-3 py-1 font-medium text-white/66">
+              <span className="rounded-full border border-black/10 bg-white px-3 py-1 font-medium text-black/66">
                 {correctPattern.label}
               </span>
-              <span className="rounded-full border border-white/10 bg-white/6 px-3 py-1 font-medium text-white/66">
+              <span className="rounded-full border border-black/10 bg-white px-3 py-1 font-medium text-black/66">
                 vs {contrastPatternLabel}
               </span>
             </div>
@@ -670,13 +670,13 @@ export function PracticeWorkspace({
           >
             {chatMessages.map((message) => (
               <ThreadMessage key={message.id} speaker={message.speaker} title={message.title}>
-                <p className="whitespace-pre-wrap text-lg leading-9 text-white/86">{message.body}</p>
+                <p className="whitespace-pre-wrap text-lg leading-9 text-black/78">{message.body}</p>
               </ThreadMessage>
             ))}
 
             {isCoachLoading ? (
               <ThreadMessage speaker="coach" title="Coach is thinking...">
-                <p className="text-lg leading-8 text-white/68">
+                <p className="text-lg leading-8 text-black/68">
                   I&apos;m reading your last message and shaping the next step.
                 </p>
               </ThreadMessage>
@@ -689,13 +689,13 @@ export function PracticeWorkspace({
             ) : null}
           </div>
 
-          <div className="sticky bottom-0 z-10 border-t border-white/8 bg-[#171717]/95 px-4 py-2 backdrop-blur">
-            <div className="rounded-[8px] border border-white/8 bg-white/4 p-3">
+          <div className="sticky bottom-0 z-10 border-t border-black/8 bg-white/95 px-4 py-2 backdrop-blur">
+            <div className="coach-input-shell">
               <textarea
                 value={coachDraft}
                 onChange={(event) => setCoachDraft(event.target.value)}
                 rows={2}
-                className="w-full resize-none border-0 bg-transparent text-lg leading-8 text-white outline-none placeholder:text-white/30"
+                className="w-full resize-none border-0 bg-transparent text-lg leading-8 text-ink outline-none placeholder:text-black/34"
                 placeholder={
                   mode === "recognize"
                     ? "Tell the coach what pattern you suspect, what clues led you there, or what feels ambiguous."
@@ -705,14 +705,14 @@ export function PracticeWorkspace({
                 }
               />
               <div className="mt-2 flex items-center justify-between gap-3">
-                <p className="text-xs text-white/48">
+                <p className="text-xs text-black/48">
                   Ask naturally. The coach will react to what you actually say.
                 </p>
                 <button
                   type="button"
                   onClick={() => void sendCoachMessage()}
                   disabled={coachDraft.trim().length === 0 || isCoachLoading}
-                  className="rounded-[8px] bg-white px-4 py-2 text-sm font-medium text-[#111111] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="uiverse-button px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isCoachLoading ? "Sending..." : "Send"}
                 </button>
@@ -728,31 +728,31 @@ export function PracticeWorkspace({
             aria-label="Resize panels"
             className="group flex w-[10px] cursor-col-resize items-center justify-center rounded-full bg-transparent"
           >
-            <span className="h-20 w-[4px] rounded-full bg-white/10 transition group-hover:bg-white/28 group-active:bg-white/40" />
+            <span className="h-20 w-[4px] rounded-full bg-black/10 transition group-hover:bg-coral/30 group-active:bg-coral/45" />
           </button>
         </div>
 
-        <section className="flex min-h-[84vh] flex-col overflow-hidden rounded-[8px] border border-white/8 bg-[#171717] xl:h-[calc(100vh-6rem)]">
-          <div className="border-b border-white/8 px-4 py-3">
+        <section className="uiverse-panel flex min-h-[84vh] flex-col overflow-hidden xl:h-[calc(100vh-6rem)]">
+          <div className="border-b border-black/8 px-4 py-3">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3 text-sm">
-                <span className="rounded-[6px] bg-white/8 px-3 py-2 font-medium text-white">
+                <span className="rounded-[6px] bg-mist px-3 py-2 font-medium text-ink">
                   Editor
                 </span>
-                <span className="text-white/46">Code</span>
+                <span className="text-black/46">Code</span>
               </div>
               <div className="flex flex-wrap gap-3">
                 <button
                   type="button"
                   onClick={runExamples}
-                  className="rounded-[8px] bg-white px-4 py-2 text-sm font-medium text-[#111111]"
+                  className="uiverse-button px-4 py-2 text-sm font-medium"
                 >
                   Run examples
                 </button>
                 <button
                   type="button"
                   onClick={resetCodeEditor}
-                  className="rounded-[8px] border border-white/10 bg-white/4 px-4 py-2 text-sm font-medium text-white/76"
+                  className="uiverse-button-secondary px-4 py-2 text-sm font-medium"
                 >
                   Reset starter code
                 </button>
@@ -762,22 +762,22 @@ export function PracticeWorkspace({
 
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 pb-8 overscroll-contain">
             <div className="space-y-4">
-              <details className="rounded-[8px] border border-white/8 bg-white/4 p-4">
-                <summary className="cursor-pointer text-sm font-semibold text-white">
+              <details className="rounded-[8px] border border-black/10 bg-white/88 p-4">
+                <summary className="cursor-pointer text-sm font-semibold text-ink">
                   Problem statement
                 </summary>
-                <p className="mt-3 whitespace-pre-wrap text-base leading-8 text-white/72">
+                <p className="mt-3 whitespace-pre-wrap text-base leading-8 text-black/72">
                   {problemText}
                 </p>
               </details>
 
-              <div className="rounded-[8px] border border-white/8 bg-[#1b1b1b] p-4">
+              <div className="rounded-[8px] border border-black/10 bg-white/92 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-white">
+                  <p className="text-sm font-semibold text-ink">
                     {editorLanguages.find((language) => language.id === selectedLanguage)?.label} starter
                   </p>
                   {activeCodeConfig ? (
-                    <span className="rounded-full border border-white/10 bg-white/6 px-3 py-1 text-xs font-medium text-white/68">
+                    <span className="rounded-full border border-black/10 bg-mist px-3 py-1 text-xs font-medium text-black/68">
                       {activeCodeConfig.functionName}
                     </span>
                   ) : null}
@@ -799,8 +799,8 @@ export function PracticeWorkspace({
                           }}
                           className={`rounded-full px-3 py-2 text-sm font-medium transition ${
                             isActive
-                              ? "bg-white text-[#111111]"
-                              : "border border-white/10 bg-white/4 text-white/70"
+                              ? "bg-ink text-white"
+                              : "border border-black/10 bg-white text-black/70"
                           }`}
                         >
                           {language.label}
@@ -820,19 +820,19 @@ export function PracticeWorkspace({
                   }}
                   rows={26}
                   spellCheck={false}
-                  className="mt-3 min-h-[28rem] w-full rounded-[8px] border border-white/8 bg-[#111111] px-4 py-4 font-mono text-[15px] leading-7 text-white outline-none xl:min-h-[34rem]"
+                  className="uiverse-field mt-3 min-h-[28rem] w-full bg-white px-4 py-4 font-mono text-[15px] leading-7 text-ink outline-none xl:min-h-[34rem]"
                 />
               </div>
 
               {activeCodeConfig ? (
-                <details className="rounded-[8px] border border-white/8 bg-white/4 p-4">
-                  <summary className="cursor-pointer text-sm font-semibold text-white">
+                <details className="rounded-[8px] border border-black/10 bg-white/88 p-4">
+                  <summary className="cursor-pointer text-sm font-semibold text-ink">
                     Test case panel
                   </summary>
                   <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                     <div>
                       {runSummary ? (
-                        <div className="rounded-[8px] border border-white/8 bg-white/4 p-3 text-sm text-white/68">
+                        <div className="rounded-[8px] border border-black/10 bg-mist p-3 text-sm text-black/68">
                           Passed {runSummary.passed} of {runSummary.total} cases
                         </div>
                       ) : null}
@@ -840,7 +840,7 @@ export function PracticeWorkspace({
                     <button
                       type="button"
                       onClick={addCustomTestCase}
-                      className="rounded-[8px] border border-white/10 bg-white/4 px-3 py-2 text-xs font-medium text-white/76"
+                      className="uiverse-button-secondary px-3 py-2 text-xs font-medium"
                     >
                       Add custom case
                     </button>
@@ -857,12 +857,12 @@ export function PracticeWorkspace({
                             onClick={() => setSelectedTestCaseId(testCase.id)}
                             className={`w-full rounded-[8px] border px-3 py-3 text-left transition ${
                               isActive
-                                ? "border-white/20 bg-white/10"
-                                : "border-white/8 bg-white/4"
+                                ? "border-lake/30 bg-lake/10"
+                                : "border-black/10 bg-mist"
                             }`}
                           >
                             <div className="flex items-center justify-between gap-2">
-                              <p className="text-sm font-semibold text-white">{testCase.label}</p>
+                              <p className="text-sm font-semibold text-ink">{testCase.label}</p>
                               {result ? (
                                 <span
                                   className={`text-xs font-semibold ${
@@ -872,10 +872,10 @@ export function PracticeWorkspace({
                                   {result.passed ? "Passed" : "Failed"}
                                 </span>
                               ) : testCase.kind === "custom" ? (
-                                <span className="text-xs font-semibold text-white/50">Custom</span>
+                                <span className="text-xs font-semibold text-black/50">Custom</span>
                               ) : null}
                             </div>
-                            <p className="mt-2 line-clamp-2 font-mono text-xs leading-5 text-white/62">
+                            <p className="mt-2 line-clamp-2 font-mono text-xs leading-5 text-black/62">
                               {testCase.argsExpression}
                             </p>
                           </button>
@@ -883,9 +883,9 @@ export function PracticeWorkspace({
                       })}
                     </div>
                     {selectedTestCase ? (
-                      <div className="rounded-[8px] border border-white/8 bg-[#1b1b1b] p-4">
+                      <div className="rounded-[8px] border border-black/10 bg-white/92 p-4">
                         <div className="flex flex-wrap items-center justify-between gap-3">
-                          <p className="text-sm font-semibold text-white">{selectedTestCase.label}</p>
+                          <p className="text-sm font-semibold text-ink">{selectedTestCase.label}</p>
                           {selectedTestCase.kind === "custom" ? (
                             <button
                               type="button"
@@ -896,7 +896,7 @@ export function PracticeWorkspace({
                             </button>
                           ) : null}
                         </div>
-                        <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-white/56">
+                        <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-black/56">
                           Args expression
                           <textarea
                             value={selectedTestCase.argsExpression}
@@ -905,10 +905,10 @@ export function PracticeWorkspace({
                             }
                             rows={4}
                             spellCheck={false}
-                            className="mt-2 w-full rounded-[8px] border border-white/8 bg-[#111111] px-3 py-2 font-mono text-xs leading-6 text-white outline-none"
+                            className="uiverse-field mt-2 w-full bg-white px-3 py-2 font-mono text-xs leading-6 text-ink outline-none"
                           />
                         </label>
-                        <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-white/56">
+                        <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-black/56">
                           Expected expression
                           <textarea
                             value={selectedTestCase.expectedExpression}
@@ -921,18 +921,18 @@ export function PracticeWorkspace({
                             }
                             rows={4}
                             spellCheck={false}
-                            className="mt-2 w-full rounded-[8px] border border-white/8 bg-[#111111] px-3 py-2 font-mono text-xs leading-6 text-white outline-none"
+                            className="uiverse-field mt-2 w-full bg-white px-3 py-2 font-mono text-xs leading-6 text-ink outline-none"
                           />
                         </label>
                         {runResults?.find((entry) => entry.label === selectedTestCase.label) ? (
-                          <div className="mt-4 rounded-[8px] border border-white/8 bg-white/4 p-3">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-white/56">
+                          <div className="mt-4 rounded-[8px] border border-black/10 bg-mist p-3">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-lake">
                               Last run
                             </p>
-                            <p className="mt-2 font-mono text-xs leading-6 text-white/72">
+                            <p className="mt-2 font-mono text-xs leading-6 text-black/72">
                               actual: {runResults.find((entry) => entry.label === selectedTestCase.label)?.actual}
                             </p>
-                            <p className="mt-1 font-mono text-xs leading-6 text-white/72">
+                            <p className="mt-1 font-mono text-xs leading-6 text-black/72">
                               expected: {runResults.find((entry) => entry.label === selectedTestCase.label)?.expected}
                             </p>
                           </div>
@@ -942,40 +942,40 @@ export function PracticeWorkspace({
                   </div>
                 </details>
               ) : (
-                <div className="rounded-[8px] border border-dashed border-white/14 bg-white/4 p-4 text-sm leading-6 text-white/60">
+                <div className="rounded-[8px] border border-dashed border-black/14 bg-mist p-4 text-sm leading-6 text-black/60">
                   This question is part of the roadmap, but it doesn&apos;t have a native starter template yet. You can still talk through it with the coach and use the official problem links above.
                 </div>
               )}
 
               {runnerError ? (
-                <div className="rounded-[8px] border border-red-500/30 bg-red-500/10 p-4 text-sm leading-6 text-red-300">
+                <div className="rounded-[8px] border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-700">
                   {runnerError}
                 </div>
               ) : null}
 
               {runResults ? (
-                <div className="rounded-[8px] border border-white/8 bg-white/4 p-4">
-                  <p className="text-sm font-semibold text-white">Run results</p>
+                <div className="rounded-[8px] border border-black/10 bg-white/88 p-4">
+                  <p className="text-sm font-semibold text-ink">Run results</p>
                   <div className="mt-3 space-y-3">
                     {runResults.map((result) => (
                       <div
                         key={result.label}
                         className={`rounded-[8px] border p-3 ${
                           result.passed
-                            ? "border-emerald-500/20 bg-emerald-500/10"
-                            : "border-amber-500/20 bg-amber-500/10"
+                            ? "border-emerald-200 bg-emerald-50"
+                            : "border-amber-200 bg-amber-50"
                         }`}
                       >
                         <div className="flex items-center justify-between gap-3">
-                          <p className="text-sm font-semibold text-white">{result.label}</p>
-                          <span className="text-xs font-semibold uppercase tracking-wide text-white/60">
+                          <p className="text-sm font-semibold text-ink">{result.label}</p>
+                          <span className="text-xs font-semibold uppercase tracking-wide text-black/60">
                             {result.passed ? "Passed" : "Needs work"}
                           </span>
                         </div>
-                        <p className="mt-2 font-mono text-xs leading-6 text-white/72">
+                        <p className="mt-2 font-mono text-xs leading-6 text-black/72">
                           actual: {result.actual}
                         </p>
-                        <p className="mt-1 font-mono text-xs leading-6 text-white/72">
+                        <p className="mt-1 font-mono text-xs leading-6 text-black/72">
                           expected: {result.expected}
                         </p>
                       </div>
