@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { AppShell } from "@/components/app-shell";
 import { PatternLiftStateProvider } from "@/components/patternlift-state";
+import { getCurrentUser } from "@/lib/auth";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -8,16 +9,18 @@ export const metadata: Metadata = {
   description: "AI-assisted LeetCode pattern coach for recognition, recall, and review."
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const currentUser = await getCurrentUser();
+
   return (
     <html lang="en">
       <body>
-        <PatternLiftStateProvider>
-          <AppShell>{children}</AppShell>
+        <PatternLiftStateProvider isAuthenticated={Boolean(currentUser)}>
+          <AppShell currentUser={currentUser}>{children}</AppShell>
         </PatternLiftStateProvider>
       </body>
     </html>

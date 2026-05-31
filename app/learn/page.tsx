@@ -1,7 +1,8 @@
 import { LearningMode } from "@/components/learning-mode";
+import { requireUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
-export default function LearnPage({
+export default async function LearnPage({
   searchParams
 }: {
   searchParams?: {
@@ -9,6 +10,11 @@ export default function LearnPage({
     coach?: "beginner" | "guided" | "optional" | "off";
   };
 }) {
+  const params = new URLSearchParams();
+  if (searchParams?.patterns) params.set("patterns", searchParams.patterns);
+  if (searchParams?.coach) params.set("coach", searchParams.coach);
+  await requireUser(`/learn${params.toString() ? `?${params.toString()}` : ""}`);
+
   const patternIds = searchParams?.patterns?.split(",").filter(Boolean) ?? [];
   const coachStyle = searchParams?.coach ?? "guided";
 

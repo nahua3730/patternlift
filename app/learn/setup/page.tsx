@@ -1,5 +1,7 @@
 import { LearnSetup } from "@/components/learn-setup";
+import { requireUser } from "@/lib/auth";
 
-export default function LearnSetupPage() {
+export default async function LearnSetupPage() {
+  await requireUser("/learn/setup");
   return <LearnSetup />;
 }

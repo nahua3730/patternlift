@@ -1,7 +1,8 @@
 import { PracticePageView } from "@/components/state-views";
+import { requireUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
-export default function PracticePage({
+export default async function PracticePage({
   searchParams
 }: {
   searchParams?: {
@@ -11,6 +12,13 @@ export default function PracticePage({
     patterns?: string;
   };
 }) {
+  const params = new URLSearchParams();
+  if (searchParams?.problem) params.set("problem", searchParams.problem);
+  if (searchParams?.mode) params.set("mode", searchParams.mode);
+  if (searchParams?.coach) params.set("coach", searchParams.coach);
+  if (searchParams?.patterns) params.set("patterns", searchParams.patterns);
+  await requireUser(`/practice${params.toString() ? `?${params.toString()}` : ""}`);
+
   if (!searchParams?.problem) {
     if (searchParams?.mode === "recognize" || searchParams?.mode === "practice") {
       const params = new URLSearchParams();

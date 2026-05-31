@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { starterHistory } from "@/lib/product";
 import type { PersistenceSnapshot } from "@/lib/persistence";
@@ -25,16 +26,22 @@ const starterReviewQueue = [
 ] as const;
 
 export async function GET() {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const attempts = db
     .prepare(
       `
         SELECT id, problem_id, problem_title, selected_pattern_label, outcome, insight
         FROM attempts
+        WHERE user_id = ?
         ORDER BY datetime(created_at) DESC
         LIMIT 6
       `
     )
-    .all() as Array<{
+    .all(user.id) as Array<{
     id: string;
     problem_id: string;
     problem_title: string;
@@ -48,11 +55,12 @@ export async function GET() {
       `
         SELECT id, problem_title, target_pattern_label, contrast_pattern_label, review_question, urgency
         FROM review_items
+        WHERE user_id = ?
         ORDER BY datetime(created_at) DESC
         LIMIT 4
       `
     )
-    .all() as Array<{
+    .all(user.id) as Array<{
     id: string;
     problem_title: string;
     target_pattern_label: string;

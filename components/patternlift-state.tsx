@@ -65,11 +65,25 @@ const initialReviewQueue: ReviewItem[] = [
 
 const PatternLiftStateContext = createContext<PatternLiftStateValue | null>(null);
 
-export function PatternLiftStateProvider({ children }: { children: ReactNode }) {
+export function PatternLiftStateProvider({
+  children,
+  isAuthenticated
+}: {
+  children: ReactNode;
+  isAuthenticated: boolean;
+}) {
   const [history, setHistory] = useState<HistoryItem[]>(starterHistory.map((item) => ({ ...item })));
   const [reviewQueue, setReviewQueue] = useState<ReviewItem[]>(initialReviewQueue);
   const [latestAttempt, setLatestAttempt] = useState<AttemptResult | null>(null);
+
   useEffect(() => {
+    if (!isAuthenticated) {
+      setHistory(starterHistory.map((item) => ({ ...item })));
+      setReviewQueue(initialReviewQueue.map((item) => ({ ...item })));
+      setLatestAttempt(null);
+      return;
+    }
+
     async function loadState() {
       try {
         const response = await fetch("/api/state");
@@ -84,7 +98,7 @@ export function PatternLiftStateProvider({ children }: { children: ReactNode }) 
     }
 
     void loadState();
-  }, []);
+  }, [isAuthenticated]);
 
   const totalAttempts = history.length;
   const solidAttempts = history.filter((item) => item.outcome === "solid").length;

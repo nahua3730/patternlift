@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { SessionUser } from "@/lib/auth";
 
 const modeCards = [
   {
@@ -24,10 +25,32 @@ const modeCards = [
   }
 ] as const;
 
-export function HomePage() {
+export function HomePage({ currentUser }: { currentUser: SessionUser | null }) {
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 pt-6">
       <section className="home-hero px-4 py-10 text-center sm:px-10">
+        <div className="flex justify-end gap-3">
+          {currentUser ? (
+            <span className="rounded-full border border-black/10 bg-white/80 px-4 py-2 text-sm font-medium text-black/68">
+              Signed in as {currentUser.displayName || currentUser.email}
+            </span>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="uiverse-button-secondary inline-flex items-center justify-center px-4 py-2 text-sm font-medium"
+              >
+                Log in
+              </Link>
+              <Link
+                href="/signup"
+                className="uiverse-button inline-flex items-center justify-center px-4 py-2 text-sm font-medium"
+              >
+                Sign up
+              </Link>
+            </>
+          )}
+        </div>
         <p className="text-sm font-semibold uppercase tracking-[0.24em] text-coral">
           PatternLift
         </p>
@@ -38,6 +61,11 @@ export function HomePage() {
           Start with the kind of help you want today. Each mode takes you into
           its own path instead of dumping the whole app in your lap at once.
         </p>
+        {!currentUser ? (
+          <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-black/56">
+            Create an account first so your coach chats, practice history, and review queue stay with you.
+          </p>
+        ) : null}
       </section>
 
       <section className="grid gap-5 lg:grid-cols-3">
