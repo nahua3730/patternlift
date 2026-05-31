@@ -21,6 +21,14 @@ import { buildTechniqueBriefs, getSuggestedTechniques } from "@/lib/techniques";
 import { usePatternLiftState } from "@/components/patternlift-state";
 
 type PatternId = (typeof patternOptions)[number]["id"];
+type CoachStyle = "beginner" | "guided" | "optional" | "off";
+type RoadmapFilter = "all" | "official" | RoadmapTrack;
+type ChatMessage = {
+  id: string;
+  speaker: "coach" | "user";
+  title: string;
+  body: string;
+};
 
 export type AttemptResult = {
   problemId: string;
@@ -44,43 +52,8 @@ type PracticeWorkspaceProps = {
   onComplete: (result: AttemptResult) => void;
   initialProblemId?: string;
   mode?: "learn" | "recognize" | "practice";
-  coachStyle?: "beginner" | "guided" | "optional" | "off";
+  coachStyle?: CoachStyle;
 };
-
-const clueChoices = [
-  "need instant lookup",
-  "count frequencies or duplicates",
-  "pair or complement relationship",
-  "contiguous subarray",
-  "longest or shortest range",
-  "sorted input",
-  "sorted or monotonic search space",
-  "minimum feasible / maximum feasible",
-  "level-order traversal",
-  "matching pairs or reversible order",
-  "next greater or smaller signal",
-  "top k ranking",
-  "repeated best choice",
-  "overlapping subproblems",
-  "overlapping ranges",
-  "need to shrink after expanding",
-  "need to undo or resolve the latest unfinished item",
-  "commit best local choice"
-] as const;
-
-const firstStepChoices = [
-  "Store values in a hash map or set",
-  "Track left and right pointers",
-  "Set a left/right search interval and test the midpoint",
-  "Push candidates onto a stack and pop when the rule breaks",
-  "Maintain a running sum or frequency state",
-  "Use a queue for level order expansion",
-  "Go deeper recursively before trying alternatives",
-  "Push candidates into a heap",
-  "Sort intervals, then compare and merge boundaries",
-  "Define a DP state and recurrence",
-  "Sort or scan for the best safe local choice"
-] as const;
 
 type RunResult = {
   label: string;
@@ -98,8 +71,6 @@ type EditableExample = {
   kind: "built-in" | "custom";
 };
 
-type RoadmapFilter = "all" | "official" | RoadmapTrack;
-
 const editorLanguages: Array<{ id: SupportedLanguage; label: string }> = [
   { id: "javascript", label: "JavaScript" },
   { id: "typescript", label: "TypeScript" },
@@ -114,21 +85,28 @@ const editorLanguages: Array<{ id: SupportedLanguage; label: string }> = [
   { id: "kotlin", label: "Kotlin" }
 ];
 
+const coachStyles: Array<{ id: CoachStyle; label: string }> = [
+  { id: "beginner", label: "Beginner Guided" },
+  { id: "guided", label: "Guided" },
+  { id: "optional", label: "Hints On Demand" },
+  { id: "off", label: "Coach Off" }
+];
+
 const modeCopy = {
   learn: {
     title: "Let’s learn this problem step by step.",
     body:
-      "This mode is for understanding the pattern, the data structure choice, and the path from brute force toward something cleaner."
+      "Bring your thoughts into the chat, and the coach will react naturally instead of making you tap through a bunch of artificial choices."
   },
   recognize: {
     title: "Let’s pressure-test your pattern instinct.",
     body:
-      "Name the pattern you suspect, tell me the clue you noticed, and I’ll help you sharpen the distinction before code takes over."
+      "Tell the coach what pattern you suspect and why. It should feel like a real back-and-forth, not a checklist."
   },
   practice: {
     title: "Open the problem and practice with the amount of coaching you want.",
     body:
-      "Use the editor and tests directly. Keep the coach close, or keep it quiet and call it in only when you want a second set of eyes."
+      "Use the editor and tests directly. When you want help, ask for it in the chat like you would with a real coach."
   }
 } as const;
 
@@ -140,21 +118,15 @@ export function PracticeWorkspace({
 }: PracticeWorkspaceProps) {
   const { history } = usePatternLiftState();
   const [problemId, setProblemId] = useState<string>(initialProblemId ?? allProblems[0].id);
-  const [problemQuery, setProblemQuery] = useState<string>("");
+  const [problemQuery, setProblemQuery] = useState("");
   const [roadmapFilter, setRoadmapFilter] = useState<RoadmapFilter>("all");
-  const [problemText, setProblemText] = useState<string>(allProblems[0].prompt);
-  const [selectedPattern, setSelectedPattern] = useState<PatternId | null>(null);
-  const [selectedClues, setSelectedClues] = useState<string[]>([]);
-  const [selectedFirstStep, setSelectedFirstStep] = useState<string | null>(null);
-  const [learnerNote, setLearnerNote] = useState("");
-  const [hintLevel, setHintLevel] = useState(0);
-  const [feedback, setFeedback] = useState<AttemptResult | null>(null);
-  const [aiCoach, setAiCoach] = useState<CoachResponse | null>(null);
+  const [problemText, setProblemText] = useState(allProblems[0].prompt);
+  const [activeCoachStyle, setActiveCoachStyle] = useState<CoachStyle>(coachStyle);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [coachDraft, setCoachDraft] = useState("");
   const [coachError, setCoachError] = useState<string | null>(null);
   const [isCoachLoading, setIsCoachLoading] = useState(false);
-  const [activeCoachStyle, setActiveCoachStyle] = useState<
-    "beginner" | "guided" | "optional" | "off"
-  >(coachStyle);
+  const [hasLoggedAttempt, setHasLoggedAttempt] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>("javascript");
   const [codeByLanguage, setCodeByLanguage] = useState<Record<SupportedLanguage, string>>({
     javascript: "",
@@ -178,23 +150,15 @@ export function PracticeWorkspace({
     () => allProblems.find((problem) => problem.id === problemId) ?? allProblems[0],
     [problemId]
   );
-
-  const activePattern = useMemo(
-    () => patternOptions.find((pattern) => pattern.id === selectedPattern) ?? null,
-    [selectedPattern]
-  );
-
   const correctPattern = useMemo(
     () => patternOptions.find((pattern) => pattern.id === activeProblem.targetPatternId)!,
     [activeProblem.targetPatternId]
   );
-
   const contrastPattern = useMemo(
     () =>
       patternOptions.find((pattern) => pattern.id === activeProblem.contrastPatternId) ?? null,
     [activeProblem.contrastPatternId]
   );
-
   const contrastPatternLabel = contrastPattern?.label ?? "Neighboring pattern";
   const activeCodeConfig = problemCodeMap[activeProblem.id];
   const activeRoadmapMeta = getOfficialProblemRoadmapMeta(activeProblem.id);
@@ -244,7 +208,7 @@ export function PracticeWorkspace({
 
         return { problem, score };
       })
-      .filter((entry) => normalizedQuery ? entry.score > 0 : true)
+      .filter((entry) => (normalizedQuery ? entry.score > 0 : true))
       .sort((left, right) => right.score - left.score || left.problem.title.localeCompare(right.problem.title))
       .slice(0, 8)
       .map((entry) => entry.problem);
@@ -266,6 +230,49 @@ export function PracticeWorkspace({
     });
   }, [completedProblemIds]);
 
+  const selectedTestCase =
+    testCases.find((testCase) => testCase.id === selectedTestCaseId) ?? testCases[0] ?? null;
+
+  const runSummary = useMemo(() => {
+    if (!runResults) return null;
+    const passed = runResults.filter((result) => result.passed).length;
+    return { passed, total: runResults.length };
+  }, [runResults]);
+
+  const quickRead = useMemo(() => {
+    const normalized = problemText.toLowerCase();
+    const signals = [
+      normalized.includes("substring") || normalized.includes("subarray")
+        ? "This question is talking about a contiguous range, so reused work may matter."
+        : null,
+      normalized.includes("shortest") || normalized.includes("longest")
+        ? "Optimization language usually means you should keep refining one structure instead of restarting."
+        : null,
+      normalized.includes("tree") || normalized.includes("graph")
+        ? "This smells like traversal, so the real distinction is probably depth, levels, or best-path ordering."
+        : null,
+      normalized.includes("top k") || normalized.includes("k most")
+        ? "Ranking language is a strong clue that repeated best-candidate access may matter."
+        : null
+    ].filter(Boolean) as string[];
+
+    return signals.length > 0
+      ? signals
+      : [
+          "Before solving, ask whether this is mainly about a range, a traversal, or repeated best-choice updates."
+        ];
+  }, [problemText]);
+
+  const suggestedTechniques = useMemo(
+    () =>
+      getSuggestedTechniques({
+        primaryPatternId: activeProblem.targetPatternId,
+        contrastPatternId: activeProblem.contrastPatternId,
+        problemPrompt: problemText
+      }),
+    [activeProblem.contrastPatternId, activeProblem.targetPatternId, problemText]
+  );
+
   useEffect(() => {
     if (initialProblemId && allProblems.some((problem) => problem.id === initialProblemId)) {
       setProblemId(initialProblemId);
@@ -278,15 +285,18 @@ export function PracticeWorkspace({
 
   useEffect(() => {
     setProblemText(activeProblem.prompt);
-    setSelectedPattern(null);
-    setSelectedClues([]);
-    setSelectedFirstStep(null);
-    setLearnerNote("");
-    setHintLevel(0);
-    setFeedback(null);
-    setAiCoach(null);
+    setCoachDraft("");
     setCoachError(null);
     setIsCoachLoading(false);
+    setHasLoggedAttempt(false);
+    setChatMessages([
+      buildOpeningMessage({
+        mode,
+        problemTitle: activeProblem.title,
+        correctPatternLabel: correctPattern.label,
+        contrastPatternLabel
+      })
+    ]);
     setCodeByLanguage({
       javascript: getStarterCode(activeCodeConfig, activeProblem.title, "javascript"),
       typescript: getStarterCode(activeCodeConfig, activeProblem.title, "typescript"),
@@ -315,83 +325,23 @@ export function PracticeWorkspace({
       })) ?? [];
     setTestCases(nextCases);
     setSelectedTestCaseId(nextCases[0]?.id ?? null);
-  }, [activeCodeConfig, activeProblem, availableLanguages]);
+  }, [activeCodeConfig, activeProblem, availableLanguages, contrastPatternLabel, correctPattern.label, mode]);
 
-  const selectedTestCase =
-    testCases.find((testCase) => testCase.id === selectedTestCaseId) ?? testCases[0] ?? null;
-  const runSummary = useMemo(() => {
-    if (!runResults) return null;
-    const passed = runResults.filter((result) => result.passed).length;
-    return {
-      passed,
-      total: runResults.length
-    };
-  }, [runResults]);
-
-  const quickRead = useMemo(() => {
-    const normalized = problemText.toLowerCase();
-
-    const signals = [
-      normalized.includes("substring") || normalized.includes("subarray")
-        ? "This question is talking about a contiguous range, so reuse matters."
-        : null,
-      normalized.includes("shortest") || normalized.includes("longest")
-        ? "Optimization language usually means the same structure should keep getting refined."
-        : null,
-      normalized.includes("tree") || normalized.includes("graph")
-        ? "This smells like traversal, so the real question is whether depth or levels matter more."
-        : null,
-      normalized.includes("top k") || normalized.includes("k most")
-        ? "Ranking language is a strong clue that repeated best-candidate access may matter."
-        : null
-    ].filter(Boolean) as string[];
-
-    return signals.length > 0
-      ? signals
-      : [
-          "Before naming a pattern, ask whether this is mainly about a range, a traversal, or repeated best-choice updates."
-        ];
-  }, [problemText]);
-
-  const hintTrail = useMemo(() => {
-    const hints = [
-      `Look at the signal hidden inside this question: ${activeProblem.reviewQuestion}`,
-      `Pattern contrast: this is more ${correctPattern.label} than ${contrastPatternLabel}.`,
-      `Implementation nudge: ${correctPattern.firstSteps[0]}.`
-    ];
-
-    return hints.slice(0, hintLevel);
-  }, [activeProblem, contrastPatternLabel, correctPattern, hintLevel]);
-
-  const suggestedTechniques = useMemo(
-    () =>
-      getSuggestedTechniques({
-        primaryPatternId: selectedPattern ?? activeProblem.targetPatternId,
-        contrastPatternId: activeProblem.contrastPatternId,
-        problemPrompt: problemText
-      }),
-    [activeProblem.contrastPatternId, activeProblem.targetPatternId, problemText, selectedPattern]
-  );
-
-  function resetFeedback() {
-    setFeedback(null);
-    setAiCoach(null);
-    setCoachError(null);
+  function chooseProblem(nextProblemId: string) {
+    const nextProblem =
+      allProblems.find((problem) => problem.id === nextProblemId) ?? allProblems[0];
+    setProblemId(nextProblem.id);
   }
 
   function updateProblemText(value: string) {
     setProblemText(value);
-    resetFeedback();
+    setCoachError(null);
   }
 
   function resetCodeEditor() {
     setCodeByLanguage((current) => ({
       ...current,
-      [selectedLanguage]: getStarterCode(
-        activeCodeConfig,
-        activeProblem.title,
-        selectedLanguage
-      )
+      [selectedLanguage]: getStarterCode(activeCodeConfig, activeProblem.title, selectedLanguage)
     }));
     setRunResults(null);
     setRunnerError(null);
@@ -404,9 +354,7 @@ export function PracticeWorkspace({
   ) {
     setTestCases((current) =>
       current.map((testCase) =>
-        testCase.id === testCaseId
-          ? { ...testCase, [field]: value }
-          : testCase
+        testCase.id === testCaseId ? { ...testCase, [field]: value } : testCase
       )
     );
     setRunResults(null);
@@ -440,75 +388,69 @@ export function PracticeWorkspace({
     setRunnerError(null);
   }
 
-  function toggleClue(clue: string) {
-    setSelectedClues((current) =>
-      current.includes(clue)
-        ? current.filter((entry) => entry !== clue)
-        : [...current, clue]
-    );
-    resetFeedback();
-  }
+  async function sendCoachMessage() {
+    const userText = coachDraft.trim();
+    if (!userText) return;
 
-  function chooseProblem(nextProblemId: string) {
-    const nextProblem =
-      allProblems.find((problem) => problem.id === nextProblemId) ?? allProblems[0];
-    setProblemId(nextProblem.id);
-  }
+    const userMessage: ChatMessage = {
+      id: `user-${Date.now()}`,
+      speaker: "user",
+      title: "You",
+      body: userText
+    };
 
-  async function evaluateAttempt() {
-    const matchedClues = selectedClues.filter((clue) =>
-      (activeProblem.recommendedClues as readonly string[]).includes(clue)
-    ).length;
+    const updatedHistory = [...chatMessages, userMessage];
+    setChatMessages(updatedHistory);
+    setCoachDraft("");
+    setCoachError(null);
 
-    const patternCorrect = selectedPattern === activeProblem.targetPatternId;
-    const stepCorrect = selectedFirstStep === activeProblem.recommendedFirstStep;
-
-    let score = 0;
-    if (patternCorrect) score += 50;
-    score += Math.min(matchedClues * 15, 30);
-    if (stepCorrect) score += 20;
-
+    const selectedPattern = inferPatternFromReply(userText);
+    const selectedClues = inferCluesFromReply(userText);
+    const selectedFirstStep = inferFirstStepFromReply(userText);
+    const score = scoreReply({
+      selectedPattern,
+      selectedClues,
+      selectedFirstStep,
+      targetPatternId: activeProblem.targetPatternId,
+      recommendedClues: activeProblem.recommendedClues,
+      recommendedFirstStep: activeProblem.recommendedFirstStep
+    });
     const outcome: AttemptResult["outcome"] =
       score >= 75 ? "solid" : score >= 40 ? "partial" : "confused";
 
-    const feedbackTitle =
-      outcome === "solid"
-        ? "Nice. Your reasoning is starting in the right neighborhood."
-        : outcome === "partial"
-          ? "You are close, but one distinction still needs to click."
-          : "Good moment to slow down and re-anchor on the strongest signal.";
-
-    const feedbackBody =
-      outcome === "solid"
-        ? `You matched this to ${correctPattern.label}, noticed useful clues, and picked a first move that belongs to that pattern.`
-        : outcome === "partial"
-          ? `There is a real instinct here, but the sharper move is to explain why this is ${correctPattern.label} instead of ${contrastPatternLabel}.`
-          : `This question is trying to pull you toward ${correctPattern.label}. Before more code, I would go back to the exact words that imply that pattern.`;
-
-    const result: AttemptResult = {
-      problemId: activeProblem.id,
-      problemTitle: activeProblem.title,
-      selectedPatternLabel: activePattern?.label ?? "No pattern selected",
-      selectedPatternId: selectedPattern,
-      correctPatternLabel: correctPattern.label,
-      selectedClues,
-      selectedFirstStep,
-      learnerNote: learnerNote.trim(),
-      outcome,
-      score,
-      feedbackTitle,
-      feedbackBody,
-      reviewQuestion: activeProblem.reviewQuestion,
-      weakPatternLabel: correctPattern.label,
-      contrastPatternLabel
-    };
-
-    setFeedback(result);
-    setAiCoach(null);
-    setCoachError(null);
-    onComplete(result);
+    if (!hasLoggedAttempt) {
+      onComplete({
+        problemId: activeProblem.id,
+        problemTitle: activeProblem.title,
+        selectedPatternLabel:
+          patternOptions.find((pattern) => pattern.id === selectedPattern)?.label ??
+          "Still exploring",
+        selectedPatternId: selectedPattern,
+        correctPatternLabel: correctPattern.label,
+        selectedClues,
+        selectedFirstStep,
+        learnerNote: userText,
+        outcome,
+        score,
+        feedbackTitle: "Coach conversation started",
+        feedbackBody: userText,
+        reviewQuestion: activeProblem.reviewQuestion,
+        weakPatternLabel: correctPattern.label,
+        contrastPatternLabel
+      });
+      setHasLoggedAttempt(true);
+    }
 
     if (activeCoachStyle === "off") {
+      setChatMessages((current) => [
+        ...current,
+        {
+          id: `coach-off-${Date.now()}`,
+          speaker: "coach",
+          title: "Coach is off",
+          body: "Turn the coach back on when you want a real response here. You can keep coding and running tests below in the meantime."
+        }
+      ]);
       return;
     }
 
@@ -517,17 +459,24 @@ export function PracticeWorkspace({
       coachStyle: activeCoachStyle,
       problemTitle: activeProblem.title,
       problemPrompt: problemText,
-      selectedPatternLabel: result.selectedPatternLabel,
-      correctPatternLabel: result.correctPatternLabel,
-      contrastPatternLabel: result.contrastPatternLabel,
+      userResponse: userText,
+      conversationHistory: updatedHistory.map((message) => ({
+        speaker: message.speaker,
+        text: message.body
+      })),
+      selectedPatternLabel:
+        patternOptions.find((pattern) => pattern.id === selectedPattern)?.label ??
+        "Still exploring",
+      correctPatternLabel: correctPattern.label,
+      contrastPatternLabel,
       suggestedTechniques: buildTechniqueBriefs(suggestedTechniques),
-      selectedClues: result.selectedClues,
-      selectedFirstStep: result.selectedFirstStep,
-      learnerNote: result.learnerNote,
+      selectedClues,
+      selectedFirstStep,
+      learnerNote: userText,
       currentCode: codeByLanguage[selectedLanguage],
-      localOutcome: result.outcome,
-      localScore: result.score,
-      reviewQuestion: result.reviewQuestion
+      localOutcome: outcome,
+      localScore: score,
+      reviewQuestion: activeProblem.reviewQuestion
     };
 
     setIsCoachLoading(true);
@@ -535,32 +484,32 @@ export function PracticeWorkspace({
     try {
       const coachResponse = await fetch("/api/coach", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(coachPayload)
       });
 
       const data = (await coachResponse.json()) as CoachResponse | { error: string };
-
       if (!coachResponse.ok || "error" in data) {
         throw new Error("error" in data ? data.error : "Unable to load AI coaching.");
       }
 
-      setAiCoach(data);
+      setChatMessages((current) => [
+        ...current,
+        {
+          id: `coach-${Date.now()}`,
+          speaker: "coach",
+          title: data.headline,
+          body: formatCoachReply(data)
+        }
+      ]);
     } catch (error) {
       setCoachError(
-        error instanceof Error
-          ? error.message
-          : "Unable to load AI coaching right now."
+        error instanceof Error ? error.message : "Unable to load AI coaching right now."
       );
     } finally {
       setIsCoachLoading(false);
     }
   }
-
-  const canEvaluate =
-    problemText.trim().length > 0 && selectedPattern && selectedClues.length > 0 && selectedFirstStep;
 
   function runExamples() {
     if (!activeCodeConfig) {
@@ -578,9 +527,7 @@ export function PracticeWorkspace({
     try {
       const response = await fetch("/api/run-code", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           language: selectedLanguage,
           code: codeByLanguage[selectedLanguage],
@@ -596,9 +543,7 @@ export function PracticeWorkspace({
       });
 
       const data = (await response.json()) as
-        | {
-            results: { label: string; actual: unknown; expected: unknown }[];
-          }
+        | { results: { label: string; actual: unknown; expected: unknown }[] }
         | { error: string };
 
       if (!response.ok || "error" in data) {
@@ -628,29 +573,19 @@ export function PracticeWorkspace({
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
-      <ThreadMessage
-        speaker="coach"
-        title={modeCopy[mode].title}
-      >
-        <p className="text-sm leading-7 text-black/72">
-          {modeCopy[mode].body}
-        </p>
+      <ThreadMessage speaker="coach" title={modeCopy[mode].title}>
+        <p className="text-sm leading-7 text-black/72">{modeCopy[mode].body}</p>
 
         <div className="mt-5 rounded-lg border border-black/10 bg-white/90 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-ink">Coach style</p>
               <p className="mt-1 text-sm leading-6 text-black/62">
-                Switch between heavier teaching, lighter hints, or a quiet workspace.
+                Keep this lightweight if you want, but the interaction stays chat-first.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              {[
-                { id: "beginner" as const, label: "Beginner Guided" },
-                { id: "guided" as const, label: "Guided" },
-                { id: "optional" as const, label: "Hints On Demand" },
-                { id: "off" as const, label: "Coach Off" }
-              ].map((style) => {
+              {coachStyles.map((style) => {
                 const isActive = activeCoachStyle === style.id;
                 return (
                   <button
@@ -704,8 +639,8 @@ export function PracticeWorkspace({
           <button
             type="button"
             onClick={() => {
-              setProblemId(activeProblem.id);
               setProblemText(activeProblem.prompt);
+              setCoachError(null);
             }}
             className="uiverse-button-secondary px-4 py-2 text-sm font-medium"
           >
@@ -715,10 +650,7 @@ export function PracticeWorkspace({
 
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           {roadmapCoverage.map((coverage) => (
-            <div
-              key={coverage.track}
-              className="rounded-lg border border-black/10 bg-white/90 p-4"
-            >
+            <div key={coverage.track} className="rounded-lg border border-black/10 bg-white/90 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-lake">
                 {coverage.track === "blind75" ? "75 Track" : "150 Track"}
               </p>
@@ -734,9 +666,7 @@ export function PracticeWorkspace({
             </div>
           ))}
           <div className="rounded-lg border border-black/10 bg-white/90 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-ember">
-              Filters
-            </p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-ember">Filters</p>
             <div className="mt-3 flex flex-wrap gap-2">
               {[
                 { id: "all" as const, label: "All questions" },
@@ -775,6 +705,7 @@ export function PracticeWorkspace({
             {filteredProblems.length > 0 ? (
               filteredProblems.map((problem) => {
                 const isActive = problem.id === activeProblem.id;
+                const problemMeta = getOfficialProblemRoadmapMeta(problem.id);
 
                 return (
                   <button
@@ -794,23 +725,19 @@ export function PracticeWorkspace({
                           Completed
                         </span>
                       ) : null}
-                      {getOfficialProblemRoadmapMeta(problem.id) ? (
-                        <>
-                          {getOfficialProblemRoadmapMeta(problem.id)?.leetcodeNumber ? (
-                            <span className="rounded-full border border-black/10 bg-white px-2 py-1 text-[11px] font-medium text-black/60">
-                              #{getOfficialProblemRoadmapMeta(problem.id)?.leetcodeNumber}
-                            </span>
-                          ) : null}
-                          {getOfficialProblemRoadmapMeta(problem.id)?.tracks.map((track) => (
-                            <span
-                              key={`${problem.id}-${track}`}
-                              className="rounded-full border border-black/10 bg-white px-2 py-1 text-[11px] font-medium text-black/60"
-                            >
-                              {track === "blind75" ? "75" : "150"}
-                            </span>
-                          ))}
-                        </>
+                      {problemMeta?.leetcodeNumber ? (
+                        <span className="rounded-full border border-black/10 bg-white px-2 py-1 text-[11px] font-medium text-black/60">
+                          #{problemMeta.leetcodeNumber}
+                        </span>
                       ) : null}
+                      {problemMeta?.tracks.map((track) => (
+                        <span
+                          key={`${problem.id}-${track}`}
+                          className="rounded-full border border-black/10 bg-white px-2 py-1 text-[11px] font-medium text-black/60"
+                        >
+                          {track === "blind75" ? "75" : "150"}
+                        </span>
+                      ))}
                       <span className="rounded-full border border-black/10 bg-white px-2 py-1 text-[11px] font-medium text-black/60">
                         {problem.category}
                       </span>
@@ -826,13 +753,7 @@ export function PracticeWorkspace({
               })
             ) : (
               <div className="rounded-lg border border-dashed border-black/14 bg-mist p-4 text-sm leading-6 text-black/60">
-                No question matches that search yet. Try a pattern name like
-                {" "}
-                <span className="font-semibold text-ink">binary search</span>
-                {" "}
-                or a keyword like
-                {" "}
-                <span className="font-semibold text-ink">substring</span>.
+                No question matches that search yet. Try a pattern name like <span className="font-semibold text-ink">binary search</span> or a keyword like <span className="font-semibold text-ink">substring</span>.
               </div>
             )}
           </div>
@@ -851,7 +772,7 @@ export function PracticeWorkspace({
       </ThreadMessage>
 
       <ThreadMessage speaker="user" title={activeProblem.title}>
-        <p className="text-sm leading-7 text-black/78 whitespace-pre-wrap">{problemText}</p>
+        <p className="whitespace-pre-wrap text-sm leading-7 text-black/78">{problemText}</p>
         {activeRoadmapMeta ? (
           <div className="mt-4 flex flex-wrap gap-2">
             {activeRoadmapMeta.leetcodeNumber ? (
@@ -867,257 +788,127 @@ export function PracticeWorkspace({
                 {track === "blind75" ? "Blind 75" : "NeetCode 150"}
               </span>
             ))}
-            {activeRoadmapMeta.neetcodeUrls.blind75 || activeRoadmapMeta.neetcodeUrls.neetcode150 ? (
-              <a
-                href={activeRoadmapMeta.neetcodeUrls.neetcode150 ?? activeRoadmapMeta.neetcodeUrls.blind75}
-                target="_blank"
-                rel="noreferrer"
-                className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-lake"
-              >
-                Open on NeetCode
-              </a>
-            ) : null}
-            {activeRoadmapMeta.leetcodeUrl ? (
-              <a
-                href={activeRoadmapMeta.leetcodeUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-lake"
-              >
-                Open on LeetCode
-              </a>
-            ) : null}
           </div>
         ) : null}
       </ThreadMessage>
 
-      <ThreadMessage
-        speaker="coach"
-        title="Here’s what I notice before naming a pattern."
-      >
+      <ThreadMessage speaker="coach" title="Before we dive in, here’s what stands out to me.">
         <ul className="space-y-2 text-sm leading-6 text-black/72">
           {quickRead.map((signal) => (
             <li key={signal}>{signal}</li>
           ))}
         </ul>
-
         <div className="mt-4 flex flex-wrap gap-2">
           <span className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/66">
-            {activeProblem.category}
-          </span>
-          <span className="rounded-full border border-black/10 bg-mist px-3 py-1 text-xs font-medium text-black/66">
-            {activeProblem.difficulty}
+            Strongest pattern signal: {correctPattern.label}
           </span>
           <span className="rounded-full border border-black/10 bg-mist px-3 py-1 text-xs font-medium text-black/66">
             Easy to confuse with {contrastPatternLabel}
           </span>
+          {suggestedTechniques.slice(0, 2).map((technique) => (
+            <span
+              key={technique.id}
+              className="rounded-full border border-black/10 bg-mist px-3 py-1 text-xs font-medium text-black/66"
+            >
+              {technique.title}
+            </span>
+          ))}
         </div>
+      </ThreadMessage>
+
+      {chatMessages.map((message) => (
+        <ThreadMessage key={message.id} speaker={message.speaker} title={message.title}>
+          <p className="whitespace-pre-wrap text-sm leading-7 text-black/74">{message.body}</p>
+        </ThreadMessage>
+      ))}
+
+      {isCoachLoading ? (
+        <ThreadMessage speaker="coach" title="Coach is thinking...">
+          <p className="text-sm leading-6 text-black/68">
+            I&apos;m reading your last message and shaping the next step.
+          </p>
+        </ThreadMessage>
+      ) : null}
+
+      {coachError ? (
+        <ThreadMessage speaker="coach" title="AI coaching unavailable">
+          <p className="text-sm leading-6 text-red-700">{coachError}</p>
+        </ThreadMessage>
+      ) : null}
+
+      <ThreadMessage
+        speaker="user"
+        title="Reply to the coach"
+        controls={
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => void sendCoachMessage()}
+              disabled={coachDraft.trim().length === 0 || isCoachLoading}
+              className="uiverse-button px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isCoachLoading ? "Sending..." : "Send"}
+            </button>
+          </div>
+        }
+      >
+        <p className="text-sm leading-6 text-black/72">
+          Answer naturally. Tell the coach what pattern you suspect, what feels confusing,
+          what first move you want to try, or ask for a hint or code review.
+        </p>
+        <textarea
+          value={coachDraft}
+          onChange={(event) => setCoachDraft(event.target.value)}
+          rows={4}
+          className="uiverse-field mt-3 w-full px-4 py-3 text-sm leading-6 text-ink"
+          placeholder={
+            mode === "recognize"
+              ? "Example: I think this is sliding window because the question talks about a substring, but I’m not sure when the left side should move."
+              : mode === "learn"
+                ? "Example: I think the pattern is hash map / set because I want fast lookup for complements. My first move would be storing seen values."
+                : "Example: I wrote a first pass with two pointers. Can you tell me if that direction makes sense before I go further?"
+          }
+        />
       </ThreadMessage>
 
       <ThreadMessage
         speaker="coach"
-        title="What pattern does your first instinct point to?"
+        title="Code workspace"
         controls={
-          <ChoiceGrid>
-            {patternOptions.map((pattern) => {
-              const isSelected = pattern.id === selectedPattern;
-
-              return (
-                <button
-                  key={pattern.id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedPattern(pattern.id);
-                    resetFeedback();
-                  }}
-                  className={`uiverse-choice p-4 text-left transition ${
-                    isSelected ? "uiverse-choice-active text-white" : "text-ink"
-                  }`}
-                >
-                  <p className="text-sm font-semibold">{pattern.label}</p>
-                  <p
-                    className={`mt-2 text-sm leading-6 ${
-                      isSelected ? "text-white/78" : "text-black/64"
-                    }`}
-                  >
-                    {pattern.coachPrompt}
-                  </p>
-                </button>
-              );
-            })}
-          </ChoiceGrid>
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={runExamples}
+              className="uiverse-button px-4 py-2 text-sm font-medium"
+            >
+              Run examples
+            </button>
+            <button
+              type="button"
+              onClick={resetCodeEditor}
+              className="uiverse-button-secondary px-4 py-2 text-sm font-medium"
+            >
+              Reset starter code
+            </button>
+          </div>
         }
       >
-        <p className="text-sm leading-6 text-black/72">
-          Don&apos;t worry about being perfect here. I care more about your first
-          read than whether you get it right immediately.
-        </p>
-      </ThreadMessage>
-
-      {activePattern ? (
-        <ThreadMessage speaker="user" title="My current guess">
-          <p className="text-sm font-semibold text-ink">{activePattern.label}</p>
-          <p className="mt-2 text-sm leading-6 text-black/72">
-            I&apos;m leaning this way because the question feels closest to this pattern.
-          </p>
-        </ThreadMessage>
-      ) : null}
-
-      {activePattern ? (
-        <ThreadMessage
-          speaker="coach"
-          title={`Okay. What clue made ${activePattern.label} feel plausible to you?`}
-          controls={
-            <div className="flex flex-wrap gap-2">
-              {clueChoices.map((clue) => {
-                const isSelected = selectedClues.includes(clue);
-
-                return (
-                  <button
-                    key={clue}
-                    type="button"
-                    onClick={() => toggleClue(clue)}
-                    className={`uiverse-chip px-3 py-2 text-sm transition ${
-                      isSelected ? "uiverse-chip-active text-white" : "text-black/72"
-                    }`}
-                  >
-                    {clue}
-                  </button>
-                );
-              })}
+        <div className="space-y-4">
+          <div className="rounded-lg border border-black/10 bg-white/92 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-ink">
+                {editorLanguages.find((language) => language.id === selectedLanguage)?.label} starter
+              </p>
+              {activeCodeConfig ? (
+                <span className="rounded-full border border-black/10 bg-mist px-3 py-1 text-xs font-medium text-black/68">
+                  {activeCodeConfig.functionName}
+                </span>
+              ) : null}
             </div>
-          }
-        >
-          <p className="text-sm leading-6 text-black/72">
-            Pick one or two clues. We&apos;re trying to train what your eyes notice
-            first, not write an essay.
-          </p>
-        </ThreadMessage>
-      ) : null}
-
-      {selectedClues.length > 0 ? (
-        <ThreadMessage speaker="user" title="The clue I noticed">
-          <div className="flex flex-wrap gap-2">
-            {selectedClues.map((clue) => (
-              <span
-                key={clue}
-                className="rounded-full border border-black/10 bg-white/85 px-3 py-1 text-sm text-black/72"
-              >
-                {clue}
-              </span>
-            ))}
-          </div>
-        </ThreadMessage>
-      ) : null}
-
-      {selectedClues.length > 0 ? (
-        <ThreadMessage
-          speaker="coach"
-          title="Good. Hold onto these ideas while you choose the first move."
-          controls={
-            <ChoiceGrid columns="two">
-              {firstStepChoices.map((step) => {
-                const isSelected = selectedFirstStep === step;
-
-                return (
-                  <button
-                    key={step}
-                    type="button"
-                    onClick={() => {
-                      setSelectedFirstStep(step);
-                      resetFeedback();
-                    }}
-                    className={`uiverse-choice p-4 text-left text-sm leading-6 transition ${
-                      isSelected ? "uiverse-choice-active text-white" : "text-black/72"
-                    }`}
-                  >
-                    {step}
-                  </button>
-                );
-              })}
-            </ChoiceGrid>
-          }
-        >
-          <div className="space-y-3">
-            <p className="text-sm leading-6 text-black/72">
-              Here are the techniques I&apos;d keep nearby for this question.
-            </p>
-
-            <div className="space-y-3">
-              {suggestedTechniques.map((technique) => (
-                <div
-                  key={technique.id}
-                  className="rounded-lg border border-black/10 bg-white/90 p-4"
-                >
-                  <p className="text-sm font-semibold text-ink">{technique.title}</p>
-                  <p className="mt-2 text-sm leading-6 text-black/72">
-                    <span className="font-semibold text-ink">Starter question:</span>{" "}
-                    {technique.starterQuestion}
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-black/68">
-                    <span className="font-semibold text-ink">Core idea:</span>{" "}
-                    {technique.coreIdea}
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-black/68">
-                    <span className="font-semibold text-ink">Trap:</span>{" "}
-                    {technique.commonTrap}
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {technique.quickTips.slice(0, 2).map((tip) => (
-                      <span
-                        key={tip}
-                        className="rounded-full border border-black/10 bg-mist px-3 py-1 text-xs font-medium text-black/68"
-                      >
-                        {tip}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </ThreadMessage>
-      ) : null}
-
-      {selectedFirstStep ? (
-        <ThreadMessage
-          speaker="coach"
-          title="Now turn that idea into code."
-          controls={
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={runExamples}
-                className="uiverse-button px-4 py-2 text-sm font-medium"
-              >
-                Run examples
-              </button>
-              <button
-                type="button"
-                onClick={resetCodeEditor}
-                className="uiverse-button-secondary px-4 py-2 text-sm font-medium"
-              >
-                Reset starter code
-              </button>
-            </div>
-          }
-        >
-          <div className="space-y-4">
-            <div className="rounded-lg border border-black/10 bg-white/92 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-ink">
-                  {editorLanguages.find((language) => language.id === selectedLanguage)?.label} starter
-                </p>
-                {activeCodeConfig ? (
-                  <span className="rounded-full border border-black/10 bg-mist px-3 py-1 text-xs font-medium text-black/68">
-                    {activeCodeConfig.functionName}
-                  </span>
-                ) : null}
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {editorLanguages
-                  .filter((language) => availableLanguages.includes(language.id))
-                  .map((language) => {
+            <div className="mt-3 flex flex-wrap gap-2">
+              {editorLanguages
+                .filter((language) => availableLanguages.includes(language.id))
+                .map((language) => {
                   const isActive = selectedLanguage === language.id;
 
                   return (
@@ -1139,291 +930,321 @@ export function PracticeWorkspace({
                     </button>
                   );
                 })}
-              </div>
-              <textarea
-                value={codeByLanguage[selectedLanguage]}
-                onChange={(event) => {
-                  setCodeByLanguage((current) => ({
-                    ...current,
-                    [selectedLanguage]: event.target.value
-                  }));
-                  setRunResults(null);
-                  setRunnerError(null);
-                }}
-                rows={16}
-                spellCheck={false}
-                className="uiverse-field mt-3 w-full px-4 py-3 font-mono text-sm leading-6 text-ink"
-              />
             </div>
-
-            {activeCodeConfig ? (
-              <div className="rounded-lg border border-black/10 bg-white/88 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-ink">Test case panel</p>
-                  <button
-                    type="button"
-                    onClick={addCustomTestCase}
-                    className="uiverse-button-secondary px-3 py-2 text-xs font-medium"
-                  >
-                    Add custom case
-                  </button>
-                </div>
-                {runSummary ? (
-                  <div className="mt-3 rounded-lg border border-black/10 bg-mist p-3 text-sm text-black/68">
-                    Passed {runSummary.passed} of {runSummary.total} cases
-                  </div>
-                ) : null}
-                <div className="mt-4 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-                  <div className="space-y-2">
-                    {testCases.map((testCase) => {
-                      const result = runResults?.find((entry) => entry.label === testCase.label);
-                      const isActive = selectedTestCase?.id === testCase.id;
-                      return (
-                        <button
-                          key={testCase.id}
-                          type="button"
-                          onClick={() => setSelectedTestCaseId(testCase.id)}
-                          className={`w-full rounded-lg border px-3 py-3 text-left transition ${
-                            isActive
-                              ? "border-lake/30 bg-lake/10"
-                              : "border-black/10 bg-mist"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="text-sm font-semibold text-ink">{testCase.label}</p>
-                            {result ? (
-                              <span className={`text-xs font-semibold ${result.passed ? "text-emerald-700" : "text-amber-700"}`}>
-                                {result.passed ? "Passed" : "Failed"}
-                              </span>
-                            ) : testCase.kind === "custom" ? (
-                              <span className="text-xs font-semibold text-black/50">Custom</span>
-                            ) : null}
-                          </div>
-                          <p className="mt-2 line-clamp-2 font-mono text-xs leading-5 text-black/62">
-                            {testCase.argsExpression}
-                          </p>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {selectedTestCase ? (
-                    <div className="rounded-lg border border-black/10 bg-white/92 p-4">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <p className="text-sm font-semibold text-ink">{selectedTestCase.label}</p>
-                        {selectedTestCase.kind === "custom" ? (
-                          <button
-                            type="button"
-                            onClick={() => removeCustomTestCase(selectedTestCase.id)}
-                            className="text-xs font-medium text-ember"
-                          >
-                            Remove custom case
-                          </button>
-                        ) : null}
-                      </div>
-                      <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-black/56">
-                        Args expression
-                        <textarea
-                          value={selectedTestCase.argsExpression}
-                          onChange={(event) =>
-                            updateTestCase(selectedTestCase.id, "argsExpression", event.target.value)
-                          }
-                          rows={4}
-                          spellCheck={false}
-                          className="uiverse-field mt-2 w-full px-3 py-2 font-mono text-xs leading-6 text-ink"
-                        />
-                      </label>
-                      <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-black/56">
-                        Expected expression
-                        <textarea
-                          value={selectedTestCase.expectedExpression}
-                          onChange={(event) =>
-                            updateTestCase(selectedTestCase.id, "expectedExpression", event.target.value)
-                          }
-                          rows={4}
-                          spellCheck={false}
-                          className="uiverse-field mt-2 w-full px-3 py-2 font-mono text-xs leading-6 text-ink"
-                        />
-                      </label>
-                      {runResults?.find((entry) => entry.label === selectedTestCase.label) ? (
-                        <div className="mt-4 rounded-lg border border-black/10 bg-mist p-3">
-                          <p className="text-xs font-semibold uppercase tracking-wide text-lake">
-                            Last run
-                          </p>
-                          <p className="mt-2 font-mono text-xs leading-6 text-black/72">
-                            actual: {runResults.find((entry) => entry.label === selectedTestCase.label)?.actual}
-                          </p>
-                          <p className="mt-1 font-mono text-xs leading-6 text-black/72">
-                            expected: {runResults.find((entry) => entry.label === selectedTestCase.label)?.expected}
-                          </p>
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            ) : null}
-
-            {runnerError ? (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-700">
-                {runnerError}
-              </div>
-            ) : null}
-
-            {runResults ? (
-              <div className="rounded-lg border border-black/10 bg-white/88 p-4">
-                <p className="text-sm font-semibold text-ink">Run results</p>
-                <div className="mt-3 space-y-3">
-                  {runResults.map((result) => (
-                    <div
-                      key={result.label}
-                      className={`rounded-lg border p-3 ${
-                        result.passed
-                          ? "border-emerald-200 bg-emerald-50"
-                          : "border-amber-200 bg-amber-50"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-semibold text-ink">{result.label}</p>
-                        <span className="text-xs font-semibold uppercase tracking-wide text-black/60">
-                          {result.passed ? "Passed" : "Needs work"}
-                        </span>
-                      </div>
-                      <p className="mt-2 font-mono text-xs leading-6 text-black/72">
-                        actual: {result.actual}
-                      </p>
-                      <p className="mt-1 font-mono text-xs leading-6 text-black/72">
-                        expected: {result.expected}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-          </div>
-        </ThreadMessage>
-      ) : null}
-
-      {selectedFirstStep ? (
-        <ThreadMessage speaker="user" title="My first move">
-          <p className="text-sm leading-7 text-black/78">{selectedFirstStep}</p>
-          <div className="mt-4 rounded-lg border border-black/10 bg-white/90 p-4">
-            <label className="block text-sm font-medium text-ink" htmlFor="learner-note">
-              Optional: what still feels fuzzy?
-            </label>
             <textarea
-              id="learner-note"
-              value={learnerNote}
+              value={codeByLanguage[selectedLanguage]}
               onChange={(event) => {
-                setLearnerNote(event.target.value);
-                resetFeedback();
+                setCodeByLanguage((current) => ({
+                  ...current,
+                  [selectedLanguage]: event.target.value
+                }));
+                setRunResults(null);
+                setRunnerError(null);
               }}
-              rows={3}
-              className="uiverse-field mt-3 w-full px-4 py-3 text-sm leading-6 text-ink"
-              placeholder="Example: I can tell this is range-based, but I’m not sure when the left pointer should move."
+              rows={16}
+              spellCheck={false}
+              className="uiverse-field mt-3 w-full px-4 py-3 font-mono text-sm leading-6 text-ink"
             />
           </div>
-        </ThreadMessage>
-      ) : null}
 
-      {selectedFirstStep ? (
-        <ThreadMessage
-          speaker="coach"
-          title="Want a nudge before I react to the whole attempt?"
-          controls={
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={evaluateAttempt}
-                disabled={!canEvaluate || isCoachLoading}
-                className="uiverse-button px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isCoachLoading
-                  ? "Coach is thinking..."
-                  : activeCoachStyle === "off"
-                    ? "Score this attempt"
-                    : "Get coach response"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setHintLevel((current) => Math.min(current + 1, 3))}
-                className="uiverse-button-secondary px-4 py-2 text-sm font-medium"
-              >
-                Reveal next hint
-              </button>
+          {activeCodeConfig ? (
+            <div className="rounded-lg border border-black/10 bg-white/88 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm font-semibold text-ink">Test case panel</p>
+                <button
+                  type="button"
+                  onClick={addCustomTestCase}
+                  className="uiverse-button-secondary px-3 py-2 text-xs font-medium"
+                >
+                  Add custom case
+                </button>
+              </div>
+              {runSummary ? (
+                <div className="mt-3 rounded-lg border border-black/10 bg-mist p-3 text-sm text-black/68">
+                  Passed {runSummary.passed} of {runSummary.total} cases
+                </div>
+              ) : null}
+              <div className="mt-4 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+                <div className="space-y-2">
+                  {testCases.map((testCase) => {
+                    const result = runResults?.find((entry) => entry.label === testCase.label);
+                    const isActive = selectedTestCase?.id === testCase.id;
+                    return (
+                      <button
+                        key={testCase.id}
+                        type="button"
+                        onClick={() => setSelectedTestCaseId(testCase.id)}
+                        className={`w-full rounded-lg border px-3 py-3 text-left transition ${
+                          isActive ? "border-lake/30 bg-lake/10" : "border-black/10 bg-mist"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-semibold text-ink">{testCase.label}</p>
+                          {result ? (
+                            <span
+                              className={`text-xs font-semibold ${
+                                result.passed ? "text-emerald-700" : "text-amber-700"
+                              }`}
+                            >
+                              {result.passed ? "Passed" : "Failed"}
+                            </span>
+                          ) : testCase.kind === "custom" ? (
+                            <span className="text-xs font-semibold text-black/50">Custom</span>
+                          ) : null}
+                        </div>
+                        <p className="mt-2 line-clamp-2 font-mono text-xs leading-5 text-black/62">
+                          {testCase.argsExpression}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+                {selectedTestCase ? (
+                  <div className="rounded-lg border border-black/10 bg-white/92 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-sm font-semibold text-ink">{selectedTestCase.label}</p>
+                      {selectedTestCase.kind === "custom" ? (
+                        <button
+                          type="button"
+                          onClick={() => removeCustomTestCase(selectedTestCase.id)}
+                          className="text-xs font-medium text-ember"
+                        >
+                          Remove custom case
+                        </button>
+                      ) : null}
+                    </div>
+                    <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-black/56">
+                      Args expression
+                      <textarea
+                        value={selectedTestCase.argsExpression}
+                        onChange={(event) =>
+                          updateTestCase(selectedTestCase.id, "argsExpression", event.target.value)
+                        }
+                        rows={4}
+                        spellCheck={false}
+                        className="uiverse-field mt-2 w-full px-3 py-2 font-mono text-xs leading-6 text-ink"
+                      />
+                    </label>
+                    <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-black/56">
+                      Expected expression
+                      <textarea
+                        value={selectedTestCase.expectedExpression}
+                        onChange={(event) =>
+                          updateTestCase(
+                            selectedTestCase.id,
+                            "expectedExpression",
+                            event.target.value
+                          )
+                        }
+                        rows={4}
+                        spellCheck={false}
+                        className="uiverse-field mt-2 w-full px-3 py-2 font-mono text-xs leading-6 text-ink"
+                      />
+                    </label>
+                    {runResults?.find((entry) => entry.label === selectedTestCase.label) ? (
+                      <div className="mt-4 rounded-lg border border-black/10 bg-mist p-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-lake">
+                          Last run
+                        </p>
+                        <p className="mt-2 font-mono text-xs leading-6 text-black/72">
+                          actual: {runResults.find((entry) => entry.label === selectedTestCase.label)?.actual}
+                        </p>
+                        <p className="mt-1 font-mono text-xs leading-6 text-black/72">
+                          expected: {runResults.find((entry) => entry.label === selectedTestCase.label)?.expected}
+                        </p>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
             </div>
-          }
-        >
-          <p className="text-sm leading-6 text-black/72">
-            If you want to stay in the struggle a little longer, reveal a hint.
-            If you want targeted feedback now, let me respond to the full thread.
-          </p>
-        </ThreadMessage>
-      ) : null}
-
-      {hintTrail.map((hint, index) => (
-        <ThreadMessage
-          key={hint}
-          speaker="coach"
-          title={`Hint ${index + 1}`}
-        >
-          <p className="text-sm leading-6 text-black/72">{hint}</p>
-        </ThreadMessage>
-      ))}
-
-      {feedback ? (
-        <ThreadMessage speaker="coach" title={feedback.feedbackTitle}>
-          <div className="rounded-lg border border-fern/25 bg-fern/10 p-4 text-black">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm leading-6 text-black/72">{feedback.feedbackBody}</p>
-              <span className="rounded-full border border-black/10 bg-white/70 px-3 py-1 text-xs font-semibold">
-                Score {feedback.score}
-              </span>
+          ) : (
+            <div className="rounded-lg border border-dashed border-black/14 bg-mist p-4 text-sm leading-6 text-black/60">
+              This question is part of the roadmap, but it doesn&apos;t have a native starter template yet. You can still talk through it with the coach and use the official problem links above.
             </div>
-            <p className="mt-3 text-sm leading-6 text-black/68">
-              Review hook: {feedback.reviewQuestion}
-            </p>
-          </div>
-        </ThreadMessage>
-      ) : null}
+          )}
 
-      {isCoachLoading ? (
-        <ThreadMessage speaker="coach" title="Thinking through your attempt...">
-          <p className="text-sm leading-6 text-black/68">
-            I&apos;m turning your choices into more specific coaching.
-          </p>
-        </ThreadMessage>
-      ) : null}
+          {runnerError ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-700">
+              {runnerError}
+            </div>
+          ) : null}
 
-      {aiCoach ? (
-        <ThreadMessage speaker="coach" title={aiCoach.headline}>
-          <div className="space-y-4 rounded-lg border border-lake/25 bg-lake/10 p-4">
-            <p className="text-sm leading-6 text-black/72">{aiCoach.diagnosis}</p>
-
-            <CoachNote title="Technique focus" body={aiCoach.techniqueFocus} />
-            <CoachNote title="Why this fits" body={aiCoach.techniqueReason} />
-            <CoachNote title="Clue read" body={aiCoach.clueFeedback} />
-            <CoachNote title="First move" body={aiCoach.firstStepFeedback} />
-            <CoachNote title="Code direction" body={aiCoach.codeReview} />
-            <CoachNote title="Brute force first" body={aiCoach.bruteForceIdea} />
-            <CoachNote title="Cleaner path" body={aiCoach.optimalIdea} />
-            <CoachNote title="Time complexity" body={aiCoach.timeComplexity} />
-            <CoachNote title="Space complexity" body={aiCoach.spaceComplexity} />
-            <CoachNote title="Next hint" body={aiCoach.nextHint} />
-            <CoachNote title="Coach asks next" body={aiCoach.nextQuestion} />
-            <CoachNote title="Review later" body={aiCoach.reviewQuestion} />
-
-            <p className="text-sm leading-6 text-black/68">{aiCoach.encouragement}</p>
-          </div>
-        </ThreadMessage>
-      ) : null}
-
-      {coachError ? (
-        <ThreadMessage speaker="coach" title="AI coaching unavailable">
-          <p className="text-sm leading-6 text-red-700">{coachError}</p>
-        </ThreadMessage>
-      ) : null}
+          {runResults ? (
+            <div className="rounded-lg border border-black/10 bg-white/88 p-4">
+              <p className="text-sm font-semibold text-ink">Run results</p>
+              <div className="mt-3 space-y-3">
+                {runResults.map((result) => (
+                  <div
+                    key={result.label}
+                    className={`rounded-lg border p-3 ${
+                      result.passed
+                        ? "border-emerald-200 bg-emerald-50"
+                        : "border-amber-200 bg-amber-50"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-semibold text-ink">{result.label}</p>
+                      <span className="text-xs font-semibold uppercase tracking-wide text-black/60">
+                        {result.passed ? "Passed" : "Needs work"}
+                      </span>
+                    </div>
+                    <p className="mt-2 font-mono text-xs leading-6 text-black/72">
+                      actual: {result.actual}
+                    </p>
+                    <p className="mt-1 font-mono text-xs leading-6 text-black/72">
+                      expected: {result.expected}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </ThreadMessage>
     </div>
   );
+}
+
+function buildOpeningMessage({
+  mode,
+  problemTitle,
+  correctPatternLabel,
+  contrastPatternLabel
+}: {
+  mode: "learn" | "recognize" | "practice";
+  problemTitle: string;
+  correctPatternLabel: string;
+  contrastPatternLabel: string;
+}): ChatMessage {
+  if (mode === "recognize") {
+    return {
+      id: `coach-open-${problemTitle}`,
+      speaker: "coach",
+      title: "Coach",
+      body: `For ${problemTitle}, tell me what pattern you suspect and what words in the question pushed you there. If you're torn, tell me what feels like ${correctPatternLabel} and what feels like ${contrastPatternLabel}.`
+    };
+  }
+
+  if (mode === "practice") {
+    return {
+      id: `coach-open-${problemTitle}`,
+      speaker: "coach",
+      title: "Coach",
+      body: `For ${problemTitle}, tell me what you want from me first: pattern check, hint, code review, brute-force idea, or the cleaner path.`
+    };
+  }
+
+  return {
+    id: `coach-open-${problemTitle}`,
+    speaker: "coach",
+    title: "Coach",
+    body: `Let’s learn ${problemTitle} together. Tell me what pattern you think this is, what feels confusing, or what first move you want to try, and I’ll build from there.`
+  };
+}
+
+function inferPatternFromReply(text: string): PatternId | null {
+  const normalized = text.toLowerCase();
+  let bestMatch: { id: PatternId; score: number } | null = null;
+
+  for (const pattern of patternOptions) {
+    let score = 0;
+    const labelWords = pattern.label.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+
+    for (const word of labelWords) {
+      if (word.length > 2 && normalized.includes(word)) score += 2;
+    }
+
+    for (const clue of pattern.clues) {
+      if (normalized.includes(clue.toLowerCase())) score += 3;
+    }
+
+    const shortName = pattern.id.replace(/-/g, " ");
+    if (normalized.includes(shortName)) score += 3;
+
+    if (!bestMatch || score > bestMatch.score) {
+      bestMatch = { id: pattern.id, score };
+    }
+  }
+
+  return bestMatch && bestMatch.score > 0 ? bestMatch.id : null;
+}
+
+function inferCluesFromReply(text: string) {
+  const normalized = text.toLowerCase();
+  return patternOptions
+    .flatMap((pattern) => pattern.clues)
+    .filter((clue, index, clues) => clues.indexOf(clue) === index)
+    .filter((clue) => normalized.includes(clue.toLowerCase()));
+}
+
+function inferFirstStepFromReply(text: string) {
+  const normalized = text.toLowerCase();
+  const candidates = [
+    "Store values in a hash map or set",
+    "Track left and right pointers",
+    "Set a left/right search interval and test the midpoint",
+    "Push candidates onto a stack and pop when the rule breaks",
+    "Maintain a running sum or frequency state",
+    "Use a queue for level order expansion",
+    "Go deeper recursively before trying alternatives",
+    "Push candidates into a heap",
+    "Sort intervals, then compare and merge boundaries",
+    "Define a DP state and recurrence",
+    "Sort or scan for the best safe local choice"
+  ];
+
+  return (
+    candidates.find((step) => {
+      const words = step.toLowerCase().split(/[^a-z0-9]+/).filter((word) => word.length > 3);
+      return words.some((word) => normalized.includes(word));
+    }) ?? null
+  );
+}
+
+function scoreReply({
+  selectedPattern,
+  selectedClues,
+  selectedFirstStep,
+  targetPatternId,
+  recommendedClues,
+  recommendedFirstStep
+}: {
+  selectedPattern: PatternId | null;
+  selectedClues: string[];
+  selectedFirstStep: string | null;
+  targetPatternId: PatternId;
+  recommendedClues: string[];
+  recommendedFirstStep: string;
+}) {
+  const matchedClues = selectedClues.filter((clue) => recommendedClues.includes(clue)).length;
+  const patternCorrect = selectedPattern === targetPatternId;
+  const stepCorrect = selectedFirstStep === recommendedFirstStep;
+
+  let score = 0;
+  if (patternCorrect) score += 50;
+  score += Math.min(matchedClues * 15, 30);
+  if (stepCorrect) score += 20;
+  return score;
+}
+
+function formatCoachReply(response: CoachResponse) {
+  return [
+    response.diagnosis,
+    `Technique focus: ${response.techniqueFocus}`,
+    `Why this fits: ${response.techniqueReason}`,
+    `Clue read: ${response.clueFeedback}`,
+    `First move: ${response.firstStepFeedback}`,
+    `Code direction: ${response.codeReview}`,
+    `Brute force first: ${response.bruteForceIdea}`,
+    `Cleaner path: ${response.optimalIdea}`,
+    `Time complexity: ${response.timeComplexity}`,
+    `Space complexity: ${response.spaceComplexity}`,
+    `Next hint: ${response.nextHint}`,
+    `Next question: ${response.nextQuestion}`,
+    `Review later: ${response.reviewQuestion}`,
+    response.encouragement
+  ].join("\n\n");
 }
 
 function ThreadMessage({
@@ -1440,16 +1261,12 @@ function ThreadMessage({
   const isCoach = speaker === "coach";
 
   return (
-    <section
-      className={`flex gap-3 ${isCoach ? "justify-start" : "justify-end"}`}
-    >
+    <section className={`flex gap-3 ${isCoach ? "justify-start" : "justify-end"}`}>
       {isCoach ? <Avatar label="Coach" tone="coach" /> : null}
 
       <div
         className={`w-full max-w-3xl rounded-lg border p-5 shadow-sm ${
-          isCoach
-            ? "border-black/10 bg-white/80"
-            : "border-lake/20 bg-lake/10"
+          isCoach ? "border-black/10 bg-white/80" : "border-lake/20 bg-lake/10"
         }`}
       >
         <p
@@ -1477,33 +1294,6 @@ function Avatar({ label, tone }: { label: string; tone: "coach" | "user" }) {
       }`}
     >
       {label.slice(0, 1)}
-    </div>
-  );
-}
-
-function ChoiceGrid({
-  children,
-  columns = "three"
-}: {
-  children: ReactNode;
-  columns?: "two" | "three";
-}) {
-  return (
-    <div
-      className={`grid gap-3 ${
-        columns === "two" ? "sm:grid-cols-2" : "sm:grid-cols-2 xl:grid-cols-3"
-      }`}
-    >
-      {children}
-    </div>
-  );
-}
-
-function CoachNote({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="rounded-lg border border-white/65 bg-white/70 p-3">
-      <p className="text-xs font-semibold uppercase tracking-wide text-lake">{title}</p>
-      <p className="mt-2 text-sm leading-6 text-black/70">{body}</p>
     </div>
   );
 }
@@ -1548,9 +1338,7 @@ function sortPointArray(value: unknown) {
   if (!Array.isArray(value)) return value;
   return [...value]
     .map((entry) => (Array.isArray(entry) ? [...entry] : entry))
-    .sort((left, right) =>
-      JSON.stringify(left).localeCompare(JSON.stringify(right))
-    );
+    .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
 }
 
 function sortNestedArray(value: unknown) {
@@ -1560,7 +1348,5 @@ function sortNestedArray(value: unknown) {
     .map((entry) =>
       Array.isArray(entry) ? [...entry].sort((left, right) => Number(left) - Number(right)) : entry
     )
-    .sort((left, right) =>
-      JSON.stringify(left).localeCompare(JSON.stringify(right))
-    );
+    .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
 }

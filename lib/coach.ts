@@ -5,6 +5,11 @@ export type CoachRequest = {
   coachStyle: "beginner" | "guided" | "optional" | "off";
   problemTitle: string;
   problemPrompt: string;
+  userResponse: string;
+  conversationHistory: {
+    speaker: "coach" | "user";
+    text: string;
+  }[];
   selectedPatternLabel: string;
   correctPatternLabel: string;
   contrastPatternLabel: string;
