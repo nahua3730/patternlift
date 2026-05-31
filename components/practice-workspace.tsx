@@ -1251,20 +1251,20 @@ function ThreadMessage({
         className={`w-full max-w-3xl rounded-[8px] border p-5 shadow-sm ${
           isCoach
             ? "border-black/10 bg-white"
-            : "border-black/10 bg-[#232323]"
+            : "border-coral/14 bg-[linear-gradient(180deg,rgba(255,245,245,0.98),rgba(255,236,236,0.98))]"
         }`}
       >
         <p
           className={`text-xs font-semibold uppercase tracking-wide ${
-            isCoach ? "text-black/44" : "text-white/52"
+            isCoach ? "text-black/44" : "text-coral/70"
           }`}
         >
           {isCoach ? "Coach" : "You"}
         </p>
-        <h2 className={`mt-1 text-xl font-semibold ${isCoach ? "text-ink" : "text-white"}`}>
+        <h2 className={`mt-1 text-xl font-semibold ${isCoach ? "text-ink" : "text-ink"}`}>
           {title}
         </h2>
-        <div className={`mt-4 ${isCoach ? "text-black/80" : "text-white/88"}`}>{children}</div>
+        <div className={`mt-4 ${isCoach ? "text-black/80" : "text-black/78"}`}>{children}</div>
         {controls ? <div className="mt-5">{controls}</div> : null}
       </div>
 
@@ -1279,7 +1279,7 @@ function Avatar({ label, tone }: { label: string; tone: "coach" | "user" }) {
       className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-sm font-semibold shadow-sm ${
         tone === "coach"
           ? "border-white/10 bg-white text-[#111111]"
-          : "border-white/10 bg-[#232323] text-white"
+          : "border-coral/16 bg-[linear-gradient(180deg,rgba(255,245,245,1),rgba(255,231,231,1))] text-coral"
       }`}
     >
       {label.slice(0, 1)}
