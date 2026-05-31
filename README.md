@@ -62,6 +62,34 @@ Planned stack:
 - `OpenAI API`
 - `Vercel`
 
+## Local Setup
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Create your local environment file:
+
+```bash
+cp .env.example .env.local
+```
+
+3. Add your real OpenAI API key to `.env.local`:
+
+```bash
+OPENAI_API_KEY=sk-...
+```
+
+4. Start the app:
+
+```bash
+npm run dev
+```
+
+If the AI coach still shows an invalid key error after updating `.env.local`, restart the dev server so Next.js picks up the new environment value.
+
 ## MVP Scope
 
 The first version of PatternLift will focus on a small, useful learning loop:
