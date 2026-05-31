@@ -26,6 +26,34 @@ type ChatMessage = {
   body: string;
 };
 
+type SpeechRecognitionEventLike = Event & {
+  results: ArrayLike<{
+    isFinal: boolean;
+    0: {
+      transcript: string;
+    };
+    length: number;
+  }>;
+};
+
+type BrowserSpeechRecognition = {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: ((event: Event & { error?: string }) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+declare global {
+  interface Window {
+    SpeechRecognition?: new () => BrowserSpeechRecognition;
+    webkitSpeechRecognition?: new () => BrowserSpeechRecognition;
+  }
+}
+
 export type AttemptResult = {
   problemId: string;
   problemTitle: string;
@@ -121,6 +149,7 @@ export function PracticeWorkspace({
   const [coachDraft, setCoachDraft] = useState("");
   const [coachError, setCoachError] = useState<string | null>(null);
   const [isCoachLoading, setIsCoachLoading] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const [hasLoggedAttempt, setHasLoggedAttempt] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>("javascript");
   const [codeByLanguage, setCodeByLanguage] = useState<Record<SupportedLanguage, string>>({
@@ -144,6 +173,8 @@ export function PracticeWorkspace({
   const [isDesktopSplit, setIsDesktopSplit] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const splitLayoutRef = useRef<HTMLDivElement | null>(null);
+  const speechRecognitionRef = useRef<BrowserSpeechRecognition | null>(null);
+  const recordingBaseDraftRef = useRef("");
 
   const activeProblem = useMemo(
     () => allProblems.find((problem) => problem.id === problemId) ?? allProblems[0],
@@ -286,6 +317,12 @@ export function PracticeWorkspace({
     setTestCases(nextCases);
     setSelectedTestCaseId(nextCases[0]?.id ?? null);
   }, [activeCodeConfig, activeProblem, availableLanguages, contrastPatternLabel, correctPattern.label, mode]);
+
+  useEffect(() => {
+    return () => {
+      speechRecognitionRef.current?.stop();
+    };
+  }, []);
 
   function updateProblemText(value: string) {
     setProblemText(value);
@@ -499,6 +536,67 @@ export function PracticeWorkspace({
     }
   }
 
+  function toggleVoiceInput() {
+    const SpeechRecognitionCtor =
+      window.SpeechRecognition ?? window.webkitSpeechRecognition;
+
+    if (!SpeechRecognitionCtor) {
+      setCoachError("Voice transcription is not supported in this browser.");
+      return;
+    }
+
+    if (isRecording) {
+      speechRecognitionRef.current?.stop();
+      setIsRecording(false);
+      return;
+    }
+
+    const recognition = new SpeechRecognitionCtor();
+    recordingBaseDraftRef.current = coachDraft.trim();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+
+    recognition.onresult = (event) => {
+      let transcript = "";
+
+      for (let index = 0; index < event.results.length; index += 1) {
+        const result = event.results[index];
+        const chunk = result[0]?.transcript?.trim();
+        if (chunk) {
+          transcript += `${chunk} `;
+        }
+      }
+
+      const normalizedTranscript = transcript.trim();
+      const prefix = recordingBaseDraftRef.current;
+      setCoachDraft(
+        normalizedTranscript
+          ? [prefix, normalizedTranscript].filter(Boolean).join(prefix ? " " : "")
+          : prefix
+      );
+    };
+
+    recognition.onerror = (event) => {
+      setCoachError(
+        event.error === "not-allowed"
+          ? "Microphone access was blocked. Allow microphone access to dictate to the coach."
+          : "Voice transcription hit a problem. Try again in a moment."
+      );
+      setIsRecording(false);
+    };
+
+    recognition.onend = () => {
+      setIsRecording(false);
+      speechRecognitionRef.current = null;
+    };
+
+    speechRecognitionRef.current = recognition;
+    setCoachError(null);
+    setIsRecording(true);
+    recognition.start();
+  }
+
   function runExamples() {
     if (!activeCodeConfig) {
       setRunnerError("This problem does not have a starter template yet.");
@@ -670,13 +768,13 @@ export function PracticeWorkspace({
           >
             {chatMessages.map((message) => (
               <ThreadMessage key={message.id} speaker={message.speaker} title={message.title}>
-                <p className="whitespace-pre-wrap text-lg leading-9 text-black/78">{message.body}</p>
+                <p className="whitespace-pre-wrap text-lg leading-9">{message.body}</p>
               </ThreadMessage>
             ))}
 
             {isCoachLoading ? (
               <ThreadMessage speaker="coach" title="Coach is thinking...">
-                <p className="text-lg leading-8 text-black/68">
+                <p className="text-lg leading-8">
                   I&apos;m reading your last message and shaping the next step.
                 </p>
               </ThreadMessage>
@@ -706,16 +804,31 @@ export function PracticeWorkspace({
               />
               <div className="mt-2 flex items-center justify-between gap-3">
                 <p className="text-xs text-black/48">
-                  Ask naturally. The coach will react to what you actually say.
+                  {isRecording
+                    ? "Listening now. Keep talking, then tap the mic again to stop."
+                    : "Ask naturally. The coach will react to what you actually say."}
                 </p>
-                <button
-                  type="button"
-                  onClick={() => void sendCoachMessage()}
-                  disabled={coachDraft.trim().length === 0 || isCoachLoading}
-                  className="uiverse-button px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isCoachLoading ? "Sending..." : "Send"}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={toggleVoiceInput}
+                    className={`rounded-[8px] border px-3 py-2 text-sm font-medium transition ${
+                      isRecording
+                        ? "border-coral/20 bg-coral text-white shadow-[0_10px_18px_rgba(255,92,92,0.18)]"
+                        : "border-black/10 bg-white text-black/68"
+                    }`}
+                  >
+                    {isRecording ? "Stop mic" : "Voice"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void sendCoachMessage()}
+                    disabled={coachDraft.trim().length === 0 || isCoachLoading}
+                    className="uiverse-button px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isCoachLoading ? "Sending..." : "Send"}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1133,19 +1246,21 @@ function ThreadMessage({
       <div
         className={`w-full max-w-3xl rounded-[8px] border p-5 shadow-sm ${
           isCoach
-            ? "border-white/8 bg-white/4"
-            : "border-white/12 bg-[#232323]"
+            ? "border-black/10 bg-white"
+            : "border-black/10 bg-[#232323]"
         }`}
       >
         <p
           className={`text-xs font-semibold uppercase tracking-wide ${
-            isCoach ? "text-white/52" : "text-white/52"
+            isCoach ? "text-black/44" : "text-white/52"
           }`}
         >
           {isCoach ? "Coach" : "You"}
         </p>
-        <h2 className="mt-1 text-xl font-semibold text-white">{title}</h2>
-        <div className="mt-4">{children}</div>
+        <h2 className={`mt-1 text-xl font-semibold ${isCoach ? "text-ink" : "text-white"}`}>
+          {title}
+        </h2>
+        <div className={`mt-4 ${isCoach ? "text-black/80" : "text-white/88"}`}>{children}</div>
         {controls ? <div className="mt-5">{controls}</div> : null}
       </div>
 
