@@ -557,12 +557,12 @@ export function PracticeWorkspace({
       </section>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-        <section className="uiverse-panel flex min-h-[72vh] flex-col overflow-hidden">
+        <section className="uiverse-panel flex min-h-[72vh] flex-col overflow-hidden xl:h-[78vh]">
           <div className="border-b border-black/8 px-5 py-5">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-coral">
               Coach chat
             </p>
-            <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-black/68">{problemText}</p>
+            <p className="mt-3 whitespace-pre-wrap text-base leading-8 text-black/68">{problemText}</p>
             {activeRoadmapMeta ? (
               <div className="mt-4 flex flex-wrap gap-2">
                 {activeRoadmapMeta.leetcodeNumber ? (
@@ -598,10 +598,10 @@ export function PracticeWorkspace({
             </div>
           </div>
 
-          <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5">
             <div className="rounded-[8px] border border-black/8 bg-white/84 p-4">
-              <p className="text-sm font-semibold text-ink">What stands out right away</p>
-              <ul className="mt-3 space-y-2 text-sm leading-6 text-black/68">
+              <p className="text-base font-semibold text-ink">What stands out right away</p>
+              <ul className="mt-3 space-y-2 text-base leading-7 text-black/68">
                 {quickRead.map((signal) => (
                   <li key={signal}>{signal}</li>
                 ))}
@@ -610,13 +610,13 @@ export function PracticeWorkspace({
 
             {chatMessages.map((message) => (
               <ThreadMessage key={message.id} speaker={message.speaker} title={message.title}>
-                <p className="whitespace-pre-wrap text-sm leading-7 text-black/74">{message.body}</p>
+                <p className="whitespace-pre-wrap text-base leading-8 text-black/74">{message.body}</p>
               </ThreadMessage>
             ))}
 
             {isCoachLoading ? (
               <ThreadMessage speaker="coach" title="Coach is thinking...">
-                <p className="text-sm leading-6 text-black/68">
+                <p className="text-base leading-7 text-black/68">
                   I&apos;m reading your last message and shaping the next step.
                 </p>
               </ThreadMessage>
@@ -624,7 +624,7 @@ export function PracticeWorkspace({
 
             {coachError ? (
               <ThreadMessage speaker="coach" title="AI coaching unavailable">
-                <p className="text-sm leading-6 text-red-700">{coachError}</p>
+                <p className="text-base leading-7 text-red-700">{coachError}</p>
               </ThreadMessage>
             ) : null}
           </div>
@@ -635,7 +635,7 @@ export function PracticeWorkspace({
                 value={coachDraft}
                 onChange={(event) => setCoachDraft(event.target.value)}
                 rows={4}
-                className="w-full resize-none border-0 bg-transparent text-sm leading-7 text-ink outline-none placeholder:text-black/34"
+                className="w-full resize-none border-0 bg-transparent text-base leading-8 text-ink outline-none placeholder:text-black/34"
                 placeholder={
                   mode === "recognize"
                     ? "Tell the coach what pattern you suspect, what clues led you there, or what feels ambiguous."
@@ -668,7 +668,7 @@ export function PracticeWorkspace({
           </div>
         </section>
 
-        <section className="uiverse-panel overflow-hidden">
+        <section className="uiverse-panel flex flex-col overflow-hidden xl:h-[78vh]">
           <div className="border-b border-black/8 px-5 py-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
@@ -698,7 +698,7 @@ export function PracticeWorkspace({
             </div>
           </div>
 
-          <div className="px-5 py-5">
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
             <div className="space-y-4">
           <div className="rounded-lg border border-black/10 bg-white/92 p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1039,20 +1039,29 @@ function scoreReply({
 function formatCoachReply(response: CoachResponse) {
   return [
     response.diagnosis,
-    `Technique focus: ${response.techniqueFocus}`,
-    `Why this fits: ${response.techniqueReason}`,
-    `Clue read: ${response.clueFeedback}`,
-    `First move: ${response.firstStepFeedback}`,
-    `Code direction: ${response.codeReview}`,
-    `Brute force first: ${response.bruteForceIdea}`,
-    `Cleaner path: ${response.optimalIdea}`,
-    `Time complexity: ${response.timeComplexity}`,
-    `Space complexity: ${response.spaceComplexity}`,
-    `Next hint: ${response.nextHint}`,
-    `Next question: ${response.nextQuestion}`,
-    `Review later: ${response.reviewQuestion}`,
+    summarizeCoachMiddle(response),
+    `Try this next: ${response.nextHint}`,
+    `Question: ${response.nextQuestion}`,
     response.encouragement
-  ].join("\n\n");
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+function summarizeCoachMiddle(response: CoachResponse) {
+  const candidates = [
+    response.codeReview,
+    response.firstStepFeedback,
+    `Use ${response.techniqueFocus.toLowerCase()} because ${lowercaseFirst(response.techniqueReason)}`,
+    `If you need the ladder: ${response.bruteForceIdea} Then ${lowercaseFirst(response.optimalIdea)}`
+  ].filter(Boolean);
+
+  return candidates[0] ?? "";
+}
+
+function lowercaseFirst(text: string) {
+  if (!text) return text;
+  return text.charAt(0).toLowerCase() + text.slice(1);
 }
 
 function ThreadMessage({
@@ -1084,7 +1093,7 @@ function ThreadMessage({
         >
           {isCoach ? "Coach" : "You"}
         </p>
-        <h2 className="mt-1 text-lg font-semibold text-ink">{title}</h2>
+        <h2 className="mt-1 text-xl font-semibold text-ink">{title}</h2>
         <div className="mt-4">{children}</div>
         {controls ? <div className="mt-5">{controls}</div> : null}
       </div>
