@@ -531,17 +531,17 @@ export function PracticeWorkspace({
   }, [activeCoachStyle, mode, selectedPatternIds]);
 
   return (
-    <div className="mx-auto flex w-full max-w-[92rem] flex-col gap-5">
-      <section className="uiverse-panel px-6 py-6 md:px-8">
+    <div className="mx-auto flex w-full max-w-[92rem] flex-col gap-4">
+      <section className="uiverse-panel px-5 py-4 md:px-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-3xl">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-coral">
               {mode === "learn" ? "Learning workspace" : mode === "recognize" ? "Recognition workspace" : "Practice workspace"}
             </p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-ink">
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">
               {activeProblem.title}
             </h2>
-            <p className="mt-3 text-base leading-7 text-black/68">{modeCopy[mode].body}</p>
+            <p className="mt-2 text-sm leading-6 text-black/68">{modeCopy[mode].body}</p>
           </div>
 
           <Link href={selectionBackHref} className="coach-chip px-4 py-3 text-sm font-medium text-black/66">
@@ -549,7 +549,7 @@ export function PracticeWorkspace({
           </Link>
         </div>
 
-        <div className="mt-5 flex flex-wrap gap-2">
+        <div className="mt-4 flex flex-wrap gap-2">
           <span className="rounded-full border border-black/10 bg-white px-3 py-2 text-xs font-medium text-black/66">
             Coach style
           </span>
@@ -573,14 +573,14 @@ export function PracticeWorkspace({
         </div>
       </section>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-        <section className="uiverse-panel flex min-h-[76vh] flex-col overflow-hidden xl:h-[calc(100vh-10rem)]">
-          <div className="border-b border-black/8 px-5 py-5">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)]">
+        <section className="uiverse-panel flex min-h-[78vh] flex-col overflow-hidden xl:h-[calc(100vh-8.5rem)]">
+          <div className="border-b border-black/8 px-5 py-4">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-coral">
               Coach chat
             </p>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <p className="text-[1.75rem] font-semibold leading-tight text-ink">
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <p className="text-[1.45rem] font-semibold leading-tight text-ink">
                 {activeProblem.title}
               </p>
               <span className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/66">
@@ -592,7 +592,7 @@ export function PracticeWorkspace({
               </span>
             </div>
             {activeRoadmapMeta ? (
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="mt-2 flex flex-wrap gap-2">
                 {activeRoadmapMeta.leetcodeNumber ? (
                   <span className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/68">
                     LeetCode #{activeRoadmapMeta.leetcodeNumber}
@@ -608,7 +608,7 @@ export function PracticeWorkspace({
                 ))}
               </div>
             ) : null}
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-2 flex flex-wrap gap-2">
               <span className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/66">
                 Strongest pattern: {correctPattern.label}
               </span>
@@ -617,11 +617,11 @@ export function PracticeWorkspace({
               </span>
             </div>
             {suggestedTechniques.length > 0 ? (
-              <details className="mt-3 rounded-lg border border-black/8 bg-white/70 px-3 py-3">
+              <details className="mt-2 rounded-lg border border-black/8 bg-white/70 px-3 py-2">
                 <summary className="cursor-pointer text-sm font-medium text-black/70">
                   Learning context
                 </summary>
-                <div className="mt-3 flex flex-wrap gap-2">
+                <div className="mt-2 flex flex-wrap gap-2">
                   {suggestedTechniques.slice(0, 4).map((technique) => (
                     <span
                       key={technique.id}
@@ -637,7 +637,7 @@ export function PracticeWorkspace({
 
           <div
             ref={chatScrollRef}
-            className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5 overscroll-contain"
+            className="min-h-[26rem] flex-[1_1_0] space-y-4 overflow-y-auto px-5 py-5 overscroll-contain"
           >
             {chatMessages.map((message) => (
               <ThreadMessage key={message.id} speaker={message.speaker} title={message.title}>
@@ -660,12 +660,12 @@ export function PracticeWorkspace({
             ) : null}
           </div>
 
-          <div className="border-t border-black/8 bg-white/92 px-5 py-4">
+          <div className="border-t border-black/8 bg-white/92 px-5 py-3">
             <div className="coach-input-shell">
               <textarea
                 value={coachDraft}
                 onChange={(event) => setCoachDraft(event.target.value)}
-                rows={3}
+                rows={2}
                 className="w-full resize-none border-0 bg-transparent text-lg leading-8 text-ink outline-none placeholder:text-black/34"
                 placeholder={
                   mode === "recognize"
@@ -676,7 +676,7 @@ export function PracticeWorkspace({
                 }
               />
               <div className="mt-2 flex items-center justify-between gap-3">
-                <p className="text-sm text-black/48">
+                <p className="text-xs text-black/48">
                   Ask naturally. The coach will react to what you actually say.
                 </p>
                 <button
@@ -692,8 +692,8 @@ export function PracticeWorkspace({
           </div>
         </section>
 
-        <section className="uiverse-panel flex min-h-[76vh] flex-col overflow-hidden xl:h-[calc(100vh-10rem)]">
-          <div className="border-b border-black/8 px-5 py-5">
+        <section className="uiverse-panel flex min-h-[78vh] flex-col overflow-hidden xl:h-[calc(100vh-8.5rem)]">
+          <div className="border-b border-black/8 px-5 py-4">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-coral">
@@ -780,7 +780,7 @@ export function PracticeWorkspace({
                 setRunResults(null);
                 setRunnerError(null);
               }}
-              rows={22}
+              rows={26}
               spellCheck={false}
               className="uiverse-field mt-3 w-full px-4 py-4 font-mono text-[15px] leading-7 text-ink"
             />
