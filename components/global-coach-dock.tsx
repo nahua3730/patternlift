@@ -446,6 +446,12 @@ export function GlobalCoachDock() {
                 <textarea
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && !event.shiftKey) {
+                      event.preventDefault();
+                      void sendMessage();
+                    }
+                  }}
                   rows={3}
                   className="w-full resize-none border-0 bg-transparent text-sm leading-6 text-ink outline-none placeholder:text-black/36"
                   placeholder={

@@ -815,6 +815,12 @@ export function PracticeWorkspace({
               <textarea
                 value={coachDraft}
                 onChange={(event) => setCoachDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    void sendCoachMessage();
+                  }
+                }}
                 rows={2}
                 className="w-full resize-none border-0 bg-transparent text-lg leading-8 text-ink outline-none placeholder:text-black/34"
                 placeholder={
