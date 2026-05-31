@@ -573,8 +573,8 @@ export function PracticeWorkspace({
         </div>
       </section>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-        <section className="uiverse-panel flex min-h-[90vh] flex-col overflow-hidden xl:h-[calc(100vh-6rem)]">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+        <section className="uiverse-panel flex min-h-[76vh] flex-col overflow-hidden xl:h-[calc(100vh-10rem)]">
           <div className="border-b border-black/8 px-5 py-5">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-coral">
               Coach chat
@@ -637,7 +637,7 @@ export function PracticeWorkspace({
 
           <div
             ref={chatScrollRef}
-            className="min-h-[40rem] flex-1 space-y-4 overflow-y-auto px-5 py-5 overscroll-contain"
+            className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5 overscroll-contain"
           >
             {chatMessages.map((message) => (
               <ThreadMessage key={message.id} speaker={message.speaker} title={message.title}>
@@ -660,7 +660,7 @@ export function PracticeWorkspace({
             ) : null}
           </div>
 
-          <div className="border-t border-black/8 px-5 py-4">
+          <div className="border-t border-black/8 bg-white/92 px-5 py-4">
             <div className="coach-input-shell">
               <textarea
                 value={coachDraft}
@@ -692,7 +692,7 @@ export function PracticeWorkspace({
           </div>
         </section>
 
-        <section className="uiverse-panel flex min-h-[90vh] flex-col overflow-hidden xl:h-[calc(100vh-6rem)]">
+        <section className="uiverse-panel flex min-h-[76vh] flex-col overflow-hidden xl:h-[calc(100vh-10rem)]">
           <div className="border-b border-black/8 px-5 py-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
