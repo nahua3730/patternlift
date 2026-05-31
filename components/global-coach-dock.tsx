@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import type { CoachReplyResponse, CoachRequest } from "@/lib/coach";
 import { allProblems, patternOptions } from "@/lib/product";
@@ -62,6 +62,12 @@ export function GlobalCoachDock() {
   const [isOpen, setIsOpen] = useState(pathname === "/");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [recordingState, setRecordingState] = useState<"idle" | "recording" | "transcribing">(
+    "idle"
+  );
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordingChunksRef = useRef<Blob[]>([]);
+  const recordingStreamRef = useRef<MediaStream | null>(null);
 
   const pageKind = useMemo(() => {
     if (pathname.startsWith("/learn")) return "learn";
@@ -163,6 +169,13 @@ export function GlobalCoachDock() {
     setIsOpen(pathname === "/");
   }, [pathname]);
 
+  useEffect(() => {
+    return () => {
+      mediaRecorderRef.current?.stop();
+      recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
+    };
+  }, []);
+
   async function sendMessage(messageText?: string) {
     const nextText = (messageText ?? draft).trim();
     if (!nextText || isLoading) return;
@@ -233,6 +246,114 @@ export function GlobalCoachDock() {
       setError(sendError instanceof Error ? sendError.message : "Unable to reach the coach.");
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function toggleVoiceInput() {
+    if (recordingState === "transcribing") {
+      return;
+    }
+
+    if (recordingState === "recording") {
+      mediaRecorderRef.current?.stop();
+      setRecordingState("transcribing");
+      return;
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      setError("Audio recording is not supported in this browser.");
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = pickRecordingMimeType();
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
+
+      recordingStreamRef.current = stream;
+      recordingChunksRef.current = [];
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          recordingChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onerror = () => {
+        setError("Recording ran into a problem. Please try again.");
+        setRecordingState("idle");
+      };
+
+      recorder.onstop = () => {
+        void transcribeRecordedAudio(recorder.mimeType);
+      };
+
+      setError(null);
+      setRecordingState("recording");
+      recorder.start();
+    } catch (recordingError) {
+      const message =
+        recordingError instanceof DOMException && recordingError.name === "NotAllowedError"
+          ? "Microphone access was blocked. Allow microphone access to record a note."
+          : "I couldn't start recording. Please try again.";
+      setError(message);
+      setRecordingState("idle");
+    }
+  }
+
+  async function transcribeRecordedAudio(mimeType: string) {
+    const chunks = recordingChunksRef.current;
+    const stream = recordingStreamRef.current;
+    recordingStreamRef.current = null;
+    mediaRecorderRef.current = null;
+    stream?.getTracks().forEach((track) => track.stop());
+
+    if (chunks.length === 0) {
+      setRecordingState("idle");
+      setError("No audio was captured. Try recording again.");
+      return;
+    }
+
+    const extension = mimeTypeToExtension(mimeType);
+    const blob = new Blob(chunks, {
+      type: mimeType || "audio/webm"
+    });
+    const file = new File([blob], `patternlift-dock-note.${extension}`, {
+      type: blob.type
+    });
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await fetch("/api/transcribe", {
+        method: "POST",
+        body: formData
+      });
+      const payload = (await response.json()) as { text?: string; error?: string };
+
+      if (!response.ok || !payload.text) {
+        throw new Error(payload.error ?? "Transcription failed.");
+      }
+
+      const transcript = payload.text.trim();
+      if (!transcript) {
+        throw new Error("The recording came back empty. Try a slightly longer note.");
+      }
+
+      setDraft((current) => [current.trim(), transcript].filter(Boolean).join(current.trim() ? " " : ""));
+      setError(null);
+    } catch (transcriptionError) {
+      setError(
+        transcriptionError instanceof Error
+          ? transcriptionError.message
+          : "I couldn't transcribe that recording. Please try again."
+      );
+    } finally {
+      recordingChunksRef.current = [];
+      setRecordingState("idle");
     }
   }
 
@@ -335,16 +456,58 @@ export function GlobalCoachDock() {
                 />
                 <div className="flex items-center justify-between gap-3 pt-3">
                   <p className="text-xs text-black/46">
-                    {primaryPattern ? `Pattern context: ${primaryPattern.label}` : "General coaching"}
+                    {recordingState === "recording"
+                      ? "Recording now. Tap the mic again when you want me to transcribe it."
+                      : recordingState === "transcribing"
+                        ? "Transcribing your recording..."
+                        : primaryPattern
+                          ? `Pattern context: ${primaryPattern.label}`
+                          : "General coaching"}
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => void sendMessage()}
-                    disabled={!draft.trim() || isLoading}
-                    className="uiverse-button px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    Send
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void toggleVoiceInput()}
+                      aria-label={
+                        recordingState === "recording"
+                          ? "Stop recording and transcribe"
+                          : recordingState === "transcribing"
+                            ? "Transcribing recording"
+                            : "Start recording for transcription"
+                      }
+                      title={
+                        recordingState === "recording"
+                          ? "Stop recording and transcribe"
+                          : recordingState === "transcribing"
+                            ? "Transcribing recording"
+                            : "Start recording for transcription"
+                      }
+                      disabled={recordingState === "transcribing"}
+                      className={`rounded-[8px] border px-3 py-2 text-sm font-medium transition ${
+                        recordingState === "recording"
+                          ? "border-coral/20 bg-coral text-white shadow-[0_10px_18px_rgba(255,92,92,0.18)]"
+                          : recordingState === "transcribing"
+                            ? "cursor-wait border-black/10 bg-black/6 text-black/40"
+                            : "border-black/10 bg-white text-black/68"
+                      }`}
+                    >
+                      <span aria-hidden="true" className="block text-lg leading-none">
+                        {recordingState === "recording"
+                          ? "◼"
+                          : recordingState === "transcribing"
+                            ? "⋯"
+                            : "🎙"}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void sendMessage()}
+                      disabled={!draft.trim() || isLoading}
+                      className="uiverse-button px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Send
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -354,4 +517,21 @@ export function GlobalCoachDock() {
       </div>
     </aside>
   );
+}
+
+function pickRecordingMimeType() {
+  const candidates = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/mp4",
+    "audio/mpeg"
+  ];
+
+  return candidates.find((candidate) => MediaRecorder.isTypeSupported(candidate)) ?? "";
+}
+
+function mimeTypeToExtension(mimeType: string) {
+  if (mimeType.includes("mp4")) return "m4a";
+  if (mimeType.includes("mpeg")) return "mp3";
+  return "webm";
 }
