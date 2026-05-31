@@ -1,5 +1,5 @@
-import { PracticePageView } from "@/components/state-views";
+import { HomePage } from "@/components/home-page";
 
-export default function HomePage() {
-  return <PracticePageView />;
+export default function LandingPage() {
+  return <HomePage />;
 }

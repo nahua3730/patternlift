@@ -7,6 +7,7 @@ import {
   getOfficialProblemRoadmapMeta,
   patternOptions,
   roadmapTrackTotals,
+  type AppProblem,
   type RoadmapTrack
 } from "@/lib/product";
 import {
@@ -41,6 +42,9 @@ export type AttemptResult = {
 
 type PracticeWorkspaceProps = {
   onComplete: (result: AttemptResult) => void;
+  initialProblemId?: string;
+  mode?: "learn" | "recognize" | "practice";
+  coachStyle?: "beginner" | "guided" | "optional" | "off";
 };
 
 const clueChoices = [
@@ -110,9 +114,32 @@ const editorLanguages: Array<{ id: SupportedLanguage; label: string }> = [
   { id: "kotlin", label: "Kotlin" }
 ];
 
-export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
+const modeCopy = {
+  learn: {
+    title: "Let’s learn this problem step by step.",
+    body:
+      "This mode is for understanding the pattern, the data structure choice, and the path from brute force toward something cleaner."
+  },
+  recognize: {
+    title: "Let’s pressure-test your pattern instinct.",
+    body:
+      "Name the pattern you suspect, tell me the clue you noticed, and I’ll help you sharpen the distinction before code takes over."
+  },
+  practice: {
+    title: "Open the problem and practice with the amount of coaching you want.",
+    body:
+      "Use the editor and tests directly. Keep the coach close, or keep it quiet and call it in only when you want a second set of eyes."
+  }
+} as const;
+
+export function PracticeWorkspace({
+  onComplete,
+  initialProblemId,
+  mode = "recognize",
+  coachStyle = "guided"
+}: PracticeWorkspaceProps) {
   const { history } = usePatternLiftState();
-  const [problemId, setProblemId] = useState<string>(allProblems[0].id);
+  const [problemId, setProblemId] = useState<string>(initialProblemId ?? allProblems[0].id);
   const [problemQuery, setProblemQuery] = useState<string>("");
   const [roadmapFilter, setRoadmapFilter] = useState<RoadmapFilter>("all");
   const [problemText, setProblemText] = useState<string>(allProblems[0].prompt);
@@ -125,6 +152,9 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
   const [aiCoach, setAiCoach] = useState<CoachResponse | null>(null);
   const [coachError, setCoachError] = useState<string | null>(null);
   const [isCoachLoading, setIsCoachLoading] = useState(false);
+  const [activeCoachStyle, setActiveCoachStyle] = useState<
+    "beginner" | "guided" | "optional" | "off"
+  >(coachStyle);
   const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>("javascript");
   const [codeByLanguage, setCodeByLanguage] = useState<Record<SupportedLanguage, string>>({
     javascript: "",
@@ -178,7 +208,7 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
   );
 
   const problemsByCategory = useMemo(() => {
-    return allProblems.reduce<Record<string, Array<(typeof allProblems)[number]>>>((groups, problem) => {
+    return allProblems.reduce<Record<string, AppProblem[]>>((groups, problem) => {
       const current = groups[problem.category] ?? [];
       groups[problem.category] = [...current, problem];
       return groups;
@@ -235,6 +265,16 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
       };
     });
   }, [completedProblemIds]);
+
+  useEffect(() => {
+    if (initialProblemId && allProblems.some((problem) => problem.id === initialProblemId)) {
+      setProblemId(initialProblemId);
+    }
+  }, [initialProblemId]);
+
+  useEffect(() => {
+    setActiveCoachStyle(coachStyle);
+  }, [coachStyle]);
 
   useEffect(() => {
     setProblemText(activeProblem.prompt);
@@ -468,7 +508,13 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
     setCoachError(null);
     onComplete(result);
 
+    if (activeCoachStyle === "off") {
+      return;
+    }
+
     const coachPayload: CoachRequest = {
+      studyMode: mode,
+      coachStyle: activeCoachStyle,
       problemTitle: activeProblem.title,
       problemPrompt: problemText,
       selectedPatternLabel: result.selectedPatternLabel,
@@ -478,6 +524,7 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
       selectedClues: result.selectedClues,
       selectedFirstStep: result.selectedFirstStep,
       learnerNote: result.learnerNote,
+      currentCode: codeByLanguage[selectedLanguage],
       localOutcome: result.outcome,
       localScore: result.score,
       reviewQuestion: result.reviewQuestion
@@ -583,13 +630,46 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
       <ThreadMessage
         speaker="coach"
-        title="Paste a problem and let’s work it like a live coaching thread."
+        title={modeCopy[mode].title}
       >
         <p className="text-sm leading-7 text-black/72">
-          We&apos;ll keep this lightweight. You give me the prompt, your instinct,
-          and the clue you noticed. I&apos;ll react with technique nudges, contrast
-          hints, and one next step instead of dumping a solution.
+          {modeCopy[mode].body}
         </p>
+
+        <div className="mt-5 rounded-lg border border-black/10 bg-white/90 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-ink">Coach style</p>
+              <p className="mt-1 text-sm leading-6 text-black/62">
+                Switch between heavier teaching, lighter hints, or a quiet workspace.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { id: "beginner" as const, label: "Beginner Guided" },
+                { id: "guided" as const, label: "Guided" },
+                { id: "optional" as const, label: "Hints On Demand" },
+                { id: "off" as const, label: "Coach Off" }
+              ].map((style) => {
+                const isActive = activeCoachStyle === style.id;
+                return (
+                  <button
+                    key={style.id}
+                    type="button"
+                    onClick={() => setActiveCoachStyle(style.id)}
+                    className={`rounded-full px-3 py-2 text-xs font-medium transition ${
+                      isActive
+                        ? "bg-ink text-white"
+                        : "border border-black/10 bg-white text-black/68"
+                    }`}
+                  >
+                    {style.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
 
         <div className="mt-5 flex flex-wrap items-end gap-3">
           <label className="min-w-[18rem] flex-1 text-sm text-black/68">
@@ -1257,7 +1337,11 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
                 disabled={!canEvaluate || isCoachLoading}
                 className="uiverse-button px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isCoachLoading ? "Coach is thinking..." : "Get coach response"}
+                {isCoachLoading
+                  ? "Coach is thinking..."
+                  : activeCoachStyle === "off"
+                    ? "Score this attempt"
+                    : "Get coach response"}
               </button>
               <button
                 type="button"
@@ -1319,6 +1403,11 @@ export function PracticeWorkspace({ onComplete }: PracticeWorkspaceProps) {
             <CoachNote title="Why this fits" body={aiCoach.techniqueReason} />
             <CoachNote title="Clue read" body={aiCoach.clueFeedback} />
             <CoachNote title="First move" body={aiCoach.firstStepFeedback} />
+            <CoachNote title="Code direction" body={aiCoach.codeReview} />
+            <CoachNote title="Brute force first" body={aiCoach.bruteForceIdea} />
+            <CoachNote title="Cleaner path" body={aiCoach.optimalIdea} />
+            <CoachNote title="Time complexity" body={aiCoach.timeComplexity} />
+            <CoachNote title="Space complexity" body={aiCoach.spaceComplexity} />
             <CoachNote title="Next hint" body={aiCoach.nextHint} />
             <CoachNote title="Coach asks next" body={aiCoach.nextQuestion} />
             <CoachNote title="Review later" body={aiCoach.reviewQuestion} />

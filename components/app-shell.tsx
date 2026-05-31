@@ -4,7 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const links = [
-  { href: "/", label: "Coach" },
+  { href: "/", label: "Home" },
+  { href: "/learn", label: "Learn" },
+  { href: "/practice", label: "Practice" },
   { href: "/progress", label: "Progress" },
   { href: "/review", label: "Review" }
 ];
@@ -21,7 +23,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               PatternLift
             </p>
             <p className="mt-2 text-sm leading-6 text-black/68">
-              Paste a problem, think out loud, and get guided pattern coaching.
+              Choose a mode, pick your patterns, and learn with a coach that can stay gentle or get hands-on.
             </p>
           </div>
 

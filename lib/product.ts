@@ -223,7 +223,20 @@ export type ProblemCategory =
   | "Math & Geometry"
   | "Bit Manipulation";
 
-export const sampleProblems = [
+export type AppProblem = {
+  id: string;
+  category: ProblemCategory;
+  title: string;
+  difficulty: string;
+  prompt: string;
+  targetPatternId: (typeof patternOptions)[number]["id"];
+  recommendedClues: string[];
+  recommendedFirstStep: string;
+  reviewQuestion: string;
+  contrastPatternId: (typeof patternOptions)[number]["id"];
+};
+
+export const sampleProblems: AppProblem[] = [
   {
     id: "two-sum",
     category: "Arrays & Hashing",
@@ -894,7 +907,7 @@ export const sampleProblems = [
       "Why can invalid triplets be ignored immediately without losing a possible solution?",
     contrastPatternId: "dynamic-programming"
   }
-] as const;
+];
 
 export const starterHistory = [
   {
@@ -1140,7 +1153,7 @@ const categoryDefaults: Record<string, {
 
 const existingProblemIdByTitle = new Map(sampleProblems.map((problem) => [normalizeRoadmapTitle(problem.title), problem.id]));
 
-const generatedRoadmapProblems = officialRoadmapCatalog
+const generatedRoadmapProblems: AppProblem[] = officialRoadmapCatalog
   .map((entry) => {
     const existingId = existingProblemIdByTitle.get(normalizeRoadmapTitle(entry.title));
     if (existingId) return null;
@@ -1163,9 +1176,9 @@ const generatedRoadmapProblems = officialRoadmapCatalog
       contrastPatternId: defaults.contrastPatternId
     };
   })
-  .filter(Boolean) as unknown as Array<(typeof sampleProblems)[number]>;
+  .filter(Boolean) as AppProblem[];
 
-export const allProblems = [...sampleProblems, ...generatedRoadmapProblems] as const;
+export const allProblems: AppProblem[] = [...sampleProblems, ...generatedRoadmapProblems];
 
 export const officialProblemRoadmapMeta = Object.fromEntries(
   officialRoadmapCatalog.map((entry) => {

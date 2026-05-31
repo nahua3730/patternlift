@@ -1,6 +1,8 @@
 export type AttemptOutcome = "solid" | "partial" | "confused";
 
 export type CoachRequest = {
+  studyMode: "learn" | "recognize" | "practice";
+  coachStyle: "beginner" | "guided" | "optional" | "off";
   problemTitle: string;
   problemPrompt: string;
   selectedPatternLabel: string;
@@ -17,6 +19,7 @@ export type CoachRequest = {
   selectedClues: string[];
   selectedFirstStep: string | null;
   learnerNote: string;
+  currentCode: string;
   localOutcome: AttemptOutcome;
   localScore: number;
   reviewQuestion: string;
@@ -29,6 +32,11 @@ export type CoachResponse = {
   techniqueReason: string;
   clueFeedback: string;
   firstStepFeedback: string;
+  codeReview: string;
+  bruteForceIdea: string;
+  optimalIdea: string;
+  timeComplexity: string;
+  spaceComplexity: string;
   nextHint: string;
   nextQuestion: string;
   reviewQuestion: string;
@@ -45,6 +53,11 @@ export const coachResponseSchema = {
     "techniqueReason",
     "clueFeedback",
     "firstStepFeedback",
+    "codeReview",
+    "bruteForceIdea",
+    "optimalIdea",
+    "timeComplexity",
+    "spaceComplexity",
     "nextHint",
     "nextQuestion",
     "reviewQuestion",
@@ -77,6 +90,29 @@ export const coachResponseSchema = {
     firstStepFeedback: {
       type: "string",
       description: "Feedback on the proposed first concrete move."
+    },
+    codeReview: {
+      type: "string",
+      description:
+        "Feedback on the current code or data structure direction, especially useful in guided learning mode."
+    },
+    bruteForceIdea: {
+      type: "string",
+      description:
+        "A concise brute-force or naive solution direction so the learner sees the ladder from simple to better."
+    },
+    optimalIdea: {
+      type: "string",
+      description:
+        "The cleaner or optimal solution direction, focusing on why it improves on the brute-force path."
+    },
+    timeComplexity: {
+      type: "string",
+      description: "Time complexity of the strongest recommended solution."
+    },
+    spaceComplexity: {
+      type: "string",
+      description: "Space complexity of the strongest recommended solution."
     },
     nextHint: {
       type: "string",
