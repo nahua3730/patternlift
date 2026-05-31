@@ -611,7 +611,7 @@ export function PracticeWorkspace({
 
           <div
             ref={chatScrollRef}
-            className="min-h-[46rem] flex-[1_1_0] space-y-4 overflow-y-auto px-4 py-4 pb-32 overscroll-contain"
+            className="min-h-0 flex-[1_1_0] space-y-4 overflow-y-auto px-4 py-4 pb-32 overscroll-contain"
           >
             {chatMessages.map((message) => (
               <ThreadMessage key={message.id} speaker={message.speaker} title={message.title}>
@@ -694,7 +694,7 @@ export function PracticeWorkspace({
             </div>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 pb-8 overscroll-contain">
             <div className="space-y-4">
               <details className="rounded-[8px] border border-white/8 bg-white/4 p-4">
                 <summary className="cursor-pointer text-sm font-semibold text-white">
@@ -754,7 +754,7 @@ export function PracticeWorkspace({
                   }}
                   rows={26}
                   spellCheck={false}
-                  className="mt-3 min-h-[34rem] w-full rounded-[8px] border border-white/8 bg-[#111111] px-4 py-4 font-mono text-[15px] leading-7 text-white outline-none xl:min-h-[46rem]"
+                  className="mt-3 min-h-[28rem] w-full rounded-[8px] border border-white/8 bg-[#111111] px-4 py-4 font-mono text-[15px] leading-7 text-white outline-none xl:min-h-[34rem]"
                 />
               </div>
 
