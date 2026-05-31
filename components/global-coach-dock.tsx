@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import type { CoachRequest, CoachResponse } from "@/lib/coach";
+import type { CoachReplyResponse, CoachRequest } from "@/lib/coach";
 import { allProblems, patternOptions } from "@/lib/product";
 import { buildTechniqueBriefs, getSuggestedTechniques } from "@/lib/techniques";
 
@@ -211,19 +211,22 @@ export function GlobalCoachDock() {
         body: JSON.stringify(requestBody)
       });
 
-      const payload = (await response.json()) as CoachResponse | { error: string };
+      const payload = (await response.json()) as CoachReplyResponse | { error: string };
 
       if (!response.ok) {
         throw new Error("error" in payload ? payload.error : "Unable to reach the coach.");
       }
 
-      const coachResponse = payload as CoachResponse;
+      if ("error" in payload) {
+        throw new Error(payload.error);
+      }
+
       setMessages((current) => [
         ...current,
         {
           id: `coach-${Date.now()}`,
           speaker: "coach",
-          text: formatDockReply(coachResponse)
+          text: payload.reply
         }
       ]);
     } catch (sendError) {
@@ -351,17 +354,4 @@ export function GlobalCoachDock() {
       </div>
     </aside>
   );
-}
-
-function formatDockReply(response: CoachResponse) {
-  return [
-    response.headline,
-    response.diagnosis,
-    `Technique to lean on: ${response.techniqueFocus}. ${response.techniqueReason}`,
-    `Hint: ${response.nextHint}`,
-    `Brute force first: ${response.bruteForceIdea}`,
-    `Cleaner path: ${response.optimalIdea}`,
-    `Complexity: ${response.timeComplexity} time, ${response.spaceComplexity} space.`,
-    `Next question: ${response.nextQuestion}`
-  ].join("\n\n");
 }

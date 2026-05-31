@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import type { CoachRequest, CoachResponse } from "@/lib/coach";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import type { CoachRequest } from "@/lib/coach";
 import {
   allProblems,
   getOfficialProblemRoadmapMeta,
@@ -140,6 +140,7 @@ export function PracticeWorkspace({
   const [runnerError, setRunnerError] = useState<string | null>(null);
   const [testCases, setTestCases] = useState<EditableExample[]>([]);
   const [selectedTestCaseId, setSelectedTestCaseId] = useState<string | null>(null);
+  const chatScrollRef = useRef<HTMLDivElement | null>(null);
 
   const activeProblem = useMemo(
     () => allProblems.find((problem) => problem.id === problemId) ?? allProblems[0],
@@ -171,30 +172,6 @@ export function PracticeWorkspace({
     return { passed, total: runResults.length };
   }, [runResults]);
 
-  const quickRead = useMemo(() => {
-    const normalized = problemText.toLowerCase();
-    const signals = [
-      normalized.includes("substring") || normalized.includes("subarray")
-        ? "This question is talking about a contiguous range, so reused work may matter."
-        : null,
-      normalized.includes("shortest") || normalized.includes("longest")
-        ? "Optimization language usually means you should keep refining one structure instead of restarting."
-        : null,
-      normalized.includes("tree") || normalized.includes("graph")
-        ? "This smells like traversal, so the real distinction is probably depth, levels, or best-path ordering."
-        : null,
-      normalized.includes("top k") || normalized.includes("k most")
-        ? "Ranking language is a strong clue that repeated best-candidate access may matter."
-        : null
-    ].filter(Boolean) as string[];
-
-    return signals.length > 0
-      ? signals
-      : [
-          "Before solving, ask whether this is mainly about a range, a traversal, or repeated best-choice updates."
-        ];
-  }, [problemText]);
-
   const suggestedTechniques = useMemo(
     () =>
       getSuggestedTechniques({
@@ -210,6 +187,12 @@ export function PracticeWorkspace({
       setProblemId(initialProblemId);
     }
   }, [initialProblemId]);
+
+  useEffect(() => {
+    const container = chatScrollRef.current;
+    if (!container) return;
+    container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+  }, [chatMessages, isCoachLoading]);
 
   useEffect(() => {
     setActiveCoachStyle(coachStyle);
@@ -407,28 +390,62 @@ export function PracticeWorkspace({
 
     setIsCoachLoading(true);
 
+    const streamingCoachId = `coach-${Date.now()}`;
+    setChatMessages((current) => [
+      ...current,
+      {
+        id: streamingCoachId,
+        speaker: "coach",
+        title: "Coach",
+        body: ""
+      }
+    ]);
+
     try {
-      const coachResponse = await fetch("/api/coach", {
+      const coachResponse = await fetch("/api/coach/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(coachPayload)
       });
 
-      const data = (await coachResponse.json()) as CoachResponse | { error: string };
-      if (!coachResponse.ok || "error" in data) {
-        throw new Error("error" in data ? data.error : "Unable to load AI coaching.");
+      if (!coachResponse.ok || !coachResponse.body) {
+        const errorText = (await coachResponse.text()) || "Unable to load AI coaching.";
+        throw new Error(errorText);
       }
 
-      setChatMessages((current) => [
-        ...current,
-        {
-          id: `coach-${Date.now()}`,
-          speaker: "coach",
-          title: data.headline,
-          body: formatCoachReply(data)
-        }
-      ]);
+      const reader = coachResponse.body.getReader();
+      const decoder = new TextDecoder();
+      let coachReply = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        coachReply += decoder.decode(value, { stream: true });
+        setChatMessages((current) =>
+          current.map((message) =>
+            message.id === streamingCoachId ? { ...message, body: coachReply } : message
+          )
+        );
+      }
+
+      coachReply += decoder.decode();
+      const finalReply = coachReply.trim();
+      if (!finalReply) {
+        throw new Error("The coach did not send a reply. Please try again.");
+      }
+
+      setChatMessages((current) =>
+        current.map((message) =>
+          message.id === streamingCoachId
+            ? { ...message, body: finalReply }
+            : message
+        )
+      );
     } catch (error) {
+      setChatMessages((current) =>
+        current.filter((message) => message.id !== streamingCoachId)
+      );
       setCoachError(
         error instanceof Error ? error.message : "Unable to load AI coaching right now."
       );
@@ -557,14 +574,23 @@ export function PracticeWorkspace({
       </section>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-        <section className="uiverse-panel flex min-h-[72vh] flex-col overflow-hidden xl:h-[78vh]">
+        <section className="uiverse-panel flex min-h-[80vh] flex-col overflow-hidden xl:h-[calc(100vh-9.5rem)]">
           <div className="border-b border-black/8 px-5 py-5">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-coral">
               Coach chat
             </p>
-            <p className="mt-3 whitespace-pre-wrap text-base leading-8 text-black/68">{problemText}</p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <p className="text-lg font-semibold text-ink">{activeProblem.title}</p>
+              <span className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/66">
+                {mode === "learn"
+                  ? "Learning mode"
+                  : mode === "recognize"
+                    ? "Recognition mode"
+                    : "Practice mode"}
+              </span>
+            </div>
             {activeRoadmapMeta ? (
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-3 flex flex-wrap gap-2">
                 {activeRoadmapMeta.leetcodeNumber ? (
                   <span className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/68">
                     LeetCode #{activeRoadmapMeta.leetcodeNumber}
@@ -580,7 +606,7 @@ export function PracticeWorkspace({
                 ))}
               </div>
             ) : null}
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-3 flex flex-wrap gap-2">
               <span className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/66">
                 Strongest pattern: {correctPattern.label}
               </span>
@@ -598,25 +624,19 @@ export function PracticeWorkspace({
             </div>
           </div>
 
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5">
-            <div className="rounded-[8px] border border-black/8 bg-white/84 p-4">
-              <p className="text-base font-semibold text-ink">What stands out right away</p>
-              <ul className="mt-3 space-y-2 text-base leading-7 text-black/68">
-                {quickRead.map((signal) => (
-                  <li key={signal}>{signal}</li>
-                ))}
-              </ul>
-            </div>
-
+          <div
+            ref={chatScrollRef}
+            className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5 overscroll-contain"
+          >
             {chatMessages.map((message) => (
               <ThreadMessage key={message.id} speaker={message.speaker} title={message.title}>
-                <p className="whitespace-pre-wrap text-base leading-8 text-black/74">{message.body}</p>
+                <p className="whitespace-pre-wrap text-lg leading-9 text-black/76">{message.body}</p>
               </ThreadMessage>
             ))}
 
             {isCoachLoading ? (
               <ThreadMessage speaker="coach" title="Coach is thinking...">
-                <p className="text-base leading-7 text-black/68">
+                <p className="text-lg leading-8 text-black/68">
                   I&apos;m reading your last message and shaping the next step.
                 </p>
               </ThreadMessage>
@@ -624,7 +644,7 @@ export function PracticeWorkspace({
 
             {coachError ? (
               <ThreadMessage speaker="coach" title="AI coaching unavailable">
-                <p className="text-base leading-7 text-red-700">{coachError}</p>
+                <p className="text-lg leading-8 text-red-700">{coachError}</p>
               </ThreadMessage>
             ) : null}
           </div>
@@ -635,7 +655,7 @@ export function PracticeWorkspace({
                 value={coachDraft}
                 onChange={(event) => setCoachDraft(event.target.value)}
                 rows={4}
-                className="w-full resize-none border-0 bg-transparent text-base leading-8 text-ink outline-none placeholder:text-black/34"
+                className="w-full resize-none border-0 bg-transparent text-lg leading-8 text-ink outline-none placeholder:text-black/34"
                 placeholder={
                   mode === "recognize"
                     ? "Tell the coach what pattern you suspect, what clues led you there, or what feels ambiguous."
@@ -668,7 +688,7 @@ export function PracticeWorkspace({
           </div>
         </section>
 
-        <section className="uiverse-panel flex flex-col overflow-hidden xl:h-[78vh]">
+        <section className="uiverse-panel flex min-h-[80vh] flex-col overflow-hidden xl:h-[calc(100vh-9.5rem)]">
           <div className="border-b border-black/8 px-5 py-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
@@ -700,6 +720,15 @@ export function PracticeWorkspace({
 
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
             <div className="space-y-4">
+          <details className="rounded-lg border border-black/10 bg-white/90 p-4">
+            <summary className="cursor-pointer text-sm font-semibold text-ink">
+              Problem statement
+            </summary>
+            <p className="mt-3 whitespace-pre-wrap text-base leading-8 text-black/72">
+              {problemText}
+            </p>
+          </details>
+
           <div className="rounded-lg border border-black/10 bg-white/92 p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm font-semibold text-ink">
@@ -747,9 +776,9 @@ export function PracticeWorkspace({
                 setRunResults(null);
                 setRunnerError(null);
               }}
-              rows={16}
+              rows={22}
               spellCheck={false}
-              className="uiverse-field mt-3 w-full px-4 py-3 font-mono text-sm leading-6 text-ink"
+              className="uiverse-field mt-3 w-full px-4 py-4 font-mono text-[15px] leading-7 text-ink"
             />
           </div>
 
@@ -1034,34 +1063,6 @@ function scoreReply({
   score += Math.min(matchedClues * 15, 30);
   if (stepCorrect) score += 20;
   return score;
-}
-
-function formatCoachReply(response: CoachResponse) {
-  return [
-    response.diagnosis,
-    summarizeCoachMiddle(response),
-    `Try this next: ${response.nextHint}`,
-    `Question: ${response.nextQuestion}`,
-    response.encouragement
-  ]
-    .filter(Boolean)
-    .join("\n\n");
-}
-
-function summarizeCoachMiddle(response: CoachResponse) {
-  const candidates = [
-    response.codeReview,
-    response.firstStepFeedback,
-    `Use ${response.techniqueFocus.toLowerCase()} because ${lowercaseFirst(response.techniqueReason)}`,
-    `If you need the ladder: ${response.bruteForceIdea} Then ${lowercaseFirst(response.optimalIdea)}`
-  ].filter(Boolean);
-
-  return candidates[0] ?? "";
-}
-
-function lowercaseFirst(text: string) {
-  if (!text) return text;
-  return text.charAt(0).toLowerCase() + text.slice(1);
 }
 
 function ThreadMessage({
