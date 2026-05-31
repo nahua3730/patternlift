@@ -812,13 +812,17 @@ export function PracticeWorkspace({
                   <button
                     type="button"
                     onClick={toggleVoiceInput}
+                    aria-label={isRecording ? "Stop voice dictation" : "Start voice dictation"}
+                    title={isRecording ? "Stop voice dictation" : "Start voice dictation"}
                     className={`rounded-[8px] border px-3 py-2 text-sm font-medium transition ${
                       isRecording
                         ? "border-coral/20 bg-coral text-white shadow-[0_10px_18px_rgba(255,92,92,0.18)]"
                         : "border-black/10 bg-white text-black/68"
                     }`}
                   >
-                    {isRecording ? "Stop mic" : "Voice"}
+                    <span aria-hidden="true" className="block text-lg leading-none">
+                      {isRecording ? "◼" : "🎙"}
+                    </span>
                   </button>
                   <button
                     type="button"
