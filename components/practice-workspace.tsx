@@ -333,7 +333,7 @@ export function PracticeWorkspace({
 
     const signals = [
       normalized.includes("substring") || normalized.includes("subarray")
-        ? "This prompt is talking about a contiguous range, so reuse matters."
+        ? "This question is talking about a contiguous range, so reuse matters."
         : null,
       normalized.includes("shortest") || normalized.includes("longest")
         ? "Optimization language usually means the same structure should keep getting refined."
@@ -355,7 +355,7 @@ export function PracticeWorkspace({
 
   const hintTrail = useMemo(() => {
     const hints = [
-      `Look at the signal hidden inside this prompt: ${activeProblem.reviewQuestion}`,
+      `Look at the signal hidden inside this question: ${activeProblem.reviewQuestion}`,
       `Pattern contrast: this is more ${correctPattern.label} than ${contrastPatternLabel}.`,
       `Implementation nudge: ${correctPattern.firstSteps[0]}.`
     ];
@@ -483,7 +483,7 @@ export function PracticeWorkspace({
         ? `You matched this to ${correctPattern.label}, noticed useful clues, and picked a first move that belongs to that pattern.`
         : outcome === "partial"
           ? `There is a real instinct here, but the sharper move is to explain why this is ${correctPattern.label} instead of ${contrastPatternLabel}.`
-          : `The prompt is trying to pull you toward ${correctPattern.label}. Before more code, I would go back to the exact words that imply that pattern.`;
+          : `This question is trying to pull you toward ${correctPattern.label}. Before more code, I would go back to the exact words that imply that pattern.`;
 
     const result: AttemptResult = {
       problemId: activeProblem.id,
@@ -673,7 +673,7 @@ export function PracticeWorkspace({
 
         <div className="mt-5 flex flex-wrap items-end gap-3">
           <label className="min-w-[18rem] flex-1 text-sm text-black/68">
-            Search prompts
+            Search questions
             <input
               value={problemQuery}
               onChange={(event) => setProblemQuery(event.target.value)}
@@ -709,7 +709,7 @@ export function PracticeWorkspace({
             }}
             className="uiverse-button-secondary px-4 py-2 text-sm font-medium"
           >
-            Reset prompt
+            Reset question
           </button>
         </div>
 
@@ -739,7 +739,7 @@ export function PracticeWorkspace({
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               {[
-                { id: "all" as const, label: "All prompts" },
+                { id: "all" as const, label: "All questions" },
                 { id: "official" as const, label: "Official only" },
                 { id: "blind75" as const, label: "75 track" },
                 { id: "neetcode150" as const, label: "150 track" }
@@ -766,7 +766,7 @@ export function PracticeWorkspace({
 
         <div className="mt-4 rounded-lg border border-black/10 bg-white/88 p-4">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold text-ink">Relevant prompts</p>
+            <p className="text-sm font-semibold text-ink">Matching questions</p>
             <span className="text-xs font-medium text-black/56">
               {filteredProblems.length} match{filteredProblems.length === 1 ? "" : "es"}
             </span>
@@ -826,7 +826,7 @@ export function PracticeWorkspace({
               })
             ) : (
               <div className="rounded-lg border border-dashed border-black/14 bg-mist p-4 text-sm leading-6 text-black/60">
-                No prompt matches that search yet. Try a pattern name like
+                No question matches that search yet. Try a pattern name like
                 {" "}
                 <span className="font-semibold text-ink">binary search</span>
                 {" "}
@@ -839,7 +839,7 @@ export function PracticeWorkspace({
         </div>
 
         <div className="mt-4 rounded-lg border border-black/10 bg-white/90 p-4">
-          <p className="text-sm font-semibold text-ink">Problem prompt</p>
+          <p className="text-sm font-semibold text-ink">Problem statement</p>
           <textarea
             value={problemText}
             onChange={(event) => updateProblemText(event.target.value)}
@@ -958,7 +958,7 @@ export function PracticeWorkspace({
         <ThreadMessage speaker="user" title="My current guess">
           <p className="text-sm font-semibold text-ink">{activePattern.label}</p>
           <p className="mt-2 text-sm leading-6 text-black/72">
-            I&apos;m leaning this way because the prompt feels closest to this pattern.
+            I&apos;m leaning this way because the question feels closest to this pattern.
           </p>
         </ThreadMessage>
       ) : null}
@@ -1040,7 +1040,7 @@ export function PracticeWorkspace({
         >
           <div className="space-y-3">
             <p className="text-sm leading-6 text-black/72">
-              Here are the techniques I&apos;d keep nearby for this prompt.
+              Here are the techniques I&apos;d keep nearby for this question.
             </p>
 
             <div className="space-y-3">
