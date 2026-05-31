@@ -7,6 +7,7 @@ import { GlobalCoachDock } from "@/components/global-coach-dock";
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isHome = pathname === "/";
+  const isPracticeWorkspace = pathname === "/practice";
 
   const shellMeta = (() => {
     if (pathname === "/learn/setup") {
@@ -165,39 +166,71 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </div>
             </aside>
 
-            <main className="flex min-w-0 flex-col gap-5 pb-80">
+            <main className="flex min-w-0 flex-col gap-4 pb-80">
               <header className="page-hero">
-                <div className="max-w-3xl">
-                  <Link
-                    href={shellMeta.backHref}
-                    className="text-sm font-medium text-black/58 transition hover:text-black/84"
-                  >
-                    ← {shellMeta.backLabel}
-                  </Link>
-                  <p className="mt-4 text-xs font-semibold uppercase tracking-[0.22em] text-coral">
-                    {shellMeta.eyebrow}
-                  </p>
-                  <h1 className="mt-3 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
-                    {shellMeta.title}
-                  </h1>
-                  <p className="mt-3 max-w-2xl text-sm leading-7 text-black/64">
-                    {shellMeta.body}
-                  </p>
-                </div>
-
-                {shellMeta.utilityLinks.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {shellMeta.utilityLinks.map((link) => (
+                {isPracticeWorkspace ? (
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
                       <Link
-                        key={link.href}
-                        href={link.href}
-                        className="coach-chip px-4 py-2 text-sm font-medium text-black/70"
+                        href={shellMeta.backHref}
+                        className="text-sm font-medium text-black/58 transition hover:text-black/84"
                       >
-                        {link.label}
+                        ← {shellMeta.backLabel}
                       </Link>
-                    ))}
+                      <p className="mt-2 text-xs font-semibold uppercase tracking-[0.22em] text-coral">
+                        {shellMeta.eyebrow}
+                      </p>
+                    </div>
+
+                    {shellMeta.utilityLinks.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {shellMeta.utilityLinks.map((link) => (
+                          <Link
+                            key={link.href}
+                            href={link.href}
+                            className="coach-chip px-4 py-2 text-sm font-medium text-black/70"
+                          >
+                            {link.label}
+                          </Link>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
-                ) : null}
+                ) : (
+                  <>
+                    <div className="max-w-3xl">
+                      <Link
+                        href={shellMeta.backHref}
+                        className="text-sm font-medium text-black/58 transition hover:text-black/84"
+                      >
+                        ← {shellMeta.backLabel}
+                      </Link>
+                      <p className="mt-4 text-xs font-semibold uppercase tracking-[0.22em] text-coral">
+                        {shellMeta.eyebrow}
+                      </p>
+                      <h1 className="mt-3 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
+                        {shellMeta.title}
+                      </h1>
+                      <p className="mt-3 max-w-2xl text-sm leading-7 text-black/64">
+                        {shellMeta.body}
+                      </p>
+                    </div>
+
+                    {shellMeta.utilityLinks.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {shellMeta.utilityLinks.map((link) => (
+                          <Link
+                            key={link.href}
+                            href={link.href}
+                            className="coach-chip px-4 py-2 text-sm font-medium text-black/70"
+                          >
+                            {link.label}
+                          </Link>
+                        ))}
+                      </div>
+                    ) : null}
+                  </>
+                )}
               </header>
 
               {children}

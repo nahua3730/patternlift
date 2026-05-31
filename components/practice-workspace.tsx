@@ -532,49 +532,42 @@ export function PracticeWorkspace({
 
   return (
     <div className="mx-auto flex w-full max-w-[92rem] flex-col gap-4">
-      <section className="uiverse-panel px-5 py-4 md:px-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="max-w-3xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-coral">
-              {mode === "learn" ? "Learning workspace" : mode === "recognize" ? "Recognition workspace" : "Practice workspace"}
-            </p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">
-              {activeProblem.title}
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-black/68">{modeCopy[mode].body}</p>
+      <section className="uiverse-panel px-5 py-3 md:px-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-black/10 bg-white px-3 py-2 text-xs font-medium text-black/66">
+              Coach style
+            </span>
+            {coachStyles.map((style) => {
+              const isActive = activeCoachStyle === style.id;
+              return (
+                <button
+                  key={style.id}
+                  type="button"
+                  onClick={() => setActiveCoachStyle(style.id)}
+                  className={`rounded-full px-3 py-2 text-xs font-medium transition ${
+                    isActive
+                      ? "bg-ink text-white"
+                      : "border border-black/10 bg-white text-black/68"
+                  }`}
+                >
+                  {style.label}
+                </button>
+              );
+            })}
           </div>
 
-          <Link href={selectionBackHref} className="coach-chip px-4 py-3 text-sm font-medium text-black/66">
+          <Link
+            href={selectionBackHref}
+            className="coach-chip px-4 py-2 text-sm font-medium text-black/66"
+          >
             Choose another problem
           </Link>
-        </div>
-
-        <div className="mt-4 flex flex-wrap gap-2">
-          <span className="rounded-full border border-black/10 bg-white px-3 py-2 text-xs font-medium text-black/66">
-            Coach style
-          </span>
-          {coachStyles.map((style) => {
-            const isActive = activeCoachStyle === style.id;
-            return (
-              <button
-                key={style.id}
-                type="button"
-                onClick={() => setActiveCoachStyle(style.id)}
-                className={`rounded-full px-3 py-2 text-xs font-medium transition ${
-                  isActive
-                    ? "bg-ink text-white"
-                    : "border border-black/10 bg-white text-black/68"
-                }`}
-              >
-                {style.label}
-              </button>
-            );
-          })}
         </div>
       </section>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)]">
-        <section className="uiverse-panel flex min-h-[78vh] flex-col overflow-hidden xl:h-[calc(100vh-8.5rem)]">
+        <section className="uiverse-panel flex min-h-[78vh] flex-col overflow-hidden xl:sticky xl:top-4 xl:h-[calc(100vh-6.5rem)] xl:self-start">
           <div className="border-b border-black/8 px-5 py-4">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-coral">
               Coach chat
@@ -637,7 +630,7 @@ export function PracticeWorkspace({
 
           <div
             ref={chatScrollRef}
-            className="min-h-[26rem] flex-[1_1_0] space-y-4 overflow-y-auto px-5 py-5 overscroll-contain"
+            className="min-h-[26rem] flex-[1_1_0] space-y-4 overflow-y-auto px-5 py-5 pb-36 overscroll-contain"
           >
             {chatMessages.map((message) => (
               <ThreadMessage key={message.id} speaker={message.speaker} title={message.title}>
@@ -660,7 +653,7 @@ export function PracticeWorkspace({
             ) : null}
           </div>
 
-          <div className="border-t border-black/8 bg-white/92 px-5 py-3">
+          <div className="sticky bottom-0 z-10 border-t border-black/8 bg-white/95 px-5 py-3 backdrop-blur">
             <div className="coach-input-shell">
               <textarea
                 value={coachDraft}
@@ -692,7 +685,7 @@ export function PracticeWorkspace({
           </div>
         </section>
 
-        <section className="uiverse-panel flex min-h-[78vh] flex-col overflow-hidden xl:h-[calc(100vh-8.5rem)]">
+        <section className="uiverse-panel flex min-h-[78vh] flex-col overflow-hidden xl:sticky xl:top-4 xl:h-[calc(100vh-6.5rem)] xl:self-start">
           <div className="border-b border-black/8 px-5 py-4">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
@@ -782,14 +775,23 @@ export function PracticeWorkspace({
               }}
               rows={26}
               spellCheck={false}
-              className="uiverse-field mt-3 w-full px-4 py-4 font-mono text-[15px] leading-7 text-ink"
+              className="uiverse-field mt-3 min-h-[24rem] w-full px-4 py-4 font-mono text-[15px] leading-7 text-ink xl:min-h-[30rem]"
             />
           </div>
 
           {activeCodeConfig ? (
-            <div className="rounded-lg border border-black/10 bg-white/88 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-ink">Test case panel</p>
+            <details className="rounded-lg border border-black/10 bg-white/88 p-4">
+              <summary className="cursor-pointer text-sm font-semibold text-ink">
+                Test case panel
+              </summary>
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  {runSummary ? (
+                    <div className="rounded-lg border border-black/10 bg-mist p-3 text-sm text-black/68">
+                      Passed {runSummary.passed} of {runSummary.total} cases
+                    </div>
+                  ) : null}
+                </div>
                 <button
                   type="button"
                   onClick={addCustomTestCase}
@@ -798,11 +800,6 @@ export function PracticeWorkspace({
                   Add custom case
                 </button>
               </div>
-              {runSummary ? (
-                <div className="mt-3 rounded-lg border border-black/10 bg-mist p-3 text-sm text-black/68">
-                  Passed {runSummary.passed} of {runSummary.total} cases
-                </div>
-              ) : null}
               <div className="mt-4 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
                 <div className="space-y-2">
                   {testCases.map((testCase) => {
@@ -896,7 +893,7 @@ export function PracticeWorkspace({
                   </div>
                 ) : null}
               </div>
-            </div>
+            </details>
           ) : (
             <div className="rounded-lg border border-dashed border-black/14 bg-mist p-4 text-sm leading-6 text-black/60">
               This question is part of the roadmap, but it doesn&apos;t have a native starter template yet. You can still talk through it with the coach and use the official problem links above.
