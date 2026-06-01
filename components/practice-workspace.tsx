@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import Editor, { type Monaco } from "@monaco-editor/react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import Editor, { type Monaco, type OnMount } from "@monaco-editor/react";
+import type { editor as MonacoEditor } from "monaco-editor";
 import type { CoachRequest } from "@/lib/coach";
 import {
   allProblems,
@@ -137,6 +138,7 @@ export function PracticeWorkspace({
   const [coachDraft, setCoachDraft] = useState("");
   const [coachError, setCoachError] = useState<string | null>(null);
   const [isCoachLoading, setIsCoachLoading] = useState(false);
+  const [isBeginnerLineCoachLoading, setIsBeginnerLineCoachLoading] = useState(false);
   const [recordingState, setRecordingState] = useState<"idle" | "recording" | "transcribing">(
     "idle"
   );
@@ -163,9 +165,12 @@ export function PracticeWorkspace({
   const [isDesktopSplit, setIsDesktopSplit] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const splitLayoutRef = useRef<HTMLDivElement | null>(null);
+  const codeEditorRef = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null);
+  const monacoRef = useRef<Monaco | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingChunksRef = useRef<Blob[]>([]);
   const recordingStreamRef = useRef<MediaStream | null>(null);
+  const queuedBeginnerFeedbackRef = useRef<{ code: string; line: string } | null>(null);
 
   const activeProblem = useMemo(
     () => allProblems.find((problem) => problem.id === problemId) ?? allProblems[0],
@@ -336,6 +341,11 @@ export function PracticeWorkspace({
       }
     });
   }
+
+  const handleEditorReady: OnMount = (editor, monaco) => {
+    codeEditorRef.current = editor;
+    monacoRef.current = monaco;
+  };
 
   useEffect(() => {
     return () => {
@@ -555,6 +565,136 @@ export function PracticeWorkspace({
       setIsCoachLoading(false);
     }
   }
+
+  const sendBeginnerLineFeedback = useCallback(async (codeSnapshot: string, completedLine: string) => {
+    if (activeCoachStyle !== "beginner") return;
+
+    if (isBeginnerLineCoachLoading || isCoachLoading) {
+      queuedBeginnerFeedbackRef.current = { code: codeSnapshot, line: completedLine };
+      return;
+    }
+
+    setCoachError(null);
+    setIsBeginnerLineCoachLoading(true);
+
+    const coachPayload: CoachRequest = {
+      studyMode: mode,
+      coachStyle: "beginner",
+      problemTitle: activeProblem.title,
+      problemPrompt: problemText,
+      userResponse: [
+        `I just finished this line of code: ${completedLine}`,
+        "Please react like a live beginner coach.",
+        "Tell me if this line seems reasonable, what might be off if anything, and what the very next line should probably do.",
+        "Keep it short and conversational."
+      ].join(" "),
+      conversationHistory: chatMessages.map((message) => ({
+        speaker: message.speaker,
+        text: message.body
+      })),
+      selectedPatternLabel: correctPattern.label,
+      correctPatternLabel: correctPattern.label,
+      contrastPatternLabel,
+      suggestedTechniques: buildTechniqueBriefs(suggestedTechniques),
+      selectedClues: [],
+      selectedFirstStep: null,
+      learnerNote:
+        "This is automatic beginner-mode line-by-line coaching triggered when the learner presses Enter after finishing a line.",
+      currentCode: codeSnapshot,
+      localOutcome: "partial",
+      localScore: 55,
+      reviewQuestion: activeProblem.reviewQuestion
+    };
+
+    try {
+      const response = await fetch("/api/coach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(coachPayload)
+      });
+
+      const payload = (await response.json()) as { reply?: string; error?: string };
+      if (!response.ok || !payload.reply) {
+        throw new Error(payload.error ?? "Unable to load beginner coaching right now.");
+      }
+
+      const reply = payload.reply.trim();
+      if (!reply) {
+        throw new Error("The coach did not return anything for that line.");
+      }
+
+      setChatMessages((current) => [
+        ...current,
+        {
+          id: `coach-line-${Date.now()}`,
+          speaker: "coach",
+          title: "Coach",
+          body: reply
+        }
+      ]);
+    } catch (error) {
+      setCoachError(
+        error instanceof Error
+          ? error.message
+          : "Unable to load beginner coaching right now."
+      );
+    } finally {
+      setIsBeginnerLineCoachLoading(false);
+      const queued = queuedBeginnerFeedbackRef.current;
+      queuedBeginnerFeedbackRef.current = null;
+      if (queued) {
+        void sendBeginnerLineFeedback(queued.code, queued.line);
+      }
+    }
+  }, [
+    activeCoachStyle,
+    activeProblem.reviewQuestion,
+    activeProblem.title,
+    chatMessages,
+    contrastPatternLabel,
+    correctPattern.label,
+    isCoachLoading,
+    isBeginnerLineCoachLoading,
+    mode,
+    problemText,
+    suggestedTechniques
+  ]);
+
+  useEffect(() => {
+    const editor = codeEditorRef.current;
+    const monaco = monacoRef.current;
+    if (!editor || !monaco) return;
+
+    const disposable = editor.onKeyDown((event) => {
+      if (activeCoachStyle !== "beginner") return;
+      if (event.keyCode !== monaco.KeyCode.Enter) return;
+      if (event.shiftKey || event.ctrlKey || event.metaKey || event.altKey) return;
+
+      window.setTimeout(() => {
+        const model = editor.getModel();
+        const position = editor.getPosition();
+        if (!model || !position) return;
+
+        const completedLineNumber = position.lineNumber - 1;
+        if (completedLineNumber < 1) return;
+
+        const completedLine = model.getLineContent(completedLineNumber).trim();
+        if (
+          completedLine.length === 0 ||
+          completedLine.startsWith("//") ||
+          completedLine.startsWith("#")
+        ) {
+          return;
+        }
+
+        void sendBeginnerLineFeedback(model.getValue(), completedLine);
+      }, 0);
+    });
+
+    return () => {
+      disposable.dispose();
+    };
+  }, [activeCoachStyle, sendBeginnerLineFeedback]);
 
   async function toggleVoiceInput() {
     if (recordingState === "transcribing") {
@@ -847,6 +987,14 @@ export function PracticeWorkspace({
               </ThreadMessage>
             ) : null}
 
+            {isBeginnerLineCoachLoading ? (
+              <ThreadMessage speaker="coach" title="Coach is checking your latest line...">
+                <p className="text-lg leading-8">
+                  Give me a second. I&apos;m looking at the line you just finished and what it does to the solution.
+                </p>
+              </ThreadMessage>
+            ) : null}
+
             {coachError ? (
               <ThreadMessage speaker="coach" title="AI coaching unavailable">
                 <p className="text-lg leading-8 text-red-400">{coachError}</p>
@@ -1031,6 +1179,7 @@ export function PracticeWorkspace({
                   <Editor
                     height="34rem"
                     beforeMount={handleEditorMount}
+                    onMount={handleEditorReady}
                     theme="patternlift-ide"
                     language={monacoLanguageMap[selectedLanguage]}
                     value={codeByLanguage[selectedLanguage]}
