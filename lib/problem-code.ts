@@ -1227,6 +1227,44 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
       { label: "Example 2", argsExpression: "[[[]]]", expectedExpression: "[[]]" }
     ]
   },
+  "add-two-numbers": {
+    functionName: "addTwoNumbers",
+    starterCode: buildStarterCode(
+      "function addTwoNumbers(l1, l2)",
+      [
+        "Assume both inputs use nodes like { val, next } or null.",
+        "Walk both lists together, carry overflow forward, and build the result list node by node."
+      ]
+    ),
+    signature: {
+      params: [
+        { name: "l1", type: "linkedList" },
+        { name: "l2", type: "linkedList" }
+      ],
+      returnType: "linkedList"
+    },
+    examples: [
+      {
+        label: "Example 1",
+        argsExpression:
+          "[{ val: 2, next: { val: 4, next: { val: 3, next: null } } }, { val: 5, next: { val: 6, next: { val: 4, next: null } } }]",
+        expectedExpression:
+          "{ val: 7, next: { val: 0, next: { val: 8, next: null } } }"
+      },
+      {
+        label: "Example 2",
+        argsExpression: "[{ val: 0, next: null }, { val: 0, next: null }]",
+        expectedExpression: "{ val: 0, next: null }"
+      },
+      {
+        label: "Example 3",
+        argsExpression:
+          "[{ val: 9, next: { val: 9, next: { val: 9, next: { val: 9, next: { val: 9, next: { val: 9, next: { val: 9, next: null } } } } } } }, { val: 9, next: { val: 9, next: { val: 9, next: { val: 9, next: null } } } }]",
+        expectedExpression:
+          "{ val: 8, next: { val: 9, next: { val: 9, next: { val: 9, next: { val: 0, next: { val: 0, next: { val: 0, next: { val: 1, next: null } } } } } } } }"
+      }
+    ]
+  },
   "reverse-linked-list": {
     functionName: "reverseList",
     starterCode: buildStarterCode(

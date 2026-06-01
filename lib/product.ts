@@ -516,6 +516,20 @@ export const sampleProblems: AppProblem[] = [
     contrastPatternId: "bfs"
   },
   {
+    id: "add-two-numbers",
+    category: "Linked Lists",
+    title: "Add Two Numbers",
+    difficulty: "Medium",
+    prompt:
+      "You are given two non-empty linked lists representing two non-negative integers. The digits are stored in reverse order, and each node contains a single digit. Add the two numbers and return the sum as a linked list.",
+    targetPatternId: "two-pointers",
+    recommendedClues: ["pair or complement relationship"],
+    recommendedFirstStep: "Track left and right pointers",
+    reviewQuestion:
+      "What state has to travel with your pointers from one node pair to the next so the sum stays correct?",
+    contrastPatternId: "dfs"
+  },
+  {
     id: "reverse-linked-list",
     category: "Linked Lists",
     title: "Reverse Linked List",
@@ -961,6 +975,7 @@ export const problemRoadmapMeta: Record<
   "open-the-lock": { leetcodeNumber: 752, tracks: ["neetcode150"] },
   "clone-graph": { leetcodeNumber: 133, tracks: ["blind75", "neetcode150"] },
   "network-delay-time": { leetcodeNumber: 743, tracks: ["neetcode150"] },
+  "add-two-numbers": { leetcodeNumber: 2, tracks: ["neetcode150"] },
   "reverse-linked-list": { leetcodeNumber: 206, tracks: ["blind75", "neetcode150"] },
   "linked-list-cycle": { leetcodeNumber: 141, tracks: ["blind75", "neetcode150"] },
   "merge-two-sorted-lists": { leetcodeNumber: 21, tracks: ["blind75", "neetcode150"] },
