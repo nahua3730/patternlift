@@ -1,3 +1,5 @@
+import type { AppProblem } from "@/lib/product";
+
 export type SupportedLanguage =
   | "javascript"
   | "typescript"
@@ -333,6 +335,14 @@ export function getAvailableLanguages(config: ProblemCodeConfig | undefined): Su
   return base;
 }
 
+export function hasNativeProblemCodeConfig(problemId: string) {
+  return Boolean(problemCodeMap[problemId]);
+}
+
+export function getProblemCodeConfig(problem: Pick<AppProblem, "id" | "title" | "prompt">) {
+  return problemCodeMap[problem.id] ?? buildFallbackProblemCodeConfig(problem);
+}
+
 function extractParamsFromStarter(starterCode: string) {
   const match = starterCode.match(/function\s+\w+\((.*?)\)/);
   if (!match) return ["input"];
@@ -366,6 +376,28 @@ function defaultTypeScriptStarter(title: string) {
 function defaultRubyStarter(title: string) {
   const functionName = toSnakeName(title);
   return `def ${functionName}(input)\n  # Write your solution here.\n  input\nend`;
+}
+
+function buildFallbackProblemCodeConfig(problem: Pick<AppProblem, "id" | "title" | "prompt">): ProblemCodeConfig {
+  return {
+    functionName: "solve",
+    starterCode: buildStarterCode("function solve(rawInput)", [
+      `Work on ${problem.title} here even though we have not modeled a bespoke harness yet.`,
+      "Parse rawInput into the structure you want, solve the problem, and return the answer as a string.",
+      "Use the custom test panel below to paste one official sample input and expected output."
+    ]),
+    signature: {
+      params: [{ name: "rawInput", type: "string" }],
+      returnType: "string"
+    },
+    examples: [
+      {
+        label: "Custom case 1",
+        argsExpression: '["paste sample input here"]',
+        expectedExpression: '"paste expected output here"'
+      }
+    ]
+  };
 }
 
 function toJavaType(type: ValueType) {

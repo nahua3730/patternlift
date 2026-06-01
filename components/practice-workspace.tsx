@@ -10,8 +10,9 @@ import {
 } from "@/lib/product";
 import {
   getAvailableLanguages,
+  getProblemCodeConfig,
   getStarterCode,
-  problemCodeMap,
+  hasNativeProblemCodeConfig,
   type CompareMode,
   type SupportedLanguage
 } from "@/lib/problem-code";
@@ -180,7 +181,8 @@ export function PracticeWorkspace({
     [activeProblem.contrastPatternId]
   );
   const contrastPatternLabel = contrastPattern?.label ?? "Neighboring pattern";
-  const activeCodeConfig = problemCodeMap[activeProblem.id];
+  const activeCodeConfig = getProblemCodeConfig(activeProblem);
+  const hasNativeCodeConfig = hasNativeProblemCodeConfig(activeProblem.id);
   const activeRoadmapMeta = getOfficialProblemRoadmapMeta(activeProblem.id);
   const availableLanguages = useMemo(
     () => getAvailableLanguages(activeCodeConfig),
@@ -1068,8 +1070,13 @@ export function PracticeWorkspace({
                 </div>
               </div>
 
-              {activeCodeConfig ? (
-                <details className="rounded-[8px] border border-black/10 bg-white/88 p-4">
+              {!hasNativeCodeConfig ? (
+                <div className="rounded-[8px] border border-coral/12 bg-[linear-gradient(180deg,rgba(255,247,244,0.92),rgba(255,241,237,0.92))] p-4 text-sm leading-7 text-black/68">
+                  This problem now has a runnable fallback harness. Paste one official sample input and expected output into the test panel below, then solve it in any supported language while we keep building richer problem-specific scaffolding.
+                </div>
+              ) : null}
+
+              <details className="rounded-[8px] border border-black/10 bg-white/88 p-4">
                   <summary className="cursor-pointer text-sm font-semibold text-ink">
                     Test case panel
                   </summary>
@@ -1185,11 +1192,6 @@ export function PracticeWorkspace({
                     ) : null}
                   </div>
                 </details>
-              ) : (
-                <div className="rounded-[8px] border border-dashed border-black/14 bg-mist p-4 text-sm leading-6 text-black/60">
-                  This question is part of the roadmap, but it doesn&apos;t have a native starter template yet. You can still talk through it with the coach and use the official problem links above.
-                </div>
-              )}
 
               {runnerError ? (
                 <div className="rounded-[8px] border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-700">

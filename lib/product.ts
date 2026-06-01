@@ -1183,7 +1183,7 @@ const generatedRoadmapProblems: AppProblem[] = officialRoadmapCatalog
       category: category as ProblemCategory,
       title: entry.title,
       difficulty: "Official",
-      prompt: entry.title + " is part of the official " + tracksLabel + " roadmap in " + category + ". Paste the full prompt here to start coaching, or use the official links below while we build richer native support.",
+      prompt: entry.title + " is part of the official " + tracksLabel + " roadmap in " + category + ". Use the editor and custom test panel below to solve it here, and open the official links if you want the original full wording while we keep adding richer problem-specific harnesses.",
       targetPatternId: defaults.targetPatternId,
       recommendedClues: defaults.recommendedClues,
       recommendedFirstStep: defaults.recommendedFirstStep,
