@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import Editor, { type Monaco } from "@monaco-editor/react";
 import type { CoachRequest } from "@/lib/coach";
 import {
   allProblems,
@@ -88,6 +89,20 @@ const coachStyles: Array<{ id: CoachStyle; label: string }> = [
   { id: "optional", label: "Hints On Demand" },
   { id: "off", label: "Coach Off" }
 ];
+
+const monacoLanguageMap: Record<SupportedLanguage, string> = {
+  javascript: "javascript",
+  typescript: "typescript",
+  python: "python",
+  ruby: "ruby",
+  c: "c",
+  csharp: "csharp",
+  java: "java",
+  cpp: "cpp",
+  swift: "swift",
+  go: "go",
+  kotlin: "kotlin"
+};
 
 const modeCopy = {
   learn: {
@@ -292,6 +307,33 @@ export function PracticeWorkspace({
     setTestCases(nextCases);
     setSelectedTestCaseId(nextCases[0]?.id ?? null);
   }, [activeCodeConfig, activeProblem, availableLanguages, contrastPatternLabel, correctPattern.label, mode]);
+
+  function handleEditorMount(monaco: Monaco) {
+    monaco.editor.defineTheme("patternlift-ide", {
+      base: "vs",
+      inherit: true,
+      rules: [
+        { token: "keyword", foreground: "D9485F", fontStyle: "bold" },
+        { token: "string", foreground: "1F7A6B" },
+        { token: "number", foreground: "7A56D9" },
+        { token: "comment", foreground: "8B7E74", fontStyle: "italic" },
+        { token: "type.identifier", foreground: "276EF1" },
+        { token: "delimiter.bracket", foreground: "52443D" }
+      ],
+      colors: {
+        "editor.background": "#FFFDF9",
+        "editor.foreground": "#171412",
+        "editorLineNumber.foreground": "#C6B7AB",
+        "editorLineNumber.activeForeground": "#7F685C",
+        "editorCursor.foreground": "#FF5C5C",
+        "editor.selectionBackground": "#FDD7D7",
+        "editor.inactiveSelectionBackground": "#F7E6E1",
+        "editor.lineHighlightBackground": "#FFF3EC",
+        "editorIndentGuide.background1": "#EADFD7",
+        "editorIndentGuide.activeBackground1": "#D3BEB2"
+      }
+    });
+  }
 
   useEffect(() => {
     return () => {
@@ -975,20 +1017,55 @@ export function PracticeWorkspace({
                       );
                     })}
                 </div>
-                <textarea
-                  value={codeByLanguage[selectedLanguage]}
-                  onChange={(event) => {
-                    setCodeByLanguage((current) => ({
-                      ...current,
-                      [selectedLanguage]: event.target.value
-                    }));
-                    setRunResults(null);
-                    setRunnerError(null);
-                  }}
-                  rows={26}
-                  spellCheck={false}
-                  className="uiverse-field mt-3 min-h-[28rem] w-full bg-white px-4 py-4 font-mono text-[15px] leading-7 text-ink outline-none xl:min-h-[34rem]"
-                />
+                <div className="mt-3 overflow-hidden rounded-[8px] border border-black/10 bg-[#fffdf9] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
+                  <div className="flex items-center justify-between border-b border-black/8 bg-white/84 px-4 py-2">
+                    <span className="text-xs font-semibold uppercase tracking-[0.16em] text-black/44">
+                      Editor
+                    </span>
+                    <span className="text-xs text-black/44">
+                      Tab to indent, Shift+Tab to outdent
+                    </span>
+                  </div>
+                  <Editor
+                    height="34rem"
+                    beforeMount={handleEditorMount}
+                    theme="patternlift-ide"
+                    language={monacoLanguageMap[selectedLanguage]}
+                    value={codeByLanguage[selectedLanguage]}
+                    onChange={(value) => {
+                      setCodeByLanguage((current) => ({
+                        ...current,
+                        [selectedLanguage]: value ?? ""
+                      }));
+                      setRunResults(null);
+                      setRunnerError(null);
+                    }}
+                    options={{
+                      automaticLayout: true,
+                      minimap: { enabled: false },
+                      fontSize: 15,
+                      lineHeight: 30,
+                      fontFamily:
+                        "ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, monospace",
+                      scrollBeyondLastLine: false,
+                      wordWrap: "off",
+                      tabSize: 2,
+                      insertSpaces: true,
+                      detectIndentation: false,
+                      renderWhitespace: "selection",
+                      padding: { top: 16, bottom: 16 },
+                      roundedSelection: true,
+                      lineNumbersMinChars: 3,
+                      glyphMargin: false,
+                      folding: true,
+                      overviewRulerBorder: false,
+                      scrollbar: {
+                        verticalScrollbarSize: 10,
+                        horizontalScrollbarSize: 10
+                      }
+                    }}
+                  />
+                </div>
               </div>
 
               {activeCodeConfig ? (
