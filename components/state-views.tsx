@@ -50,8 +50,8 @@ export function ProgressPageView() {
 }
 
 export function ReviewPageView() {
-  const { reviewQueue } = usePatternLiftState();
-  return <ReviewQueue items={reviewQueue} />;
+  const { reviewQueue, history } = usePatternLiftState();
+  return <ReviewQueue items={reviewQueue} history={history} />;
 }
 
 export function TechniquesPageView() {
