@@ -47,6 +47,8 @@ const reminderOptions = [
   { id: "180", label: "3 hours", minutes: 180 }
 ] as const;
 
+const MAX_PLAN_DAYS = 120;
+
 export function ReviewQueue({ items, history }: ReviewQueueProps) {
   const [goal, setGoal] = useState("Be interview-ready and stop forgetting patterns.");
   const [daysAvailable, setDaysAvailable] = useState(14);
@@ -120,7 +122,7 @@ export function ReviewQueue({ items, history }: ReviewQueueProps) {
   }, [daysAvailable, items.length, primaryFocus, secondaryFocus]);
 
   const planDays = useMemo<PlanDay[]>(() => {
-    const totalDays = Math.max(1, Math.min(30, daysAvailable));
+    const totalDays = Math.max(1, Math.min(MAX_PLAN_DAYS, daysAvailable));
     const freshProblemBudget = Math.max(1, Math.ceil(history.length / 6));
 
     return Array.from({ length: totalDays }, (_, index) => {
@@ -212,11 +214,11 @@ export function ReviewQueue({ items, history }: ReviewQueueProps) {
                 <input
                   type="number"
                   min={1}
-                  max={30}
+                  max={MAX_PLAN_DAYS}
                   value={daysAvailable}
                   onChange={(event) =>
                     setDaysAvailable(
-                      Math.max(1, Math.min(30, Number(event.target.value) || 1))
+                      Math.max(1, Math.min(MAX_PLAN_DAYS, Number(event.target.value) || 1))
                     )
                   }
                   className="uiverse-field mt-2 w-full px-3 py-3 text-sm text-ink"
