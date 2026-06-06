@@ -30,7 +30,6 @@ type LaneStatus = "fresh" | "active" | "needs-review" | "mastered";
 type RoadmapLane = {
   id: string;
   label: string;
-  coachPrompt: string;
   completed: number;
   total: number;
   solid: number;
@@ -126,7 +125,6 @@ export function ProgressPanel({
         return [{
           id: pattern.id,
           label: pattern.label,
-          coachPrompt: pattern.coachPrompt,
           completed,
           total,
           solid: solid.length,
@@ -152,167 +150,73 @@ export function ProgressPanel({
 
   return (
     <section className="grid gap-6">
-      <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <div className="uiverse-panel p-6">
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-ember">
-            Progress snapshot
-          </p>
-          <h2 className="mt-3 text-3xl font-semibold leading-tight text-ink">
-            Your roadmap should show momentum, not just leftovers.
-          </h2>
-          <p className="mt-3 max-w-2xl text-sm leading-7 text-black/68">
-            This board tracks where you have already touched the roadmap, how solid
-            those reps look, and which pattern lane deserves your next clean pass.
-          </p>
-
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard label="Attempts logged" value={String(totalAttempts)} />
-            <StatCard label="Strong reps" value={String(solidAttempts)} />
-            <StatCard label="Review cards" value={String(reviewCount)} />
-            <StatCard label="Current streak" value={`${currentStreak} days`} />
+      <div className="uiverse-panel p-6">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-ember">
+              Progress
+            </p>
+            <h2 className="mt-2 text-3xl font-semibold leading-tight text-ink">
+              A simpler read on where you are in the roadmap.
+            </h2>
           </div>
-
-          <div className="mt-5 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-            <RoadmapMetric
-              label="Pattern accuracy"
-              value={`${accuracy}%`}
-              body="A quick read on how often your latest attempt ended in a strong pattern match."
-              percent={accuracy}
-              tone="coral"
-            />
-            <RoadmapMetric
-              label="Next focus lane"
-              value={nextFocusLane?.label ?? "Pick a fresh lane"}
-              body={
-                nextFocusLane
-                  ? nextFocusLane.needsReview > 0
-                    ? `${nextFocusLane.needsReview} recent reps still feel shaky here.`
-                    : "You can start this lane from a clean slate next."
-                  : "You have room to start anywhere."
-              }
-              percent={nextFocusLane?.percent ?? 0}
-              tone="lake"
-            />
+          <div className="rounded-[8px] border border-black/10 bg-white/88 px-4 py-3 text-sm text-black/62">
+            Next focus:{" "}
+            <span className="font-semibold text-ink">
+              {nextFocusLane?.label ?? "Pick a fresh lane"}
+            </span>
           </div>
         </div>
 
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard label="Attempts" value={String(totalAttempts)} />
+          <StatCard label="Strong reps" value={String(solidAttempts)} />
+          <StatCard label="Review cards" value={String(reviewCount)} />
+          <StatCard label="Accuracy" value={`${accuracy}%`} />
+        </div>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <div className="uiverse-panel p-6">
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-lake">
-            Official roadmap coverage
-          </p>
-          <div className="mt-4 space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-lake">
+              Official roadmap
+            </p>
+            <span className="text-sm text-black/54">{currentStreak} day streak</span>
+          </div>
+
+          <div className="mt-5 space-y-5">
             {officialTrackProgress.map((track) => {
               const percent =
                 track.total === 0 ? 0 : Math.round((track.completed / track.total) * 100);
 
               return (
-                <article
-                  key={track.id}
-                  className="rounded-[8px] border border-black/10 bg-white/86 p-4"
-                >
+                <article key={track.id} className="space-y-2">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <h3 className="text-base font-semibold text-ink">{track.label}</h3>
-                      <p className="mt-1 text-sm text-black/62">
-                        {track.completed} of {track.total} problems touched
+                      <p className="text-sm text-black/58">
+                        {track.completed} of {track.total}
                       </p>
                     </div>
-                    <span className="text-2xl font-semibold text-ink">{percent}%</span>
+                    <span className="text-base font-semibold text-ink">{percent}%</span>
                   </div>
-                  <ProgressBar percent={percent} tone="coral" className="mt-4" />
+                  <ProgressBar percent={percent} tone="coral" />
                 </article>
               );
             })}
           </div>
         </div>
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-        <div className="uiverse-panel p-6">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-coral">
-                Pattern roadmap
-              </p>
-              <h3 className="mt-2 text-2xl font-semibold text-ink">
-                Follow the lanes that are opening up.
-              </h3>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { id: "all", label: "All lanes" },
-                { id: "active", label: "Active" },
-                { id: "needs-review", label: "Needs review" },
-                { id: "mastered", label: "Mastered" }
-              ].map((filter) => {
-                const active = laneFilter === filter.id;
-                return (
-                  <button
-                    key={filter.id}
-                    type="button"
-                    onClick={() => setLaneFilter(filter.id as LaneFilter)}
-                    className={`rounded-full px-3 py-2 text-sm font-medium transition ${
-                      active
-                        ? "bg-ink text-white"
-                        : "border border-black/10 bg-white text-black/68"
-                    }`}
-                  >
-                    {filter.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="mt-5 grid gap-4 lg:grid-cols-2">
-            {filteredLanes.map((lane) => (
-              <article
-                key={lane.id}
-                className="rounded-[8px] border border-black/10 bg-white/88 p-4 shadow-[0_8px_18px_rgba(17,17,17,0.04)] transition hover:-translate-y-[1px]"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h4 className="text-base font-semibold text-ink">{lane.label}</h4>
-                    <p className="mt-2 text-sm leading-6 text-black/62">
-                      {lane.coachPrompt}
-                    </p>
-                  </div>
-                  <LaneStatus status={lane.status} />
-                </div>
-
-                <div className="mt-4">
-                  <div className="flex items-center justify-between gap-3 text-sm">
-                    <span className="font-medium text-black/72">
-                      {lane.completed} of {lane.total} roadmap problems
-                    </span>
-                    <span className="text-black/52">{lane.percent}%</span>
-                  </div>
-                  <ProgressBar percent={lane.percent} tone="coral" className="mt-2" />
-                </div>
-
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  <MiniMetric label="Strong reps" value={String(lane.solid)} />
-                  <MiniMetric label="Needs review" value={String(lane.needsReview)} />
-                </div>
-
-                <div className="mt-4">
-                  <div className="flex items-center justify-between gap-3 text-sm">
-                    <span className="font-medium text-black/72">Confidence in attempted reps</span>
-                    <span className="text-black/52">{lane.strengthPercent}%</span>
-                  </div>
-                  <ProgressBar percent={lane.strengthPercent} tone="lake" className="mt-2" />
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
 
         <div className="uiverse-panel p-6">
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-lake">
-            Recent reps
-          </p>
-          <div className="mt-4 space-y-3">
-            {history.map((item) => {
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-coral">
+              Recent reps
+            </p>
+            <span className="text-sm text-black/54">{history.length} saved</span>
+          </div>
+          <div className="mt-5 space-y-3">
+            {history.slice(0, 5).map((item) => {
               const meta = getOfficialProblemRoadmapMeta(item.problemId);
               return (
                 <article
@@ -320,14 +224,7 @@ export function ProgressPanel({
                   className="rounded-[8px] border border-black/10 bg-white/86 p-4"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <h4 className="text-sm font-semibold text-ink">{item.problemTitle}</h4>
-                      <p className="mt-1 text-sm text-black/62">
-                        {meta?.leetcodeNumber
-                          ? `LeetCode #${meta.leetcodeNumber}`
-                          : item.selectedPatternLabel}
-                      </p>
-                    </div>
+                    <h4 className="text-sm font-semibold text-ink">{item.problemTitle}</h4>
                     <span
                       className={`rounded-full px-3 py-1 text-xs font-semibold ${
                         item.outcome === "solid"
@@ -344,14 +241,90 @@ export function ProgressPanel({
                           : "Needs review"}
                     </span>
                   </div>
-                  <p className="mt-3 text-sm leading-6 text-black/74">
-                    Pattern guessed: {item.selectedPatternLabel}
+                  <p className="mt-2 text-sm text-black/58">
+                    {meta?.leetcodeNumber
+                      ? `LeetCode #${meta.leetcodeNumber}`
+                      : item.selectedPatternLabel}
                   </p>
-                  <p className="mt-2 text-sm leading-6 text-black/62">{item.insight}</p>
                 </article>
               );
             })}
           </div>
+        </div>
+      </div>
+
+      <div className="uiverse-panel p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-coral">
+              Pattern roadmap
+            </p>
+            <h3 className="mt-2 text-2xl font-semibold text-ink">
+              One lane at a time.
+            </h3>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { id: "all", label: "All lanes" },
+              { id: "active", label: "Active" },
+              { id: "needs-review", label: "Needs review" },
+              { id: "mastered", label: "Mastered" }
+            ].map((filter) => {
+              const active = laneFilter === filter.id;
+              return (
+                <button
+                  key={filter.id}
+                  type="button"
+                  onClick={() => setLaneFilter(filter.id as LaneFilter)}
+                  className={`rounded-full px-3 py-2 text-sm font-medium transition ${
+                    active
+                      ? "bg-ink text-white"
+                      : "border border-black/10 bg-white text-black/68"
+                  }`}
+                >
+                  {filter.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="mt-5 space-y-3">
+          {filteredLanes.map((lane) => (
+            <article
+              key={lane.id}
+              className="rounded-[8px] border border-black/10 bg-white/88 p-4"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h4 className="text-base font-semibold text-ink">{lane.label}</h4>
+                  <p className="mt-1 text-sm text-black/58">
+                    {lane.completed} of {lane.total} problems touched
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <LaneStatus status={lane.status} />
+                  <span className="text-sm font-semibold text-ink">{lane.percent}%</span>
+                </div>
+              </div>
+
+              <ProgressBar percent={lane.percent} tone="coral" className="mt-4" />
+
+              <div className="mt-4 flex flex-wrap gap-3 text-sm text-black/62">
+                <span>{lane.solid} strong</span>
+                <span>{lane.needsReview} need review</span>
+                <span>{lane.strengthPercent}% confidence</span>
+              </div>
+
+              <div className="mt-3">
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <span className="text-black/58">Confidence in attempted reps</span>
+                  <span className="text-black/52">{lane.strengthPercent}%</span>
+                </div>
+                <ProgressBar percent={lane.strengthPercent} tone="lake" className="mt-2" />
+              </div>
+            </article>
+          ))}
         </div>
       </div>
     </section>
@@ -363,29 +336,6 @@ function StatCard({ label, value }: { label: string; value: string }) {
     <div className="rounded-[8px] border border-black/10 bg-white/88 p-4">
       <p className="text-sm text-black/58">{label}</p>
       <p className="mt-2 text-2xl font-semibold text-ink">{value}</p>
-    </div>
-  );
-}
-
-function RoadmapMetric({
-  label,
-  value,
-  body,
-  percent,
-  tone
-}: {
-  label: string;
-  value: string;
-  body: string;
-  percent: number;
-  tone: "coral" | "lake";
-}) {
-  return (
-    <div className="rounded-[8px] border border-black/10 bg-white/88 p-4">
-      <p className="text-sm font-semibold text-black/62">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-ink">{value}</p>
-      <p className="mt-2 text-sm leading-6 text-black/62">{body}</p>
-      <ProgressBar percent={percent} tone={tone} className="mt-4" />
     </div>
   );
 }
@@ -409,15 +359,6 @@ function ProgressBar({
         }`}
         style={{ width: `${percent === 0 ? 0 : Math.max(4, percent)}%` }}
       />
-    </div>
-  );
-}
-
-function MiniMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[8px] border border-black/10 bg-[#faf8f4] p-3">
-      <p className="text-xs uppercase tracking-[0.16em] text-black/44">{label}</p>
-      <p className="mt-2 text-lg font-semibold text-ink">{value}</p>
     </div>
   );
 }
