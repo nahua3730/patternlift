@@ -38,7 +38,7 @@ export async function GET() {
         FROM attempts
         WHERE user_id = ?
         ORDER BY datetime(created_at) DESC
-        LIMIT 6
+        LIMIT 24
       `
     )
     .all(user.id) as Array<{

@@ -63,6 +63,8 @@ const initialReviewQueue: ReviewItem[] = [
   }
 ];
 
+const MAX_HISTORY_ITEMS = 24;
+
 const PatternLiftStateContext = createContext<PatternLiftStateValue | null>(null);
 
 export function PatternLiftStateProvider({
@@ -132,7 +134,7 @@ export function PatternLiftStateProvider({
             : `The prompt was steered toward ${result.correctPatternLabel}, but the attempt drifted away from the strongest clues.`
     };
 
-    setHistory((current) => [optimisticHistoryItem, ...current].slice(0, 6));
+    setHistory((current) => [optimisticHistoryItem, ...current].slice(0, MAX_HISTORY_ITEMS));
 
     const optimisticReviewItem: ReviewItem = {
       id: `review-${Date.now()}`,
