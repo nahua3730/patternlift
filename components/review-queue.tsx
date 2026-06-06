@@ -51,7 +51,7 @@ const MAX_PLAN_DAYS = 120;
 
 export function ReviewQueue({ items, history }: ReviewQueueProps) {
   const [goal, setGoal] = useState("Be interview-ready and stop forgetting patterns.");
-  const [daysAvailable, setDaysAvailable] = useState(14);
+  const [daysInput, setDaysInput] = useState("14");
   const [reminderChoice, setReminderChoice] = useState<(typeof reminderOptions)[number]["id"]>(
     "60"
   );
@@ -67,6 +67,12 @@ export function ReviewQueue({ items, history }: ReviewQueueProps) {
     }
     setNotificationState(Notification.permission);
   }, []);
+
+  const daysAvailable = useMemo(() => {
+    const parsed = Number(daysInput);
+    if (!Number.isFinite(parsed)) return 14;
+    return Math.max(1, Math.min(MAX_PLAN_DAYS, Math.floor(parsed)));
+  }, [daysInput]);
 
   const weakPatternOrder = useMemo(() => {
     const scoreMap = new Map<string, number>();
@@ -215,12 +221,9 @@ export function ReviewQueue({ items, history }: ReviewQueueProps) {
                   type="number"
                   min={1}
                   max={MAX_PLAN_DAYS}
-                  value={daysAvailable}
-                  onChange={(event) =>
-                    setDaysAvailable(
-                      Math.max(1, Math.min(MAX_PLAN_DAYS, Number(event.target.value) || 1))
-                    )
-                  }
+                  value={daysInput}
+                  onChange={(event) => setDaysInput(event.target.value)}
+                  onBlur={() => setDaysInput(String(daysAvailable))}
                   className="uiverse-field mt-2 w-full px-3 py-3 text-sm text-ink"
                 />
               </label>
