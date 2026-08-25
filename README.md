@@ -98,6 +98,11 @@ cp .env.example .env.local
 OPENAI_API_KEY=sk-...
 ```
 
+Production deployments should also provide a PostgreSQL `DATABASE_URL`. On Vercel,
+connect a Neon database from the Marketplace; Vercel injects the connection string
+automatically. Local development continues to use `data/patternlift.db` when no Postgres
+URL is configured.
+
 4. Start the app:
 
 ```bash

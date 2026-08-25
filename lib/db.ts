@@ -1,4 +1,5 @@
 import { mkdirSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
@@ -21,7 +22,9 @@ if (usesPostgres) {
   postgresSql = globalForDb.patternliftPostgres ?? neon(databaseUrl);
   globalForDb.patternliftPostgres = postgresSql;
 } else {
-  const dataDir = path.join(process.cwd(), "data");
+  const dataDir = process.env.VERCEL
+    ? path.join(os.tmpdir(), "patternlift")
+    : path.join(process.cwd(), "data");
   mkdirSync(dataDir, { recursive: true });
   const databasePath = path.join(dataDir, "patternlift.db");
   sqliteDb = globalForDb.patternliftDb ?? new DatabaseSync(databasePath);
