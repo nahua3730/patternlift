@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     }
 
     const user = await createUser({ email, password, displayName });
-    const sessionToken = createSession(user.id);
+    const sessionToken = await createSession(user.id);
     const response = NextResponse.json({ user });
     response.cookies.set(getCookieConfig(sessionToken));
     return response;

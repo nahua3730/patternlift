@@ -11,14 +11,23 @@ import {
 import { starterHistory } from "@/lib/product";
 import type { AttemptResult } from "@/components/practice-workspace";
 import type { PersistenceSnapshot } from "@/lib/persistence";
+import { getReviewSchedule } from "@/lib/mastery";
 
 export type HistoryItem = {
   id: string;
   problemId: string;
   problemTitle: string;
   selectedPatternLabel: string;
+  actualPatternLabel?: string;
   outcome: "solid" | "partial" | "confused";
   insight: string;
+  score?: number;
+  hintsUsed?: number;
+  codePassed?: boolean | null;
+  confidence?: number;
+  confusedWith?: string | null;
+  inputMethod?: "text" | "voice";
+  createdAt?: string;
 };
 
 export type ReviewItem = {
@@ -28,6 +37,9 @@ export type ReviewItem = {
   contrastPatternLabel: string;
   reviewQuestion: string;
   urgency: "high" | "medium";
+  dueAt?: string;
+  intervalDays?: number;
+  repetitions?: number;
 };
 
 type PatternLiftStateValue = {
@@ -125,24 +137,36 @@ export function PatternLiftStateProvider({
       problemId: result.problemId,
       problemTitle: result.problemTitle,
       selectedPatternLabel: result.selectedPatternLabel,
+      actualPatternLabel: result.correctPatternLabel,
       outcome: result.outcome,
       insight:
         result.outcome === "solid"
           ? `Strong match between ${result.selectedPatternLabel} and the prompt clues.`
           : result.outcome === "partial"
             ? `Some useful signals were present, but the contrast with ${result.contrastPatternLabel} still needs reinforcement.`
-            : `The prompt was steered toward ${result.correctPatternLabel}, but the attempt drifted away from the strongest clues.`
+            : `The prompt was steered toward ${result.correctPatternLabel}, but the attempt drifted away from the strongest clues.`,
+      score: result.score,
+      hintsUsed: result.hintsUsed,
+      codePassed: result.codePassed,
+      confidence: result.confidence,
+      confusedWith: result.confusedWith,
+      inputMethod: result.inputMethod,
+      createdAt: new Date().toISOString()
     };
 
     setHistory((current) => [optimisticHistoryItem, ...current].slice(0, MAX_HISTORY_ITEMS));
 
+    const reviewSchedule = getReviewSchedule(result.outcome);
     const optimisticReviewItem: ReviewItem = {
       id: `review-${Date.now()}`,
       problemTitle: result.problemTitle,
       targetPatternLabel: result.correctPatternLabel,
       contrastPatternLabel: result.contrastPatternLabel,
       reviewQuestion: result.reviewQuestion,
-      urgency: result.outcome === "solid" ? "medium" : "high"
+      urgency: result.outcome === "solid" ? "medium" : "high",
+      dueAt: reviewSchedule.dueAt,
+      intervalDays: reviewSchedule.intervalDays,
+      repetitions: 0
     };
 
     setReviewQueue((current) => {

@@ -1,20 +1,29 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import {
   allProblems,
   getOfficialProblemRoadmapMeta,
   patternOptions,
   roadmapTrackTotals
 } from "@/lib/product";
+import { buildMasteryModel } from "@/lib/mastery";
 
 type HistoryItem = {
   id: string;
   problemId: string;
   problemTitle: string;
   selectedPatternLabel: string;
+  actualPatternLabel?: string;
   outcome: "solid" | "partial" | "confused";
   insight: string;
+  score?: number;
+  hintsUsed?: number;
+  codePassed?: boolean | null;
+  confidence?: number;
+  confusedWith?: string | null;
+  createdAt?: string;
 };
 
 type ProgressPanelProps = {
@@ -50,6 +59,17 @@ export function ProgressPanel({
 
   const accuracy =
     totalAttempts === 0 ? 0 : Math.round((solidAttempts / totalAttempts) * 100);
+  const masteryModel = useMemo(() => buildMasteryModel(history), [history]);
+  const practicedMastery = masteryModel.mastery
+    .filter((pattern) => pattern.attempts > 0)
+    .sort((left, right) => left.mastery - right.mastery);
+  const nextMasteryFocus = practicedMastery[0] ?? masteryModel.mastery[0];
+  const averageMastery = practicedMastery.length === 0
+    ? 0
+    : Math.round(
+        practicedMastery.reduce((sum, pattern) => sum + pattern.mastery, 0) /
+          practicedMastery.length
+      );
 
   const latestByProblem = useMemo(() => {
     const map = new Map<string, HistoryItem>();
@@ -157,13 +177,13 @@ export function ProgressPanel({
               Progress
             </p>
             <h2 className="mt-2 text-3xl font-semibold leading-tight text-ink">
-              A simpler read on where you are in the roadmap.
+              See what you can recognize—not just what you have finished.
             </h2>
           </div>
           <div className="rounded-[8px] border border-black/10 bg-white/88 px-4 py-3 text-sm text-black/62">
             Next focus:{" "}
             <span className="font-semibold text-ink">
-              {nextFocusLane?.label ?? "Pick a fresh lane"}
+              {nextMasteryFocus?.label ?? nextFocusLane?.label ?? "Pick a fresh lane"}
             </span>
           </div>
         </div>
@@ -172,7 +192,81 @@ export function ProgressPanel({
           <StatCard label="Attempts" value={String(totalAttempts)} />
           <StatCard label="Strong reps" value={String(solidAttempts)} />
           <StatCard label="Review cards" value={String(reviewCount)} />
-          <StatCard label="Accuracy" value={`${accuracy}%`} />
+          <StatCard label="Avg. mastery" value={`${averageMastery}%`} />
+        </div>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+        <div className="uiverse-panel p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-coral">
+                Pattern mastery engine
+              </p>
+              <h3 className="mt-2 text-2xl font-semibold text-ink">Your weakest signals, ranked.</h3>
+            </div>
+            <span className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/58">
+              recognition + explanation + hints + code
+            </span>
+          </div>
+
+          <div className="mt-5 space-y-3">
+            {(practicedMastery.length > 0 ? practicedMastery : masteryModel.mastery.slice(0, 4))
+              .slice(0, 5)
+              .map((pattern) => (
+                <article key={pattern.id} className="rounded-[8px] border border-black/10 bg-white/88 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="font-semibold text-ink">{pattern.label}</h4>
+                        <span className="rounded-full bg-mist px-2.5 py-1 text-xs font-medium capitalize text-black/58">
+                          {pattern.status}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-sm text-black/54">
+                        {pattern.attempts} reps · {pattern.correctRecognitions} recognized cold · {pattern.averageHints.toFixed(1)} avg hints
+                      </p>
+                    </div>
+                    <span className="text-xl font-semibold text-ink">{pattern.mastery}%</span>
+                  </div>
+                  <ProgressBar percent={pattern.mastery} tone="lake" className="mt-3" />
+                  <p className="mt-3 text-sm leading-6 text-black/64">{pattern.diagnosis}</p>
+                  {pattern.recommendedProblemId ? (
+                    <Link
+                      href={`/practice?problem=${pattern.recommendedProblemId}&mode=recognize&coach=guided`}
+                      className="mt-3 inline-flex text-sm font-semibold text-coral hover:underline"
+                    >
+                      Next drill: {pattern.recommendedProblemTitle} →
+                    </Link>
+                  ) : null}
+                </article>
+              ))}
+          </div>
+        </div>
+
+        <div className="uiverse-panel p-6">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-ember">
+            Confusion pairs
+          </p>
+          <h3 className="mt-2 text-2xl font-semibold text-ink">Where your instinct crosses wires.</h3>
+          <div className="mt-5 space-y-3">
+            {masteryModel.confusions.length > 0 ? masteryModel.confusions.slice(0, 5).map((pair) => (
+              <article key={`${pair.predicted}-${pair.actual}`} className="rounded-[8px] border border-black/10 bg-white/88 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-black/44">
+                  Predicted → actual
+                </p>
+                <p className="mt-2 font-semibold text-ink">{pair.predicted} → {pair.actual}</p>
+                <p className="mt-2 text-sm text-black/58">Seen {pair.count} time{pair.count === 1 ? "" : "s"}. Contrast these before the next solve.</p>
+              </article>
+            )) : (
+              <div className="rounded-[8px] border border-dashed border-black/12 bg-white/60 p-5 text-sm leading-6 text-black/58">
+                No confusion pair yet. PatternLift will surface one as soon as a prediction differs from the actual pattern.
+              </div>
+            )}
+          </div>
+          <div className="mt-4 rounded-[8px] bg-[#fff5ed] p-4 text-sm leading-6 text-black/64">
+            Current recognition accuracy: <span className="font-semibold text-ink">{accuracy}%</span>. High-confidence misses are weighted more heavily so calibration improves too.
+          </div>
         </div>
       </div>
 

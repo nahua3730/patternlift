@@ -2,7 +2,7 @@ import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:cry
 import { promisify } from "node:util";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { createId, db } from "@/lib/db";
+import { createId, dbExecute, dbOne } from "@/lib/db";
 
 const scrypt = promisify(scryptCallback);
 
@@ -69,9 +69,10 @@ export async function createUser({
   displayName?: string;
 }) {
   const normalizedEmail = normalizeEmail(email);
-  const existing = db
-    .prepare(`SELECT id FROM users WHERE email = ? LIMIT 1`)
-    .get(normalizedEmail) as { id: string } | undefined;
+  const existing = await dbOne<{ id: string }>(
+    `SELECT id FROM users WHERE email = ? LIMIT 1`,
+    [normalizedEmail]
+  );
 
   if (existing) {
     throw new Error("That email is already in use.");
@@ -79,12 +80,12 @@ export async function createUser({
 
   const passwordHash = await hashPassword(password);
   const userId = createId("user");
-  db.prepare(
+  await dbExecute(
     `
       INSERT INTO users (id, email, password_hash, display_name)
       VALUES (?, ?, ?, ?)
     `
-  ).run(userId, normalizedEmail, passwordHash, displayName?.trim() || null);
+  , [userId, normalizedEmail, passwordHash, displayName?.trim() || null]);
 
   return {
     id: userId,
@@ -95,23 +96,20 @@ export async function createUser({
 
 export async function authenticateUser(email: string, password: string) {
   const normalizedEmail = normalizeEmail(email);
-  const user = db
-    .prepare(
+  const user = await dbOne<{
+    id: string;
+    email: string;
+    password_hash: string;
+    display_name: string | null;
+  }>(
       `
         SELECT id, email, password_hash, display_name
         FROM users
         WHERE email = ?
         LIMIT 1
       `
-    )
-    .get(normalizedEmail) as
-    | {
-        id: string;
-        email: string;
-        password_hash: string;
-        display_name: string | null;
-      }
-    | undefined;
+    , [normalizedEmail]
+  );
 
   if (!user) {
     throw new Error("We couldn't find an account with that email.");
@@ -129,48 +127,45 @@ export async function authenticateUser(email: string, password: string) {
   } satisfies SessionUser;
 }
 
-export function createSession(userId: string) {
+export async function createSession(userId: string) {
   const token = randomBytes(24).toString("hex");
   const expiresAt = new Date(Date.now() + SESSION_DURATION_MS).toISOString();
 
-  db.prepare(
+  await dbExecute(
     `
       INSERT INTO sessions (id, user_id, expires_at)
       VALUES (?, ?, ?)
     `
-  ).run(token, userId, expiresAt);
+  , [token, userId, expiresAt]);
 
   return token;
 }
 
-export function deleteSession(token: string) {
-  db.prepare(`DELETE FROM sessions WHERE id = ?`).run(token);
+export async function deleteSession(token: string) {
+  await dbExecute(`DELETE FROM sessions WHERE id = ?`, [token]);
 }
 
 export async function getCurrentUser() {
   const token = cookies().get(SESSION_COOKIE_NAME)?.value;
   if (!token) return null;
 
-  db.prepare(`DELETE FROM sessions WHERE datetime(expires_at) <= datetime('now')`).run();
+  await dbExecute(`DELETE FROM sessions WHERE expires_at <= CURRENT_TIMESTAMP`);
 
-  const record = db
-    .prepare(
+  const record = await dbOne<{
+    id: string;
+    email: string;
+    display_name: string | null;
+  }>(
       `
         SELECT users.id, users.email, users.display_name
         FROM sessions
         JOIN users ON users.id = sessions.user_id
         WHERE sessions.id = ?
-          AND datetime(sessions.expires_at) > datetime('now')
+          AND sessions.expires_at > CURRENT_TIMESTAMP
         LIMIT 1
       `
-    )
-    .get(token) as
-    | {
-        id: string;
-        email: string;
-        display_name: string | null;
-      }
-    | undefined;
+    , [token]
+  );
 
   if (!record) {
     return null;

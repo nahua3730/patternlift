@@ -37,6 +37,22 @@ The goal is to build a learning system that helps users:
 - Recall-based practice to improve retention
 - AI-assisted coaching for explanation, hints, and review suggestions
 
+## Adaptive Learning Foundation
+
+The current build now records richer attempt evidence rather than treating every solved
+problem as equal. Each meaningful recognition attempt can include:
+
+- predicted and actual pattern
+- pattern confusion pair
+- confidence and explanation score
+- hints used and code-test result
+- text or voice response method
+
+PatternLift combines those signals into a per-pattern mastery score, diagnoses recurring
+confusions, recommends the next drill, and schedules review with expanding intervals after
+strong recall. Voice answers also switch the coach into an interviewer-style follow-up that
+probes the learner's signal and invariant without immediately revealing the solution.
+
 ## Differentiation
 
 PatternLift is being built around a specific learning problem:

@@ -45,6 +45,12 @@ export type AttemptResult = {
   reviewQuestion: string;
   weakPatternLabel: string;
   contrastPatternLabel: string;
+  hintsUsed: number;
+  codePassed: boolean | null;
+  confidence: 1 | 2 | 3;
+  explanationScore: number;
+  confusedWith: string | null;
+  inputMethod: "text" | "voice";
 };
 
 type PracticeWorkspaceProps = {
@@ -143,6 +149,8 @@ export function PracticeWorkspace({
     "idle"
   );
   const [hasLoggedAttempt, setHasLoggedAttempt] = useState(false);
+  const [confidence, setConfidence] = useState<1 | 2 | 3>(2);
+  const [nextInputMethod, setNextInputMethod] = useState<"text" | "voice">("text");
   const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>("javascript");
   const [codeByLanguage, setCodeByLanguage] = useState<Record<SupportedLanguage, string>>({
     javascript: "",
@@ -277,6 +285,8 @@ export function PracticeWorkspace({
     setCoachError(null);
     setIsCoachLoading(false);
     setHasLoggedAttempt(false);
+    setConfidence(2);
+    setNextInputMethod("text");
     setChatMessages([
       buildOpeningMessage({
         mode,
@@ -438,14 +448,22 @@ export function PracticeWorkspace({
     });
     const outcome: AttemptResult["outcome"] =
       score >= 75 ? "solid" : score >= 40 ? "partial" : "confused";
+    const selectedPatternLabel =
+      patternOptions.find((pattern) => pattern.id === selectedPattern)?.label ??
+      "Still exploring";
+    const hintsUsed = chatMessages.filter(
+      (message, index) => message.speaker === "coach" && index > 0
+    ).length;
+    const codePassed = runSummary ? runSummary.passed === runSummary.total : null;
+    const inputMethod = nextInputMethod;
+    const hasAttemptEvidence =
+      selectedPattern !== null || selectedClues.length > 0 || selectedFirstStep !== null;
 
-    if (!hasLoggedAttempt) {
+    if (!hasLoggedAttempt && hasAttemptEvidence) {
       onComplete({
         problemId: activeProblem.id,
         problemTitle: activeProblem.title,
-        selectedPatternLabel:
-          patternOptions.find((pattern) => pattern.id === selectedPattern)?.label ??
-          "Still exploring",
+        selectedPatternLabel,
         selectedPatternId: selectedPattern,
         correctPatternLabel: correctPattern.label,
         selectedClues,
@@ -457,7 +475,16 @@ export function PracticeWorkspace({
         feedbackBody: userText,
         reviewQuestion: activeProblem.reviewQuestion,
         weakPatternLabel: correctPattern.label,
-        contrastPatternLabel
+        contrastPatternLabel,
+        hintsUsed,
+        codePassed,
+        confidence,
+        explanationScore: score,
+        confusedWith:
+          selectedPatternLabel !== correctPattern.label && selectedPatternLabel !== "Still exploring"
+            ? selectedPatternLabel
+            : null,
+        inputMethod
       });
       setHasLoggedAttempt(true);
     }
@@ -485,9 +512,7 @@ export function PracticeWorkspace({
         speaker: message.speaker,
         text: message.body
       })),
-      selectedPatternLabel:
-        patternOptions.find((pattern) => pattern.id === selectedPattern)?.label ??
-        "Still exploring",
+      selectedPatternLabel,
       correctPatternLabel: correctPattern.label,
       contrastPatternLabel,
       suggestedTechniques: buildTechniqueBriefs(suggestedTechniques),
@@ -497,10 +522,13 @@ export function PracticeWorkspace({
       currentCode: codeByLanguage[selectedLanguage],
       localOutcome: outcome,
       localScore: score,
-      reviewQuestion: activeProblem.reviewQuestion
+      reviewQuestion: activeProblem.reviewQuestion,
+      inputMethod,
+      learnerConfidence: confidence
     };
 
     setIsCoachLoading(true);
+    setNextInputMethod("text");
 
     const streamingCoachId = `coach-${Date.now()}`;
     setChatMessages((current) => [
@@ -791,6 +819,7 @@ export function PracticeWorkspace({
       }
 
       setCoachDraft((current) => [current.trim(), transcript].filter(Boolean).join(current.trim() ? " " : ""));
+      setNextInputMethod("voice");
       setCoachError(null);
     } catch (error) {
       setCoachError(
@@ -1004,6 +1033,33 @@ export function PracticeWorkspace({
 
           <div className="sticky bottom-0 z-10 border-t border-black/8 bg-white/95 px-4 py-2 backdrop-blur">
             <div className="coach-input-shell">
+              {!hasLoggedAttempt ? (
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2 border-b border-black/8 pb-2">
+                  <span className="text-xs font-medium text-black/52">
+                    How confident are you in this read?
+                  </span>
+                  <div className="flex gap-1" aria-label="Confidence">
+                    {([
+                      [1, "Unsure"],
+                      [2, "Leaning"],
+                      [3, "Confident"]
+                    ] as const).map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setConfidence(value)}
+                        className={`rounded-full px-2.5 py-1 text-xs font-medium transition ${
+                          confidence === value
+                            ? "bg-ink text-white"
+                            : "border border-black/10 bg-white text-black/56"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
               <textarea
                 value={coachDraft}
                 onChange={(event) => setCoachDraft(event.target.value)}
@@ -1029,7 +1085,9 @@ export function PracticeWorkspace({
                     ? "Recording now. Tap the mic again when you want me to transcribe it."
                     : recordingState === "transcribing"
                       ? "Transcribing your recording..."
-                    : "Ask naturally. The coach will react to what you actually say."}
+                      : nextInputMethod === "voice"
+                        ? "Interview answer ready. The coach will probe your reasoning after you send it."
+                        : "Ask naturally. The coach will react to what you actually say."}
                 </p>
                 <div className="flex items-center gap-2">
                   <button

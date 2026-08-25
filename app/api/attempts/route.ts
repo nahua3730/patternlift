@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import type { AttemptResult } from "@/components/practice-workspace";
 import { getCurrentUser } from "@/lib/auth";
-import { createId, db } from "@/lib/db";
+import { createId, dbExecute, dbOne } from "@/lib/db";
 import { buildHistoryItem, buildReviewItem } from "@/lib/persistence";
+import { getReviewSchedule } from "@/lib/mastery";
 
 export async function POST(request: Request) {
   const user = await getCurrentUser();
@@ -13,8 +14,16 @@ export async function POST(request: Request) {
 
   const historyItem = buildHistoryItem(body);
   const reviewItem = buildReviewItem(body);
+  const previousReview = await dbOne<{
+    interval_days: number;
+    repetitions: number;
+  }>(
+    `SELECT interval_days, repetitions FROM review_items WHERE user_id = ? AND problem_title = ?`
+    , [user.id, body.problemTitle]
+  );
+  const schedule = getReviewSchedule(body.outcome, previousReview?.interval_days ?? 0);
 
-  db.prepare(
+  await dbExecute(
     `
       INSERT INTO attempts (
         id,
@@ -25,10 +34,16 @@ export async function POST(request: Request) {
         correct_pattern_label,
         outcome,
         score,
-        insight
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        insight,
+        hints_used,
+        code_passed,
+        confidence,
+        explanation_score,
+        confused_with,
+        input_method
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
-  ).run(
+  , [
     createId("attempt"),
     user.id,
     body.problemId,
@@ -37,15 +52,21 @@ export async function POST(request: Request) {
     body.correctPatternLabel,
     body.outcome,
     body.score,
-    historyItem.insight
-  );
+    historyItem.insight,
+    body.hintsUsed,
+    body.codePassed == null ? null : body.codePassed ? 1 : 0,
+    body.confidence,
+    body.explanationScore,
+    body.confusedWith,
+    body.inputMethod
+  ]);
 
-  db.prepare(`DELETE FROM review_items WHERE user_id = ? AND problem_title = ?`).run(
+  await dbExecute(`DELETE FROM review_items WHERE user_id = ? AND problem_title = ?`, [
     user.id,
     body.problemTitle
-  );
+  ]);
 
-  db.prepare(
+  await dbExecute(
     `
       INSERT INTO review_items (
         id,
@@ -54,18 +75,24 @@ export async function POST(request: Request) {
         target_pattern_label,
         contrast_pattern_label,
         review_question,
-        urgency
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        urgency,
+        due_at,
+        interval_days,
+        repetitions
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
-  ).run(
+  , [
     createId("review"),
     user.id,
     reviewItem.problemTitle,
     reviewItem.targetPatternLabel,
     reviewItem.contrastPatternLabel,
     reviewItem.reviewQuestion,
-    reviewItem.urgency
-  );
+    reviewItem.urgency,
+    schedule.dueAt,
+    schedule.intervalDays,
+    (previousReview?.repetitions ?? 0) + 1
+  ]);
 
   return NextResponse.json({ ok: true });
 }

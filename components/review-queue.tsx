@@ -9,6 +9,9 @@ type ReviewItem = {
   contrastPatternLabel: string;
   reviewQuestion: string;
   urgency: "high" | "medium";
+  dueAt?: string;
+  intervalDays?: number;
+  repetitions?: number;
 };
 
 type HistoryItem = {
@@ -59,6 +62,21 @@ export function ReviewQueue({ items, history }: ReviewQueueProps) {
     "unsupported" | "default" | "granted" | "denied"
   >("unsupported");
   const [reminderMessage, setReminderMessage] = useState<string | null>(null);
+  const scheduledItems = useMemo(
+    () => [...items].sort((left, right) => {
+      if (!left.dueAt) return -1;
+      if (!right.dueAt) return 1;
+      return new Date(left.dueAt).getTime() - new Date(right.dueAt).getTime();
+    }),
+    [items]
+  );
+  const dueToday = scheduledItems.filter((item) => {
+    if (!item.dueAt) return true;
+    const due = new Date(item.dueAt);
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+    return due <= endOfToday;
+  }).length;
 
   useEffect(() => {
     if (typeof window === "undefined" || !("Notification" in window)) {
@@ -389,32 +407,57 @@ export function ReviewQueue({ items, history }: ReviewQueueProps) {
       </div>
 
       <div className="uiverse-panel p-6">
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-lake">
-          Current review cards
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-lake">
+              Adaptive review queue
+            </p>
+            <h3 className="mt-2 text-2xl font-semibold text-ink">{dueToday} due today</h3>
+          </div>
+          <span className="text-sm text-black/54">Intervals expand after strong recall</span>
+        </div>
         <div className="mt-4 space-y-3">
-          {items.map((item) => (
+          {scheduledItems.map((item) => (
             <article key={item.id} className="rounded-[8px] border border-black/10 bg-white/88 p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h3 className="text-sm font-semibold text-ink">{item.problemTitle}</h3>
-                <span
-                  className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                <div className="flex flex-wrap gap-2">
+                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
                     item.urgency === "high" ? "bg-rose-100 text-rose-700" : "bg-sky-100 text-sky-700"
-                  }`}
-                >
-                  {item.urgency} priority
-                </span>
+                  }`}>
+                    {item.urgency} priority
+                  </span>
+                  <span className="rounded-full border border-black/10 bg-mist px-3 py-1 text-xs font-medium text-black/60">
+                    {formatDueDate(item.dueAt)}
+                  </span>
+                </div>
               </div>
               <p className="mt-3 text-sm leading-6 text-black/74">
                 Review {item.targetPatternLabel} against {item.contrastPatternLabel}
               </p>
               <p className="mt-2 text-sm leading-6 text-black/62">{item.reviewQuestion}</p>
+              <p className="mt-3 text-xs text-black/44">
+                {item.intervalDays ? `${item.intervalDays}-day interval` : "First recall"}
+                {item.repetitions ? ` · review ${item.repetitions}` : ""}
+              </p>
             </article>
           ))}
         </div>
       </div>
     </section>
   );
+}
+
+function formatDueDate(value?: string) {
+  if (!value) return "Ready now";
+  const due = new Date(value);
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  const key = (date: Date) => `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+  if (key(due) === key(today)) return "Due today";
+  if (key(due) === key(tomorrow)) return "Due tomorrow";
+  return `Due ${due.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
 }
 
 function PlanMetric({ label, value }: { label: string; value: string }) {

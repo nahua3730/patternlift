@@ -28,6 +28,8 @@ export type CoachRequest = {
   localOutcome: AttemptOutcome;
   localScore: number;
   reviewQuestion: string;
+  inputMethod?: "text" | "voice";
+  learnerConfidence?: 1 | 2 | 3;
 };
 
 export type CoachReplyResponse = {
@@ -47,7 +49,8 @@ export function buildCoachInstructions() {
     "If the learner asks for help, give the smallest useful nudge first.",
     "When useful, mention why a technique fits, why a data structure choice is weak, or how to improve the next step.",
     "If code is present, comment on the actual direction instead of giving generic advice.",
-    "Always end with one clear next step or one thoughtful question, not five."
+    "Always end with one clear next step or one thoughtful question, not five.",
+    "When the learner used voice, behave like an interviewer: evaluate the stated signal and invariant, then ask one probing follow-up without revealing the answer."
   ].join(" ");
 }
 
@@ -71,6 +74,8 @@ export function buildCoachInput(body: CoachRequest) {
     `Problem: ${body.problemTitle}`,
     `Problem statement:\n${body.problemPrompt}`,
     `Learner latest message:\n${body.userResponse}`,
+    `Response format: ${body.inputMethod ?? "text"}`,
+    `Learner confidence: ${body.learnerConfidence ?? 2}/3`,
     `Conversation so far:\n${historyLines || "No earlier turns."}`,
     `Likely target pattern: ${body.correctPatternLabel}`,
     `Easy-to-confuse neighbor: ${body.contrastPatternLabel}`,

@@ -1,49 +1,97 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
 
-const dataDir = path.join(process.cwd(), "data");
-mkdirSync(dataDir, { recursive: true });
+type SqlValue = string | number | null;
+type NeonClient = NeonQueryFunction<false, false>;
 
-const databasePath = path.join(dataDir, "patternlift.db");
-
+const databaseUrl = process.env.DATABASE_URL?.trim() ?? "";
+const usesPostgres = databaseUrl.startsWith("postgres://") || databaseUrl.startsWith("postgresql://");
 const globalForDb = globalThis as unknown as {
   patternliftDb?: DatabaseSync;
+  patternliftPostgres?: NeonClient;
+  patternliftMigration?: Promise<void>;
 };
 
-export const db =
-  globalForDb.patternliftDb ?? new DatabaseSync(databasePath);
+let sqliteDb: DatabaseSync | null = null;
+let postgresSql: NeonClient | null = null;
 
-if (!globalForDb.patternliftDb) {
-  globalForDb.patternliftDb = db;
+if (usesPostgres) {
+  postgresSql = globalForDb.patternliftPostgres ?? neon(databaseUrl);
+  globalForDb.patternliftPostgres = postgresSql;
+} else {
+  const dataDir = path.join(process.cwd(), "data");
+  mkdirSync(dataDir, { recursive: true });
+  const databasePath = path.join(dataDir, "patternlift.db");
+  sqliteDb = globalForDb.patternliftDb ?? new DatabaseSync(databasePath);
+  sqliteDb.exec("PRAGMA busy_timeout = 10000");
+  globalForDb.patternliftDb = sqliteDb;
+  runSqliteMigrations(sqliteDb);
 }
-
-runMigrations();
 
 export function createId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function runMigrations() {
-  db.exec(`
+export async function dbExecute(query: string, params: SqlValue[] = []) {
+  await ensureDatabase();
+  if (postgresSql) {
+    await postgresSql.query(toPostgresQuery(query), params);
+    return;
+  }
+  sqliteDb!.prepare(query).run(...params);
+}
+
+export async function dbOne<T>(query: string, params: SqlValue[] = []) {
+  await ensureDatabase();
+  if (postgresSql) {
+    const rows = await postgresSql.query(toPostgresQuery(query), params);
+    return (rows[0] as T | undefined) ?? undefined;
+  }
+  return sqliteDb!.prepare(query).get(...params) as T | undefined;
+}
+
+export async function dbAll<T>(query: string, params: SqlValue[] = []) {
+  await ensureDatabase();
+  if (postgresSql) {
+    const rows = await postgresSql.query(toPostgresQuery(query), params);
+    return rows as T[];
+  }
+  return sqliteDb!.prepare(query).all(...params) as T[];
+}
+
+export async function ensureDatabase() {
+  if (!postgresSql) return;
+  globalForDb.patternliftMigration ??= runPostgresMigrations(postgresSql);
+  await globalForDb.patternliftMigration;
+}
+
+function toPostgresQuery(query: string) {
+  let parameter = 0;
+  return query.replace(/\?/g, () => `$${++parameter}`);
+}
+
+async function runPostgresMigrations(sql: NeonClient) {
+  await sql.query(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
       email TEXT NOT NULL UNIQUE,
       password_hash TEXT NOT NULL,
       display_name TEXT,
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
     CREATE TABLE IF NOT EXISTS sessions (
       id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      expires_at TEXT NOT NULL,
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      expires_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
     CREATE TABLE IF NOT EXISTS attempts (
       id TEXT PRIMARY KEY,
-      user_id TEXT,
+      user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
       problem_id TEXT NOT NULL,
       problem_title TEXT NOT NULL,
       selected_pattern_label TEXT NOT NULL,
@@ -51,30 +99,96 @@ function runMigrations() {
       outcome TEXT NOT NULL,
       score INTEGER NOT NULL,
       insight TEXT NOT NULL,
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      hints_used INTEGER NOT NULL DEFAULT 0,
+      code_passed INTEGER,
+      confidence INTEGER NOT NULL DEFAULT 2,
+      explanation_score INTEGER NOT NULL DEFAULT 0,
+      confused_with TEXT,
+      input_method TEXT NOT NULL DEFAULT 'text',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
     CREATE TABLE IF NOT EXISTS review_items (
       id TEXT PRIMARY KEY,
-      user_id TEXT,
+      user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
       problem_title TEXT NOT NULL,
       target_pattern_label TEXT NOT NULL,
       contrast_pattern_label TEXT NOT NULL,
       review_question TEXT NOT NULL,
       urgency TEXT NOT NULL,
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      due_at TIMESTAMPTZ,
+      interval_days INTEGER NOT NULL DEFAULT 1,
+      repetitions INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
-  `);
 
-  ensureColumn("attempts", "user_id", "TEXT");
-  ensureColumn("review_items", "user_id", "TEXT");
+    CREATE INDEX IF NOT EXISTS sessions_user_id_idx ON sessions(user_id);
+    CREATE INDEX IF NOT EXISTS attempts_user_created_idx ON attempts(user_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS review_items_user_due_idx ON review_items(user_id, due_at);
+  `);
 }
 
-function ensureColumn(table: string, column: string, definition: string) {
-  const columns = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{
-    name: string;
-  }>;
+function runSqliteMigrations(db: DatabaseSync) {
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        email TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        display_name TEXT,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS sessions (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS attempts (
+        id TEXT PRIMARY KEY,
+        user_id TEXT,
+        problem_id TEXT NOT NULL,
+        problem_title TEXT NOT NULL,
+        selected_pattern_label TEXT NOT NULL,
+        correct_pattern_label TEXT NOT NULL,
+        outcome TEXT NOT NULL,
+        score INTEGER NOT NULL,
+        insight TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS review_items (
+        id TEXT PRIMARY KEY,
+        user_id TEXT,
+        problem_title TEXT NOT NULL,
+        target_pattern_label TEXT NOT NULL,
+        contrast_pattern_label TEXT NOT NULL,
+        review_question TEXT NOT NULL,
+        urgency TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
 
+    ensureSqliteColumn(db, "attempts", "user_id", "TEXT");
+    ensureSqliteColumn(db, "attempts", "hints_used", "INTEGER NOT NULL DEFAULT 0");
+    ensureSqliteColumn(db, "attempts", "code_passed", "INTEGER");
+    ensureSqliteColumn(db, "attempts", "confidence", "INTEGER NOT NULL DEFAULT 2");
+    ensureSqliteColumn(db, "attempts", "explanation_score", "INTEGER NOT NULL DEFAULT 0");
+    ensureSqliteColumn(db, "attempts", "confused_with", "TEXT");
+    ensureSqliteColumn(db, "attempts", "input_method", "TEXT NOT NULL DEFAULT 'text'");
+    ensureSqliteColumn(db, "review_items", "user_id", "TEXT");
+    ensureSqliteColumn(db, "review_items", "due_at", "TEXT");
+    ensureSqliteColumn(db, "review_items", "interval_days", "INTEGER NOT NULL DEFAULT 1");
+    ensureSqliteColumn(db, "review_items", "repetitions", "INTEGER NOT NULL DEFAULT 0");
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+}
+
+function ensureSqliteColumn(db: DatabaseSync, table: string, column: string, definition: string) {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
   if (!columns.some((entry) => entry.name === column)) {
     db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
   }
