@@ -54,7 +54,8 @@ export async function POST(request: Request) {
         for (let round = 0; round < 4; round += 1) {
           const eventStream = await client.responses.create({
             model,
-            instructions: round === 0 ? buildCoachAgentInstructions(body.coachStyle) : undefined,
+            instructions:
+              round === 0 ? buildCoachAgentInstructions(body.coachStyle, body.userResponse) : undefined,
             input,
             previous_response_id: previousResponseId,
             tools: coachAgentTools,

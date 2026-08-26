@@ -57,9 +57,9 @@ export const coachAgentTools = [
   }
 ];
 
-export function buildCoachAgentInstructions(coachStyle: CoachRequest["coachStyle"]) {
+export function buildCoachAgentInstructions(coachStyle: CoachRequest["coachStyle"], latestMessage: string) {
   return [
-    buildCoachInstructions(coachStyle),
+    buildCoachInstructions(coachStyle, latestMessage),
     "You have tools to ground your answer in this specific learner's real data instead of guessing.",
     "Call get_mastery_snapshot before claiming anything about the learner's history, mastery level, or past confusion.",
     "Call get_technique_detail before explaining a technique's trap or core idea in more depth than the summary already given.",

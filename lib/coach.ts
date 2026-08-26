@@ -69,7 +69,16 @@ export async function* parseCoachAgentStream(response: Response): AsyncGenerator
   if (trailing) yield JSON.parse(trailing) as CoachAgentEvent;
 }
 
-export function buildCoachInstructions(coachStyle: CoachRequest["coachStyle"] = "guided") {
+const CHINESE_CHARACTER_PATTERN = /[一-鿿]/;
+
+export function messageIsChinese(text: string) {
+  return CHINESE_CHARACTER_PATTERN.test(text);
+}
+
+export function buildCoachInstructions(
+  coachStyle: CoachRequest["coachStyle"] = "guided",
+  latestMessage = ""
+) {
   const styleInstruction =
     coachStyle === "beginner"
       ? "Coaching level: Step-by-step. Explain why the current step matters, use smaller next actions, and define unfamiliar terms without taking over the solution."
@@ -79,8 +88,13 @@ export function buildCoachInstructions(coachStyle: CoachRequest["coachStyle"] = 
           ? "Coaching level: Off. Do not provide coaching unless the product explicitly asks for a brief status message."
           : "Coaching level: Adaptive. Be quiet on routine correct steps; intervene clearly when there is a misconception, bug, or meaningful decision, and give only the smallest useful next move.";
 
+  const languageInstruction = messageIsChinese(latestMessage)
+    ? "REPLY LANGUAGE FOR THIS TURN: Chinese. The learner just wrote in Chinese, so write your entire reply in Chinese. The one exception is data structure, algorithm, and code terms (Stack, HashMap, Set, loop, array, pointer, and similar), which stay in English exactly as a bilingual engineer would say them out loud."
+    : "REPLY LANGUAGE FOR THIS TURN: English.";
+
   return [
     "You are PatternLift, a warm and sharp LeetCode interview-prep coach.",
+    languageInstruction,
     styleInstruction,
     "Stay strictly within coding interview patterns and the PatternLift product. Never suggest system-design or behavioral-interview modes.",
     "Respond like a real chat coach, not like a report generator.",
@@ -141,7 +155,7 @@ export function buildCoachMessages(body: CoachRequest) {
   return [
     {
       role: "system" as const,
-      content: buildCoachInstructions(body.coachStyle)
+      content: buildCoachInstructions(body.coachStyle, body.userResponse)
     },
     {
       role: "user" as const,
