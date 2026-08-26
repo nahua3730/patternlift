@@ -1478,6 +1478,32 @@ select {
 .session-mini-loader { height: .85rem; width: .85rem; border: 2px solid #cbd5e1; border-top-color: #6366f1; border-radius: 999px; animation: session-spin .8s linear infinite; }
 @keyframes session-spin { to { transform: rotate(360deg); } }
 
+.inline-coach-zone {
+  display: flex;
+  height: 40px;
+  align-items: center;
+  gap: .55rem;
+  margin: 4px 14px 4px 54px;
+  overflow: hidden;
+  border: 1px solid #dce4ee;
+  border-radius: 9px;
+  background: linear-gradient(90deg, #f8faff, #f5fbff);
+  padding: 0 .65rem;
+  color: #526077;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  box-shadow: 0 5px 14px rgba(15,23,42,.055);
+}
+
+.inline-coach-signal { display: grid; height: 1.25rem; width: 1.25rem; flex: 0 0 auto; place-items: center; border-radius: 6px; background: #eef2ff; color: #4f46e5; font-size: .62rem; font-weight: 850; }
+.inline-coach-zone-question .inline-coach-signal { background: #ecfeff; color: #0e7490; }
+.inline-coach-zone-error .inline-coach-signal { background: #fef2f2; color: #dc2626; }
+.inline-coach-zone-loading .inline-coach-signal { border: 2px solid #c7d2fe; border-top-color: #4f46e5; border-radius: 999px; background: transparent; animation: session-spin .8s linear infinite; }
+.inline-coach-copy { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .7rem; font-weight: 600; }
+.inline-coach-actions { display: flex; flex: 0 0 auto; align-items: center; gap: .3rem; }
+.inline-coach-actions button { border-radius: 6px; padding: .28rem .42rem; color: #64748b; font-size: .61rem; font-weight: 700; }
+.inline-coach-actions button:hover { background: white; color: #4f46e5; }
+.inline-coach-actions button:last-child { font-size: .82rem; }
+
 /* Progressive learning session builder */
 .learning-wizard {
   overflow: hidden;

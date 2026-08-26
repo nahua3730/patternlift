@@ -29,6 +29,15 @@ type ChatMessage = {
   body: string;
 };
 
+type InlineCoachHint = {
+  id: string;
+  lineNumber: number;
+  sourceLine: string;
+  kind: "feedback" | "question";
+  status: "loading" | "ready" | "error";
+  text: string;
+};
+
 export type AttemptResult = {
   problemId: string;
   problemTitle: string;
@@ -146,6 +155,8 @@ export function PracticeWorkspace({
   const [isCoachLoading, setIsCoachLoading] = useState(false);
   const [isCoachPanelOpen, setIsCoachPanelOpen] = useState(false);
   const [isBeginnerLineCoachLoading, setIsBeginnerLineCoachLoading] = useState(false);
+  const [inlineCoachHints, setInlineCoachHints] = useState<InlineCoachHint[]>([]);
+  const [editorReadyVersion, setEditorReadyVersion] = useState(0);
   const [recordingState, setRecordingState] = useState<"idle" | "recording" | "transcribing">(
     "idle"
   );
@@ -177,7 +188,9 @@ export function PracticeWorkspace({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingChunksRef = useRef<Blob[]>([]);
   const recordingStreamRef = useRef<MediaStream | null>(null);
-  const queuedBeginnerFeedbackRef = useRef<{ code: string; line: string } | null>(null);
+  const queuedBeginnerFeedbackRef = useRef<{ code: string; line: string; lineNumber: number; kind: "feedback" | "question" } | null>(null);
+  const inlineZoneIdsRef = useRef<string[]>([]);
+  const lastInlineRequestRef = useRef<string | null>(null);
 
   const activeProblem = useMemo(
     () => allProblems.find((problem) => problem.id === problemId) ?? allProblems[0],
@@ -240,6 +253,8 @@ export function PracticeWorkspace({
     setCoachDraft("");
     setCoachError(null);
     setIsCoachLoading(false);
+    setInlineCoachHints([]);
+    lastInlineRequestRef.current = null;
     setHasLoggedAttempt(false);
     setConfidence(2);
     setNextInputMethod("text");
@@ -311,7 +326,74 @@ export function PracticeWorkspace({
   const handleEditorReady: OnMount = (editor, monaco) => {
     codeEditorRef.current = editor;
     monacoRef.current = monaco;
+    setEditorReadyVersion((current) => current + 1);
   };
+
+  useEffect(() => {
+    const editor = codeEditorRef.current;
+    const model = editor?.getModel();
+    if (!editor || !model) return;
+
+    editor.changeViewZones((accessor) => {
+      inlineZoneIdsRef.current.forEach((zoneId) => accessor.removeZone(zoneId));
+      inlineZoneIdsRef.current = [];
+
+      inlineCoachHints
+        .filter((hint) => hint.lineNumber <= model.getLineCount())
+        .sort((left, right) => left.lineNumber - right.lineNumber)
+        .forEach((hint) => {
+          const node = document.createElement("div");
+          node.className = `inline-coach-zone inline-coach-zone-${hint.status}`;
+
+          const signal = document.createElement("span");
+          signal.className = "inline-coach-signal";
+          signal.textContent = hint.status === "loading" ? "" : hint.kind === "question" ? "?" : hint.status === "error" ? "!" : "✓";
+
+          const message = document.createElement("span");
+          message.className = "inline-coach-copy";
+          message.textContent = hint.status === "loading" ? "Coach is reading this line…" : hint.text;
+
+          const actions = document.createElement("span");
+          actions.className = "inline-coach-actions";
+
+          if (hint.status === "ready") {
+            const explain = document.createElement("button");
+            explain.type = "button";
+            explain.textContent = "Explain";
+            explain.addEventListener("click", () => {
+              setCoachDraft(`Can you explain your note on this line: ${hint.sourceLine}`);
+              setIsCoachPanelOpen(true);
+            });
+            actions.appendChild(explain);
+          }
+
+          const dismiss = document.createElement("button");
+          dismiss.type = "button";
+          dismiss.textContent = "×";
+          dismiss.setAttribute("aria-label", "Dismiss inline coach note");
+          dismiss.addEventListener("click", () => {
+            setInlineCoachHints((current) => current.filter((item) => item.id !== hint.id));
+          });
+          actions.appendChild(dismiss);
+
+          node.append(signal, message, actions);
+          const zoneId = accessor.addZone({
+            afterLineNumber: hint.lineNumber,
+            heightInPx: 48,
+            domNode: node,
+            suppressMouseDown: false
+          });
+          inlineZoneIdsRef.current.push(zoneId);
+        });
+    });
+
+    return () => {
+      editor.changeViewZones((accessor) => {
+        inlineZoneIdsRef.current.forEach((zoneId) => accessor.removeZone(zoneId));
+        inlineZoneIdsRef.current = [];
+      });
+    };
+  }, [editorReadyVersion, inlineCoachHints]);
 
   useEffect(() => {
     return () => {
@@ -332,6 +414,8 @@ export function PracticeWorkspace({
     }));
     setRunResults(null);
     setRunnerError(null);
+    setInlineCoachHints([]);
+    lastInlineRequestRef.current = null;
   }
 
   function updateTestCase(
@@ -550,28 +634,39 @@ export function PracticeWorkspace({
     }
   }
 
-  const sendBeginnerLineFeedback = useCallback(async (codeSnapshot: string, completedLine: string) => {
-    if (activeCoachStyle !== "beginner") return;
+  const sendInlineLineFeedback = useCallback(async (
+    codeSnapshot: string,
+    completedLine: string,
+    lineNumber: number,
+    kind: "feedback" | "question"
+  ) => {
+    if (activeCoachStyle === "off") return;
+    const automaticInlineEnabled = activeCoachStyle === "beginner" || (mode === "learn" && activeCoachStyle === "guided");
+    if (kind === "feedback" && !automaticInlineEnabled) return;
 
     if (isBeginnerLineCoachLoading || isCoachLoading) {
-      queuedBeginnerFeedbackRef.current = { code: codeSnapshot, line: completedLine };
+      queuedBeginnerFeedbackRef.current = { code: codeSnapshot, line: completedLine, lineNumber, kind };
       return;
     }
 
     setCoachError(null);
     setIsBeginnerLineCoachLoading(true);
+    const hintId = `inline-${lineNumber}-${Date.now()}`;
+    setInlineCoachHints((current) => [
+      ...current.filter((hint) => hint.lineNumber !== lineNumber),
+      { id: hintId, lineNumber, sourceLine: completedLine, kind, status: "loading", text: "" }
+    ]);
+
+    const question = completedLine.replace(/^\s*(?:\/\/|#)\s*\?\s*/, "").trim();
 
     const coachPayload: CoachRequest = {
       studyMode: mode,
-      coachStyle: "beginner",
+      coachStyle: activeCoachStyle,
       problemTitle: activeProblem.title,
       problemPrompt: problemText,
-      userResponse: [
-        `I just finished this line of code: ${completedLine}`,
-        "Please react like a live beginner coach.",
-        "Tell me if this line seems reasonable, what might be off if anything, and what the very next line should probably do.",
-        "Keep it short and conversational."
-      ].join(" "),
+      userResponse: kind === "question"
+        ? [`The learner asked this question inside the editor on line ${lineNumber}: ${question}`, "Answer only that question using the current code context.", "Use no more than 24 words and do not provide the full solution."].join(" ")
+        : [`The learner just completed line ${lineNumber}: ${completedLine}`, "Give one inline coaching note: confirm the direction, identify one concrete issue, or ask one useful next-step question.", "Use no more than 24 words. Do not provide the full solution."].join(" "),
       conversationHistory: chatMessages.map((message) => ({
         speaker: message.speaker,
         text: message.body
@@ -582,8 +677,9 @@ export function PracticeWorkspace({
       suggestedTechniques: buildTechniqueBriefs(suggestedTechniques),
       selectedClues: [],
       selectedFirstStep: null,
-      learnerNote:
-        "This is automatic beginner-mode line-by-line coaching triggered when the learner presses Enter after finishing a line.",
+      learnerNote: kind === "question"
+        ? "This is an explicit // ? or # ? question from inside the code editor. Reply as a tiny inline IDE note."
+        : "This is automatic beginner-mode line coaching. Reply as a tiny inline IDE note beneath the relevant line.",
       currentCode: codeSnapshot,
       localOutcome: "partial",
       localScore: 55,
@@ -602,32 +698,20 @@ export function PracticeWorkspace({
         throw new Error(payload.error ?? "Unable to load beginner coaching right now.");
       }
 
-      const reply = payload.reply.trim();
+      const reply = payload.reply.replace(/\*\*/g, "").replace(/\n+/g, " ").trim();
       if (!reply) {
         throw new Error("The coach did not return anything for that line.");
       }
 
-      setChatMessages((current) => [
-        ...current,
-        {
-          id: `coach-line-${Date.now()}`,
-          speaker: "coach",
-          title: "Coach",
-          body: reply
-        }
-      ]);
+      setInlineCoachHints((current) => current.map((hint) => hint.id === hintId ? { ...hint, status: "ready", text: reply } : hint));
     } catch (error) {
-      setCoachError(
-        error instanceof Error
-          ? error.message
-          : "Unable to load beginner coaching right now."
-      );
+      setInlineCoachHints((current) => current.map((hint) => hint.id === hintId ? { ...hint, status: "error", text: "Coach could not read this line. Try again in a moment." } : hint));
     } finally {
       setIsBeginnerLineCoachLoading(false);
       const queued = queuedBeginnerFeedbackRef.current;
       queuedBeginnerFeedbackRef.current = null;
       if (queued) {
-        void sendBeginnerLineFeedback(queued.code, queued.line);
+        void sendInlineLineFeedback(queued.code, queued.line, queued.lineNumber, queued.kind);
       }
     }
   }, [
@@ -650,7 +734,6 @@ export function PracticeWorkspace({
     if (!editor || !monaco) return;
 
     const disposable = editor.onKeyDown((event) => {
-      if (activeCoachStyle !== "beginner") return;
       if (event.keyCode !== monaco.KeyCode.Enter) return;
       if (event.shiftKey || event.ctrlKey || event.metaKey || event.altKey) return;
 
@@ -663,22 +746,24 @@ export function PracticeWorkspace({
         if (completedLineNumber < 1) return;
 
         const completedLine = model.getLineContent(completedLineNumber).trim();
-        if (
-          completedLine.length === 0 ||
-          completedLine.startsWith("//") ||
-          completedLine.startsWith("#")
-        ) {
-          return;
-        }
+        if (completedLine.length === 0) return;
 
-        void sendBeginnerLineFeedback(model.getValue(), completedLine);
+        const isQuestion = /^(?:\/\/|#)\s*\?\s*\S+/.test(completedLine);
+        if (!isQuestion && (completedLine.startsWith("//") || completedLine.startsWith("#"))) return;
+        const automaticInlineEnabled = activeCoachStyle === "beginner" || (mode === "learn" && activeCoachStyle === "guided");
+        if (!isQuestion && !automaticInlineEnabled) return;
+
+        const requestKey = `${selectedLanguage}:${completedLineNumber}:${completedLine}`;
+        if (lastInlineRequestRef.current === requestKey) return;
+        lastInlineRequestRef.current = requestKey;
+        void sendInlineLineFeedback(model.getValue(), completedLine, completedLineNumber, isQuestion ? "question" : "feedback");
       }, 0);
     });
 
     return () => {
       disposable.dispose();
     };
-  }, [activeCoachStyle, sendBeginnerLineFeedback]);
+  }, [activeCoachStyle, mode, selectedLanguage, sendInlineLineFeedback]);
 
   async function toggleVoiceInput() {
     if (recordingState === "transcribing") {
@@ -924,14 +1009,6 @@ export function PracticeWorkspace({
               </ThreadMessage>
             ) : null}
 
-            {isBeginnerLineCoachLoading ? (
-              <ThreadMessage speaker="coach" title="Coach is checking your latest line...">
-                <p className="text-sm leading-6">
-                  Give me a second. I&apos;m looking at the line you just finished and what it does to the solution.
-                </p>
-              </ThreadMessage>
-            ) : null}
-
             {coachError ? (
               <ThreadMessage speaker="coach" title="AI coaching unavailable">
                 <p className="text-sm leading-6 text-red-500">{coachError}</p>
@@ -1063,6 +1140,8 @@ export function PracticeWorkspace({
                       setSelectedLanguage(event.target.value as SupportedLanguage);
                       setRunResults(null);
                       setRunnerError(null);
+                      setInlineCoachHints([]);
+                      lastInlineRequestRef.current = null;
                     }}
                     className="border-0 bg-transparent text-sm font-semibold text-slate-900 outline-none"
                   >
@@ -1075,7 +1154,7 @@ export function PracticeWorkspace({
                       Editor
                     </span>
                     <span className="text-xs text-black/44">
-                      Tab to indent, Shift+Tab to outdent
+                      Ask inline with <strong className="font-mono text-indigo-500">{"// ?"}</strong> or <strong className="font-mono text-cyan-600"># ?</strong>
                     </span>
                   </div>
                   <Editor
