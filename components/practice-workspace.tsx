@@ -36,6 +36,7 @@ type InlineCoachHint = {
   kind: "feedback" | "question" | "voice";
   status: "listening" | "loading" | "streaming" | "ready" | "error";
   text: string;
+  prompt?: string;
 };
 
 type SpeechRecognitionResultLike = {
@@ -216,7 +217,7 @@ export function PracticeWorkspace({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingChunksRef = useRef<Blob[]>([]);
   const recordingStreamRef = useRef<MediaStream | null>(null);
-  const inlineZoneIdsRef = useRef<string[]>([]);
+  const coachDecorationIdsRef = useRef<string[]>([]);
   const lastInlineRequestRef = useRef<string | null>(null);
   const editorSpeechRecognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const liveVoiceTranscriptRef = useRef("");
@@ -256,6 +257,8 @@ export function PracticeWorkspace({
     const passed = runResults.filter((result) => result.passed).length;
     return { passed, total: runResults.length };
   }, [runResults]);
+
+  const activeInlineCoachHint = inlineCoachHints[inlineCoachHints.length - 1] ?? null;
 
   const suggestedTechniques = useMemo(
     () =>
@@ -372,67 +375,27 @@ export function PracticeWorkspace({
   useEffect(() => {
     const editor = codeEditorRef.current;
     const model = editor?.getModel();
-    if (!editor || !model) return;
+    const monaco = monacoRef.current;
+    if (!editor || !model || !monaco) return;
 
-    editor.changeViewZones((accessor) => {
-      inlineZoneIdsRef.current.forEach((zoneId) => accessor.removeZone(zoneId));
-      inlineZoneIdsRef.current = [];
+    const decorations = inlineCoachHints
+      .filter((hint) => hint.lineNumber <= model.getLineCount())
+      .map((hint) => ({
+        range: new monaco.Range(hint.lineNumber, 1, hint.lineNumber, 1),
+        options: {
+          isWholeLine: true,
+          className: `coach-line-highlight coach-line-highlight-${hint.status}`,
+          linesDecorationsClassName: "coach-line-glyph"
+        }
+      }));
 
-      inlineCoachHints
-        .filter((hint) => hint.lineNumber <= model.getLineCount())
-        .sort((left, right) => left.lineNumber - right.lineNumber)
-        .forEach((hint) => {
-          const node = document.createElement("div");
-          node.className = `inline-coach-zone inline-coach-zone-${hint.kind} inline-coach-zone-${hint.status}`;
-          node.setAttribute("aria-live", "polite");
-
-          const signal = document.createElement("span");
-          signal.className = "inline-coach-signal";
-          signal.textContent = hint.status === "loading" || hint.status === "listening" ? "" : hint.status === "error" ? "!" : hint.kind === "question" || hint.kind === "voice" ? "?" : "✓";
-
-          const message = document.createElement("span");
-          message.className = "inline-coach-copy";
-          message.textContent = hint.status === "loading" ? hint.text || "Coach is reading this line…" : hint.text;
-
-          const actions = document.createElement("span");
-          actions.className = "inline-coach-actions";
-
-          if (hint.status === "ready") {
-            const explain = document.createElement("button");
-            explain.type = "button";
-            explain.textContent = "Explain";
-            explain.addEventListener("click", () => {
-              setCoachDraft(`Can you explain your note on this line: ${hint.sourceLine}`);
-              setIsCoachPanelOpen(true);
-            });
-            actions.appendChild(explain);
-          }
-
-          const dismiss = document.createElement("button");
-          dismiss.type = "button";
-          dismiss.textContent = "×";
-          dismiss.setAttribute("aria-label", "Dismiss inline coach note");
-          dismiss.addEventListener("click", () => {
-            setInlineCoachHints((current) => current.filter((item) => item.id !== hint.id));
-          });
-          actions.appendChild(dismiss);
-
-          node.append(signal, message, actions);
-          const zoneId = accessor.addZone({
-            afterLineNumber: hint.lineNumber,
-            heightInPx: hint.kind === "voice" ? 68 : 48,
-            domNode: node,
-            suppressMouseDown: false
-          });
-          inlineZoneIdsRef.current.push(zoneId);
-        });
-    });
+    coachDecorationIdsRef.current = editor.deltaDecorations(
+      coachDecorationIdsRef.current,
+      decorations
+    );
 
     return () => {
-      editor.changeViewZones((accessor) => {
-        inlineZoneIdsRef.current.forEach((zoneId) => accessor.removeZone(zoneId));
-        inlineZoneIdsRef.current = [];
-      });
+      coachDecorationIdsRef.current = editor.deltaDecorations(coachDecorationIdsRef.current, []);
     };
   }, [editorReadyVersion, inlineCoachHints]);
 
@@ -694,15 +657,14 @@ export function PracticeWorkspace({
     setCoachError(null);
     setIsBeginnerLineCoachLoading(true);
     const hintId = options?.hintId ?? `inline-${lineNumber}-${Date.now()}`;
+    const question = options?.questionText?.trim() || completedLine.replace(/^\s*(?:\/\/|#)\s*\?\s*/, "").trim();
+    const isQuestion = kind === "question" || kind === "voice";
     setInlineCoachHints((current) => {
-      const nextHint: InlineCoachHint = { id: hintId, lineNumber, sourceLine: completedLine, kind, status: "loading", text: "" };
+      const nextHint: InlineCoachHint = { id: hintId, lineNumber, sourceLine: completedLine, kind, status: "loading", text: "", prompt: isQuestion ? question : undefined };
       return current.some((hint) => hint.id === hintId)
         ? current.map((hint) => hint.id === hintId ? nextHint : hint)
         : [...current.filter((hint) => hint.lineNumber !== lineNumber), nextHint];
     });
-
-    const question = options?.questionText?.trim() || completedLine.replace(/^\s*(?:\/\/|#)\s*\?\s*/, "").trim();
-    const isQuestion = kind === "question" || kind === "voice";
 
     const coachPayload: CoachRequest = {
       studyMode: mode,
@@ -1201,7 +1163,7 @@ export function PracticeWorkspace({
   }, [activeCoachStyle, mode, selectedPatternIds]);
 
   return (
-    <div className="session-workspace flex min-h-[calc(100vh-1.5rem)] w-full flex-col gap-3">
+    <div className="session-workspace flex min-h-[calc(100vh-1.5rem)] w-full flex-col gap-0">
       <section className="session-command-bar">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -1211,20 +1173,41 @@ export function PracticeWorkspace({
           <h2>{activeProblem.title}</h2>
         </div>
         <div className="session-command-actions">
+          <label className="session-coach-select session-language-select">
+            <span>Language</span>
+            <select
+              value={selectedLanguage}
+              onChange={(event) => {
+                setSelectedLanguage(event.target.value as SupportedLanguage);
+                setRunResults(null);
+                setRunnerError(null);
+                setInlineCoachHints([]);
+                lastInlineRequestRef.current = null;
+              }}
+            >
+              {editorLanguages.filter((language) => availableLanguages.includes(language.id)).map((language) => <option key={language.id} value={language.id}>{language.label}</option>)}
+            </select>
+          </label>
           <label className="session-coach-select">
             <span>Support</span>
             <select value={activeCoachStyle} onChange={(event) => setActiveCoachStyle(event.target.value as CoachStyle)}>
               {coachStyles.map((style) => <option key={style.id} value={style.id}>{style.label}</option>)}
             </select>
           </label>
+          <button type="button" onClick={runExamples} className="session-run-action">
+            Run <span aria-hidden="true">▶</span>
+          </button>
+          <button type="button" onClick={resetCodeEditor} className="session-reset-action">
+            Reset
+          </button>
           <button type="button" onClick={() => setIsCoachPanelOpen(true)} className="session-open-coach">
-            <CoachSparkIcon /> <span>Open coach</span>
+            <CoachSparkIcon /> <span>Conversation</span>
           </button>
           <Link href={selectionBackHref} className="session-more-action" aria-label="Choose another problem">•••</Link>
         </div>
       </section>
 
-      <div className="relative flex-1">
+      <div className="relative min-h-0 flex-1">
         {isCoachPanelOpen ? <button type="button" className="session-coach-backdrop" onClick={() => setIsCoachPanelOpen(false)} aria-label="Close coach" /> : null}
         <section aria-hidden={!isCoachPanelOpen} className={`session-coach-drawer ${isCoachPanelOpen ? "session-coach-drawer-open" : ""}`}>
           <div className="session-coach-header">
@@ -1337,7 +1320,7 @@ export function PracticeWorkspace({
               <div className="quick-start-copy">
                 <span className="quick-start-kicker">You’re already in the workspace</span>
                 <strong>No setup. Start with one line.</strong>
-                <p>The coach reacts beneath your code, so you never have to leave the editor to ask for help.</p>
+                <p>The coach stays in the workspace below your code, with enough room for a complete, readable answer.</p>
               </div>
               <ol className="quick-start-steps" aria-label="How inline coaching works">
                 <li><span>1</span><div><strong>Write</strong><small>Add your first useful line</small></div></li>
@@ -1347,46 +1330,9 @@ export function PracticeWorkspace({
               <button type="button" onClick={beginQuickStart} className="quick-start-action">Start coding <span aria-hidden="true">→</span></button>
             </div>
           ) : null}
-          <div className="border-b border-black/8 px-4 py-3">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Code workspace</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">Write, run, and refine</p>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={() => void toggleEditorVoice()}
-                  disabled={editorVoiceState === "thinking" || activeCoachStyle === "off"}
-                  className={`editor-voice-button ${editorVoiceState !== "idle" ? "editor-voice-button-active" : ""}`}
-                  aria-label={editorVoiceState === "listening" ? "Finish voice question" : "Ask the coach by voice"}
-                  title={editorVoiceState === "listening" ? "Finish voice question" : "Ask the coach by voice"}
-                >
-                  <span className="editor-voice-icon">{editorVoiceState === "thinking" ? <span className="session-mini-loader" /> : <MicrophoneIcon />}</span>
-                  <span>{editorVoiceState === "listening" ? "Listening…" : editorVoiceState === "thinking" ? "Coach typing…" : "Ask by voice"}</span>
-                  {editorVoiceState === "listening" ? <span className="editor-voice-bars" aria-hidden="true"><i /><i /><i /><i /></span> : null}
-                </button>
-                <button
-                  type="button"
-                  onClick={runExamples}
-                  className="uiverse-button px-4 py-2 text-sm font-medium"
-                >
-                  Run examples
-                </button>
-                <button
-                  type="button"
-                  onClick={resetCodeEditor}
-                  className="uiverse-button-secondary px-4 py-2 text-sm font-medium"
-                >
-                  Reset starter code
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 pb-8 overscroll-contain">
+          <div className="ide-scroll-area min-h-0 flex-1 overflow-y-auto overscroll-contain">
             <div className="space-y-4">
-              <details className="rounded-[8px] border border-black/10 bg-white/88 p-4">
+              <details className="ide-disclosure">
                 <summary className="cursor-pointer text-sm font-semibold text-ink">
                   Problem statement
                 </summary>
@@ -1395,44 +1341,29 @@ export function PracticeWorkspace({
                 </p>
               </details>
 
-              <div className="rounded-[8px] border border-black/10 bg-white/92 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-ink">
-                    {editorLanguages.find((language) => language.id === selectedLanguage)?.label} starter
-                  </p>
+              <div className="ide-editor-block">
+                <div className="ide-editor-meta">
+                  <div>
+                    <p className="ide-editor-kicker">Active file</p>
+                    <p className="ide-editor-title">
+                      {editorLanguages.find((language) => language.id === selectedLanguage)?.label} · solution
+                    </p>
+                  </div>
                   {activeCodeConfig ? (
-                    <span className="rounded-full border border-black/10 bg-mist px-3 py-1 text-xs font-medium text-black/68">
+                    <span className="ide-function-chip">
                       {activeCodeConfig.functionName}
                     </span>
                   ) : null}
                 </div>
-                <label className="mt-3 inline-flex items-center gap-2 rounded-[9px] border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-500">
-                  Language
-                  <select
-                    value={selectedLanguage}
-                    onChange={(event) => {
-                      setSelectedLanguage(event.target.value as SupportedLanguage);
-                      setRunResults(null);
-                      setRunnerError(null);
-                      setInlineCoachHints([]);
-                      lastInlineRequestRef.current = null;
-                    }}
-                    className="border-0 bg-transparent text-sm font-semibold text-slate-900 outline-none"
-                  >
-                    {editorLanguages.filter((language) => availableLanguages.includes(language.id)).map((language) => <option key={language.id} value={language.id}>{language.label}</option>)}
-                  </select>
-                </label>
-                <div className="mt-3 overflow-hidden rounded-[8px] border border-black/10 bg-[#fffdf9] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
-                  <div className="flex items-center justify-between border-b border-black/8 bg-white/84 px-4 py-2">
-                    <span className="text-xs font-semibold uppercase tracking-[0.16em] text-black/44">
-                      Editor
-                    </span>
-                    <span className="text-xs text-black/44">
-                      Speak from the toolbar, or type <strong className="font-mono text-indigo-500">{"// ?"}</strong> when voice isn’t convenient
+                <div className="ide-editor-frame">
+                  <div className="ide-editor-tabbar">
+                    <span className="ide-file-tab">solution.{selectedLanguage === "python" ? "py" : selectedLanguage === "typescript" ? "ts" : selectedLanguage === "javascript" ? "js" : selectedLanguage}</span>
+                    <span className="ide-editor-help">
+                      Voice first · <strong className="font-mono">{"// ?"}</strong> is the backup
                     </span>
                   </div>
                   <Editor
-                    height="34rem"
+                    height="19rem"
                     beforeMount={handleEditorMount}
                     onMount={handleEditorReady}
                     theme="patternlift-ide"
@@ -1462,7 +1393,7 @@ export function PracticeWorkspace({
                       padding: { top: 16, bottom: 16 },
                       roundedSelection: true,
                       lineNumbersMinChars: 3,
-                      glyphMargin: false,
+                      glyphMargin: true,
                       folding: true,
                       overviewRulerBorder: false,
                       scrollbar: {
@@ -1480,7 +1411,7 @@ export function PracticeWorkspace({
                 </div>
               ) : null}
 
-              <details className="rounded-[8px] border border-black/10 bg-white/88 p-4">
+              <details className="ide-disclosure">
                   <summary className="cursor-pointer text-sm font-semibold text-ink">
                     Test case panel
                   </summary>
@@ -1635,6 +1566,57 @@ export function PracticeWorkspace({
               ) : null}
             </div>
           </div>
+          <section className={`ide-coach-console ${activeInlineCoachHint ? "ide-coach-console-active" : ""}`} aria-live="polite">
+            <div className="ide-coach-console-head">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className={`ide-coach-orb ${editorVoiceState === "listening" ? "ide-coach-orb-listening" : ""}`}><CoachSparkIcon /></span>
+                <div className="min-w-0">
+                  <p>Pattern coach</p>
+                  <span>{activeInlineCoachHint ? `Focused on line ${activeInlineCoachHint.lineNumber}` : "Ready in your editor"}</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => void toggleEditorVoice()}
+                disabled={editorVoiceState === "thinking" || activeCoachStyle === "off"}
+                className={`ide-coach-voice ${editorVoiceState !== "idle" ? "ide-coach-voice-active" : ""}`}
+                aria-label={editorVoiceState === "listening" ? "Finish voice question" : "Ask the coach by voice"}
+              >
+                <span>{editorVoiceState === "thinking" ? <span className="session-mini-loader" /> : <MicrophoneIcon />}</span>
+                {editorVoiceState === "listening" ? "Listening — pause when done" : editorVoiceState === "thinking" ? "Coach is responding" : "Ask by voice"}
+                {editorVoiceState === "listening" ? <span className="editor-voice-bars" aria-hidden="true"><i /><i /><i /><i /></span> : null}
+              </button>
+            </div>
+
+            <div className="ide-coach-console-body">
+              {activeInlineCoachHint ? (
+                <>
+                  {activeInlineCoachHint.prompt ? <p className="ide-coach-question"><span>You asked</span>{activeInlineCoachHint.prompt}</p> : null}
+                  <div className={`ide-coach-answer ide-coach-answer-${activeInlineCoachHint.status}`}>
+                    <span>{activeInlineCoachHint.kind === "feedback" ? "Line note" : activeInlineCoachHint.status === "listening" ? "Live transcript" : "Coach"}</span>
+                    <p>{activeInlineCoachHint.status === "loading" ? activeInlineCoachHint.text || "Reading your code and shaping one useful next step…" : activeInlineCoachHint.text}</p>
+                  </div>
+                </>
+              ) : (
+                <div className="ide-coach-empty">
+                  <strong>Ask without leaving your code.</strong>
+                  <p>Place your cursor near the code you want to discuss, tap the microphone, and speak naturally. Your transcript and the complete answer will appear here.</p>
+                </div>
+              )}
+            </div>
+
+            <div className="ide-coach-console-foot">
+              <span>Code feedback appears here after you finish a meaningful line.</span>
+              {activeInlineCoachHint ? (
+                <div>
+                  {activeInlineCoachHint.status === "ready" ? (
+                    <button type="button" onClick={() => { setCoachDraft(`Can you explain your note on this line: ${activeInlineCoachHint.sourceLine}`); setIsCoachPanelOpen(true); }}>Continue in conversation</button>
+                  ) : null}
+                  <button type="button" onClick={() => setInlineCoachHints((current) => current.filter((hint) => hint.id !== activeInlineCoachHint.id))}>Clear</button>
+                </div>
+              ) : null}
+            </div>
+          </section>
         </section>
       </div>
     </div>
