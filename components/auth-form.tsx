@@ -65,57 +65,77 @@ export function AuthForm({ mode, nextPath = "/" }: AuthFormProps) {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
-      <section className="uiverse-panel px-6 py-8 md:px-8">
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-coral">
-          {mode === "login" ? "Welcome back" : "Create your account"}
-        </p>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight text-ink">
-          {mode === "login"
-            ? "Log in and pick up where you left off."
-            : "Sign up so your practice, reviews, and coach history stay yours."}
-        </h1>
-        <p className="mt-4 max-w-3xl text-base leading-7 text-black/68">
-          {mode === "login"
-            ? "Your workspace, review queue, and progress will be right where you left them."
-            : "Once you have an account, your study history follows you instead of living in one browser session."}
-        </p>
+    <div className="auth-card">
+      <section className="auth-story">
+        <div>
+          <p className="auth-kicker">Adaptive mastery, not answer memorization</p>
+          <h1 className="mt-5 max-w-lg text-4xl font-semibold leading-[1.08] tracking-[-0.045em] text-white sm:text-5xl">
+            {mode === "login" ? "Your pattern model is waiting." : "Build an interview instinct that compounds."}
+          </h1>
+          <p className="mt-6 max-w-md text-base leading-7 text-slate-300">
+            {mode === "login"
+              ? "Return to your active drills, recall schedule, and the exact pattern confusions you were working through."
+              : "PatternLift watches how you recognize, explain, and recall each pattern—then chooses the next useful rep."}
+          </p>
+        </div>
+        <div className="auth-signal">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">Your learning signal</span>
+            <span className="h-2 w-2 rounded-full bg-cyan-300 shadow-[0_0_12px_rgba(103,232,249,.8)]" />
+          </div>
+          <div className="mt-5 grid grid-cols-3 gap-3">
+            <SignalStat value="12" label="Patterns" />
+            <SignalStat value="4" label="Weak pairs" />
+            <SignalStat value="8m" label="Next rep" />
+          </div>
+        </div>
       </section>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <form onSubmit={handleSubmit} className="uiverse-panel space-y-5 px-6 py-6 md:px-8">
+      <section className="auth-form-pane">
+        <div className="mx-auto w-full max-w-md">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-indigo-600">
+            {mode === "login" ? "Welcome back" : "Create account"}
+          </p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.035em] text-slate-950">
+            {mode === "login" ? "Log in to PatternLift" : "Start your mastery profile"}
+          </h2>
+          <p className="mt-3 text-sm leading-6 text-slate-500">
+            {mode === "login" ? "Continue from your last training session." : "Free to start. Your progress stays synced across sessions."}
+          </p>
+
+          <form onSubmit={handleSubmit} className="mt-8 space-y-5">
           {mode === "signup" ? (
-            <label className="block text-sm font-medium text-ink">
-              Name
+            <label className="auth-label">
+              Display name
               <input
                 value={displayName}
                 onChange={(event) => setDisplayName(event.target.value)}
-                className="uiverse-field mt-2 block w-full px-4 py-3 text-sm text-ink"
-                placeholder="What should we call you?"
+                className="uiverse-field mt-2 block w-full px-4 py-3.5 text-sm text-ink"
+                placeholder="How should we address you?"
               />
             </label>
           ) : null}
 
-          <label className="block text-sm font-medium text-ink">
+          <label className="auth-label">
             Email
             <input
               type="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="uiverse-field mt-2 block w-full px-4 py-3 text-sm text-ink"
+              className="uiverse-field mt-2 block w-full px-4 py-3.5 text-sm text-ink"
               placeholder="you@example.com"
               autoComplete="email"
               required
             />
           </label>
 
-          <label className="block text-sm font-medium text-ink">
+          <label className="auth-label">
             Password
             <input
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="uiverse-field mt-2 block w-full px-4 py-3 text-sm text-ink"
+              className="uiverse-field mt-2 block w-full px-4 py-3.5 text-sm text-ink"
               placeholder={mode === "signup" ? "At least 8 characters" : "Enter your password"}
               autoComplete={mode === "login" ? "current-password" : "new-password"}
               required
@@ -128,11 +148,11 @@ export function AuthForm({ mode, nextPath = "/" }: AuthFormProps) {
             </div>
           ) : null}
 
-          <div className="flex flex-wrap gap-3 pt-2">
+          <div className="pt-2">
             <button
               type="submit"
               disabled={submitting}
-              className="uiverse-button inline-flex items-center justify-center px-5 py-3 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
+              className="uiverse-button inline-flex w-full items-center justify-center px-5 py-3.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
             >
               {submitting
                 ? mode === "login"
@@ -143,32 +163,26 @@ export function AuthForm({ mode, nextPath = "/" }: AuthFormProps) {
                   : "Create account"}
             </button>
 
-            <Link
-              href="/"
-              className="uiverse-button-secondary inline-flex items-center justify-center px-5 py-3 text-sm font-medium"
-            >
-              Back home
-            </Link>
           </div>
-        </form>
+          </form>
 
-        <aside className="uiverse-panel px-6 py-6">
-          <p className="text-lg font-semibold text-ink">
-            {mode === "login" ? "Need an account first?" : "Already have an account?"}
+          <p className="mt-7 text-center text-sm text-slate-500">
+            {mode === "login" ? "New to PatternLift?" : "Already have an account?"}{" "}
+            <Link href={companionHref} className="font-semibold text-indigo-600 transition hover:text-indigo-500">
+              {mode === "login" ? "Create an account" : "Log in instead"}
+            </Link>
           </p>
-          <p className="mt-3 text-sm leading-7 text-black/66">
-            {mode === "login"
-              ? "Create one first and we’ll bring you right back into your study flow."
-              : "Log in instead and keep your current practice history together."}
-          </p>
-          <Link
-            href={companionHref}
-            className="uiverse-button-secondary mt-5 inline-flex items-center justify-center px-5 py-3 text-sm font-medium"
-          >
-            {mode === "login" ? "Go to sign up" : "Go to log in"}
-          </Link>
-        </aside>
-      </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function SignalStat({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.045] px-3 py-4">
+      <p className="text-xl font-semibold tracking-[-0.03em] text-white">{value}</p>
+      <p className="mt-1 text-[11px] text-slate-500">{label}</p>
     </div>
   );
 }

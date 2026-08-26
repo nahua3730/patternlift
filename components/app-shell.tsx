@@ -6,358 +6,144 @@ import { GlobalCoachDock } from "@/components/global-coach-dock";
 import { LogoutButton } from "@/components/logout-button";
 import type { SessionUser } from "@/lib/auth";
 
-export function AppShell({
-  children,
-  currentUser
-}: {
-  children: React.ReactNode;
-  currentUser: SessionUser | null;
-}) {
+type NavIcon = "learn" | "recognize" | "practice" | "progress" | "review";
+
+const navigation: Array<{ href: string; match: string; label: string; icon: NavIcon }> = [
+  { href: "/learn/setup", match: "/learn", label: "Learn", icon: "learn" },
+  { href: "/recognize/setup", match: "/recognize", label: "Recognize", icon: "recognize" },
+  { href: "/practice/setup", match: "/practice", label: "Practice", icon: "practice" },
+  { href: "/progress", match: "/progress", label: "Progress", icon: "progress" },
+  { href: "/review", match: "/review", label: "Review", icon: "review" }
+];
+
+const pageMeta: Record<string, { eyebrow: string; title: string; backHref: string }> = {
+  "/learn/setup": { eyebrow: "Learning path", title: "Choose your focus", backHref: "/" },
+  "/learn": { eyebrow: "Learning path", title: "Choose a problem", backHref: "/learn/setup" },
+  "/recognize/setup": { eyebrow: "Recognition", title: "Set your coaching level", backHref: "/" },
+  "/practice/setup": { eyebrow: "Practice", title: "Set your coaching level", backHref: "/" },
+  "/practice/select": { eyebrow: "Practice", title: "Select a problem", backHref: "/practice/setup" },
+  "/practice": { eyebrow: "Active session", title: "Problem workspace", backHref: "/practice/select" },
+  "/progress": { eyebrow: "Analytics", title: "Mastery dashboard", backHref: "/" },
+  "/review": { eyebrow: "Recall", title: "Review queue", backHref: "/" },
+  "/techniques": { eyebrow: "Library", title: "Technique library", backHref: "/" }
+};
+
+export function AppShell({ children, currentUser }: { children: React.ReactNode; currentUser: SessionUser | null }) {
   const pathname = usePathname();
   const isHome = pathname === "/";
-  const isPracticeWorkspace = pathname === "/practice";
   const isAuthPage = pathname === "/login" || pathname === "/signup";
+  const isPracticeWorkspace = pathname === "/practice";
+  const meta = pageMeta[pathname] ?? { eyebrow: "PatternLift", title: "Workspace", backHref: "/" };
 
-  const shellMeta = (() => {
-    if (pathname === "/learn/setup") {
-      return {
-        eyebrow: "Learning Mode",
-        title: "Choose your focus",
-        body: "Pick the pattern families you want before we suggest problems.",
-        backHref: "/",
-        backLabel: "Back to modes",
-        utilityLinks: []
-      };
-    }
+  if (isHome) {
+    return (
+      <div className="min-h-screen">
+        <div className="px-4 py-5 sm:px-7 sm:py-7">
+          <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">{children}</div>
+        </div>
+        <GlobalCoachDock />
+      </div>
+    );
+  }
 
-    if (pathname === "/learn") {
-      return {
-        eyebrow: "Learning Mode",
-        title: "Choose a problem to begin",
-        body: "Set the coaching tone, then open the question you want to learn through.",
-        backHref: "/learn/setup",
-        backLabel: "Back to pattern choices",
-        utilityLinks: []
-      };
-    }
-
-    if (pathname === "/recognize/setup") {
-      return {
-        eyebrow: "Pattern Recognition",
-        title: "Choose how the coach should help",
-        body: "Choose how active the coach should be before the recognition workspace opens.",
-        backHref: "/",
-        backLabel: "Back to modes",
-        utilityLinks: []
-      };
-    }
-
-    if (pathname === "/practice/setup") {
-      return {
-        eyebrow: "Pure Practice",
-        title: "Choose how the coach should help",
-        body: "Choose how much help stays nearby while you solve.",
-        backHref: "/",
-        backLabel: "Back to modes",
-        utilityLinks: []
-      };
-    }
-
-    if (pathname === "/practice/select") {
-      return {
-        eyebrow: "Question Selection",
-        title: "Pick one problem first",
-        body: "Choose the question here so the workspace can stay focused on chat and code.",
-        backHref: "/practice/setup",
-        backLabel: "Back to coach settings",
-        utilityLinks: []
-      };
-    }
-
-    if (pathname === "/practice") {
-      return {
-        eyebrow: "Workspace",
-        title: "Solve with the flow you picked",
-        body: "Stay with the current mode, then check progress or review when you’re ready.",
-        backHref: "/",
-        backLabel: "Mode selection",
-        utilityLinks: [
-          { href: "/progress", label: "Progress" },
-          { href: "/review", label: "Review" }
-        ]
-      };
-    }
-
-    if (pathname === "/progress") {
-      return {
-        eyebrow: "Progress",
-        title: "Look back before the next rep",
-        body: "See what’s clicking, what still needs review, and where to return next.",
-        backHref: "/practice/setup",
-        backLabel: "Back to practice flow",
-        utilityLinks: [{ href: "/review", label: "Review queue" }]
-      };
-    }
-
-    if (pathname === "/review") {
-      return {
-        eyebrow: "Review",
-        title: "Come back to what almost slipped",
-        body: "Use weak spots as the next study step instead of starting cold again.",
-        backHref: "/practice/setup",
-        backLabel: "Back to practice flow",
-        utilityLinks: [{ href: "/progress", label: "Progress" }]
-      };
-    }
-
-    if (pathname === "/login") {
-      return {
-        eyebrow: "Account",
-        title: "Log in",
-        body: "Sign in first so the rest of the app can remember your work.",
-        backHref: "/",
-        backLabel: "Back home",
-        utilityLinks: []
-      };
-    }
-
-    if (pathname === "/signup") {
-      return {
-        eyebrow: "Account",
-        title: "Create account",
-        body: "Make an account once, then let the app keep your history straight.",
-        backHref: "/",
-        backLabel: "Back home",
-        utilityLinks: []
-      };
-    }
-
-    return {
-      eyebrow: "PatternLift",
-      title: "Move through one step at a time",
-      body: "Choose a mode, follow the next step, and stay inside one flow.",
-      backHref: "/",
-      backLabel: "Home",
-      utilityLinks: []
-    };
-  })();
+  if (isAuthPage) {
+    return (
+      <div className="auth-shell min-h-screen">
+        <header className="auth-shell-header">
+          <Brand dark={false} />
+          <Link href="/" className="auth-home-link">Back to home <span aria-hidden="true">↗</span></Link>
+        </header>
+        <main className="auth-shell-main">{children}</main>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen">
-      {isHome ? (
-        <div className="px-4 py-5 sm:px-7 sm:py-7">
-          <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
-            {children}
-          </div>
+    <div className="product-shell min-h-screen">
+      <aside className="product-rail hidden lg:flex">
+        <Brand dark />
+        <div className="mt-10">
+          <p className="rail-section-label">Workspace</p>
+          <nav className="mt-3 space-y-1">
+            {navigation.slice(0, 3).map((item) => <RailLink key={item.href} item={item} pathname={pathname} />)}
+          </nav>
         </div>
-      ) : isPracticeWorkspace ? (
-        <div className="min-h-screen px-3 py-3 sm:px-4 sm:py-4">
-          <div className="mx-auto grid min-h-[calc(100vh-1.5rem)] w-full max-w-[110rem] gap-3 lg:grid-cols-[15rem_minmax(0,1fr)]">
-            <aside className="app-sidebar hidden lg:flex">
-              <Link href="/" className="app-logo">
-                <span className="app-logo-mark">PL</span>
-                <span>
-                  <span className="block text-sm font-semibold text-ink">PatternLift</span>
-                  <span className="block text-xs text-black/54">
-                    Interview prep workspace
-                  </span>
-                </span>
-              </Link>
-
-              <nav className="mt-6 space-y-2">
-                {[
-                  { href: "/learn/setup", match: "/learn", label: "Learn", helper: "Pick patterns and start guided reps" },
-                  { href: "/recognize/setup", match: "/recognize", label: "Recognize", helper: "Sharpen pattern instinct fast" },
-                  { href: "/practice/setup", match: "/practice", label: "Practice", helper: "Solve with code and tests" },
-                  { href: "/progress", match: "/progress", label: "Progress", helper: "See what is sticking" },
-                  { href: "/review", match: "/review", label: "Review", helper: "Come back to weak spots" }
-                ].map((item) => {
-                  const active = pathname === item.match || pathname.startsWith(`${item.match}/`);
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`sidebar-link ${active ? "sidebar-link-active" : ""}`}
-                    >
-                      <span className="block text-sm font-semibold">{item.label}</span>
-                      <span className={`mt-1 block text-xs ${active ? "text-white/76" : "text-black/52"}`}>
-                        {item.helper}
-                      </span>
-                    </Link>
-                  );
-                })}
-              </nav>
-
-              <div className="mt-auto rounded-[8px] border border-black/8 bg-white/72 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-coral">
-                  Workspace
-                </p>
-                <p className="mt-2 text-sm font-semibold text-ink">{shellMeta.title}</p>
-                <p className="mt-2 text-sm leading-6 text-black/60">{shellMeta.body}</p>
-                {currentUser ? (
-                  <div className="mt-4 border-t border-black/8 pt-4">
-                    <p className="text-sm font-medium text-ink">
-                      {currentUser.displayName || currentUser.email}
-                    </p>
-                    <LogoutButton className="mt-2 text-sm font-medium text-black/54 transition hover:text-black/82">
-                      Log out
-                    </LogoutButton>
-                  </div>
-                ) : null}
-              </div>
-            </aside>
-
-            <main className="min-w-0">{children}</main>
-          </div>
+        <div className="mt-8">
+          <p className="rail-section-label">Insights</p>
+          <nav className="mt-3 space-y-1">
+            {navigation.slice(3).map((item) => <RailLink key={item.href} item={item} pathname={pathname} />)}
+          </nav>
         </div>
-      ) : (
-        <div className="app-frame px-4 py-4 sm:px-5 sm:py-5">
-          <div className="mx-auto grid min-h-[calc(100vh-2rem)] w-full max-w-[92rem] gap-5 lg:grid-cols-[18rem_minmax(0,1fr)]">
-            <aside className="app-sidebar hidden lg:flex">
-              <Link href="/" className="app-logo">
-                <span className="app-logo-mark">PL</span>
-                <span>
-                  <span className="block text-sm font-semibold text-ink">PatternLift</span>
-                  <span className="block text-xs text-black/54">
-                    LeetCode coach, but calmer
-                  </span>
-                </span>
-              </Link>
-
-              <nav className="mt-8 space-y-2">
-                {[
-                  { href: "/learn/setup", match: "/learn", label: "Learn", helper: "Pick patterns and start guided reps" },
-                  { href: "/recognize/setup", match: "/recognize", label: "Recognize", helper: "Sharpen pattern instinct fast" },
-                  { href: "/practice/setup", match: "/practice", label: "Practice", helper: "Solve with code and tests" },
-                  { href: "/progress", match: "/progress", label: "Progress", helper: "See what is sticking" },
-                  { href: "/review", match: "/review", label: "Review", helper: "Come back to weak spots" }
-                ].map((item) => {
-                  const active = pathname === item.match || pathname.startsWith(`${item.match}/`);
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`sidebar-link ${active ? "sidebar-link-active" : ""}`}
-                    >
-                      <span className="block text-sm font-semibold">{item.label}</span>
-                      <span className={`mt-1 block text-xs ${active ? "text-white/76" : "text-black/52"}`}>
-                        {item.helper}
-                      </span>
-                    </Link>
-                  );
-                })}
-              </nav>
-
-              <div className="mt-auto rounded-[8px] border border-black/8 bg-white/72 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-coral">
-                  Current flow
-                </p>
-                <p className="mt-2 text-sm font-semibold text-ink">{shellMeta.title}</p>
-                <p className="mt-2 text-sm leading-6 text-black/60">{shellMeta.body}</p>
-                {currentUser ? (
-                  <div className="mt-4 border-t border-black/8 pt-4">
-                    <p className="text-sm font-medium text-ink">
-                      {currentUser.displayName || currentUser.email}
-                    </p>
-                    <LogoutButton className="mt-2 text-sm font-medium text-black/54 transition hover:text-black/82">
-                      Log out
-                    </LogoutButton>
-                  </div>
-                ) : (
-                  <div className="mt-4 border-t border-black/8 pt-4">
-                    <div className="flex flex-wrap gap-2">
-                      <Link
-                        href="/login"
-                        className="uiverse-button-secondary inline-flex items-center justify-center px-4 py-2 text-sm font-medium"
-                      >
-                        Log in
-                      </Link>
-                      <Link
-                        href="/signup"
-                        className="uiverse-button inline-flex items-center justify-center px-4 py-2 text-sm font-medium"
-                      >
-                        Sign up
-                      </Link>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </aside>
-
-            <main className="flex min-w-0 flex-col gap-4 pb-80">
-              <header className="page-hero">
-                {isPracticeWorkspace ? (
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <Link
-                        href={shellMeta.backHref}
-                        className="text-sm font-medium text-black/58 transition hover:text-black/84"
-                      >
-                        ← {shellMeta.backLabel}
-                      </Link>
-                      <p className="mt-2 text-xs font-semibold uppercase tracking-[0.22em] text-coral">
-                        {shellMeta.eyebrow}
-                      </p>
-                    </div>
-
-                    {shellMeta.utilityLinks.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {shellMeta.utilityLinks.map((link) => (
-                          <Link
-                            key={link.href}
-                            href={link.href}
-                            className="coach-chip px-4 py-2 text-sm font-medium text-black/70"
-                          >
-                            {link.label}
-                          </Link>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-                ) : (
-                  <>
-                    <div className="max-w-3xl">
-                      <Link
-                        href={shellMeta.backHref}
-                        className="text-sm font-medium text-black/58 transition hover:text-black/84"
-                      >
-                        ← {shellMeta.backLabel}
-                      </Link>
-                      <p className="mt-4 text-xs font-semibold uppercase tracking-[0.22em] text-coral">
-                        {shellMeta.eyebrow}
-                      </p>
-                      <h1 className="mt-3 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
-                        {shellMeta.title}
-                      </h1>
-                      <p className="mt-3 max-w-2xl text-sm leading-7 text-black/64">
-                        {shellMeta.body}
-                      </p>
-                    </div>
-
-                    {shellMeta.utilityLinks.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {shellMeta.utilityLinks.map((link) => (
-                          <Link
-                            key={link.href}
-                            href={link.href}
-                            className="coach-chip px-4 py-2 text-sm font-medium text-black/70"
-                          >
-                            {link.label}
-                          </Link>
-                        ))}
-                      </div>
-                    ) : null}
-                  </>
-                )}
-              </header>
-
-              {children}
-            </main>
+        <div className="rail-account mt-auto">
+          <div className="rail-avatar" aria-hidden="true">
+            {(currentUser?.displayName || currentUser?.email || "P").slice(0, 1).toUpperCase()}
           </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-white">{currentUser?.displayName || "Your workspace"}</p>
+            <p className="truncate text-xs text-slate-500">{currentUser?.email}</p>
+          </div>
+          <LogoutButton className="rail-logout" aria-label="Log out">↗</LogoutButton>
         </div>
-      )}
+      </aside>
 
-      {!isAuthPage ? <GlobalCoachDock /> : null}
+      <div className="min-w-0 flex-1 lg:pl-[15.5rem]">
+        <header className="mobile-product-header lg:hidden">
+          <Brand dark={false} />
+          <nav className="flex items-center gap-1">
+            <Link href="/progress" className="mobile-header-link">Progress</Link>
+            <Link href="/review" className="mobile-header-link">Review</Link>
+          </nav>
+        </header>
+        <header className="product-topbar">
+          <div className="flex min-w-0 items-center gap-3">
+            <Link href={meta.backHref} className="topbar-back" aria-label="Go back"><span aria-hidden="true">←</span></Link>
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{meta.eyebrow}</p>
+              <h1 className="truncate text-base font-semibold tracking-[-0.02em] text-slate-900">{meta.title}</h1>
+            </div>
+          </div>
+          <div className="hidden items-center gap-2 sm:flex">
+            <span className="status-dot" />
+            <span className="text-xs font-medium text-slate-500">Synced</span>
+          </div>
+        </header>
+        <main className={`workspace-content ${isPracticeWorkspace ? "workspace-content-wide" : ""}`}>{children}</main>
+      </div>
+      <GlobalCoachDock />
     </div>
   );
+}
+
+function RailLink({ item, pathname }: { item: (typeof navigation)[number]; pathname: string }) {
+  const active = pathname === item.match || pathname.startsWith(`${item.match}/`);
+  return (
+    <Link href={item.href} className={`rail-link ${active ? "rail-link-active" : ""}`}>
+      <NavGlyph icon={item.icon} />
+      <span>{item.label}</span>
+      {active ? <span className="ml-auto h-1.5 w-1.5 rounded-full bg-cyan-300" /> : null}
+    </Link>
+  );
+}
+
+function Brand({ dark }: { dark: boolean }) {
+  return (
+    <Link href="/" className="flex items-center gap-3">
+      <span className={`brand-mark ${dark ? "brand-mark-rail" : ""}`} aria-hidden="true"><span /><span /><span /></span>
+      <span>
+        <span className={`block text-sm font-semibold tracking-[-0.02em] ${dark ? "text-white" : "text-slate-900"}`}>PatternLift</span>
+        <span className="block text-[11px] text-slate-500">Adaptive mastery</span>
+      </span>
+    </Link>
+  );
+}
+
+function NavGlyph({ icon }: { icon: NavIcon }) {
+  const paths: Record<NavIcon, React.ReactNode> = {
+    learn: <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v14H6.5A2.5 2.5 0 0 0 4 19.5v-14Zm16 0A2.5 2.5 0 0 0 17.5 3H13v14h4.5a2.5 2.5 0 0 1 2.5 2.5v-14Z" />,
+    recognize: <><circle cx="12" cy="12" r="3" /><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" /></>,
+    practice: <><path d="m8 16 8-8" /><path d="m14 6 4 4" /><path d="M6 18h4l9-9a2.8 2.8 0 0 0-4-4l-9 9v4Z" /></>,
+    progress: <><path d="M4 19V9" /><path d="M10 19V5" /><path d="M16 19v-7" /><path d="M22 19V2" /></>,
+    review: <><path d="M4 5h16v14H4z" /><path d="M8 9h8M8 13h6" /></>
+  };
+  return <svg viewBox="0 0 24 24" aria-hidden="true" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{paths[icon]}</svg>;
 }
