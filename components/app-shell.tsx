@@ -10,7 +10,7 @@ import type { SessionUser } from "@/lib/auth";
 type NavIcon = "learn" | "recognize" | "practice" | "progress" | "review";
 
 const navigation: Array<{ href: string; match: string; label: string; icon: NavIcon }> = [
-  { href: "/practice?problem=contains-duplicate&mode=learn&coach=guided&patterns=hashing&quick=1", match: "/practice", label: "Start", icon: "practice" },
+  { href: "/start", match: "/start", label: "Start", icon: "practice" },
   { href: "/learn/setup", match: "/learn", label: "My Path", icon: "learn" },
   { href: "/recognize/setup", match: "/recognize", label: "Recognize", icon: "recognize" },
   { href: "/progress", match: "/progress", label: "Progress", icon: "progress" },
@@ -18,6 +18,7 @@ const navigation: Array<{ href: string; match: string; label: string; icon: NavI
 ];
 
 const pageMeta: Record<string, { eyebrow: string; title: string; backHref: string }> = {
+  "/start": { eyebrow: "Mastery Agent", title: "Your next session", backHref: "/" },
   "/learn/setup": { eyebrow: "Learning path", title: "Choose your focus", backHref: "/" },
   "/learn": { eyebrow: "Learning path", title: "Build your session", backHref: "/learn/setup" },
   "/recognize/setup": { eyebrow: "Recognition", title: "Set your coaching level", backHref: "/" },

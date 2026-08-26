@@ -30,6 +30,7 @@ const modeCards = [
 
 const quickStartHref =
   "/practice?problem=contains-duplicate&mode=learn&coach=guided&patterns=hashing&quick=1";
+const agentStartHref = "/start";
 
 function entryHref(currentUser: SessionUser | null, target: string) {
   if (currentUser) return target;
@@ -91,17 +92,17 @@ export function HomePage({ currentUser }: { currentUser: SessionUser | null }) {
 
           <div className="mt-9 flex flex-wrap gap-3">
             <Link
-              href={entryHref(currentUser, quickStartHref)}
+              href={entryHref(currentUser, agentStartHref)}
               className="home-primary-cta inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-semibold"
             >
-              Try the inline coach
+              Let the agent plan my session
               <span aria-hidden="true">↗</span>
             </Link>
             <Link
-              href={entryHref(currentUser, "/learn/setup")}
+              href={entryHref(currentUser, quickStartHref)}
               className="inline-flex items-center justify-center rounded-xl border border-white/14 bg-white/6 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
             >
-              Build my learning path
+              Open the inline coach
             </Link>
           </div>
 
@@ -229,7 +230,7 @@ export function HomePage({ currentUser }: { currentUser: SessionUser | null }) {
           <p className="home-section-kicker text-cyan-300">Your next rep is not random</p>
           <h2 className="mt-4 max-w-2xl text-3xl font-semibold tracking-[-0.045em] text-white sm:text-4xl">Train the decision before the implementation.</h2>
         </div>
-        <Link href={entryHref(currentUser, quickStartHref)} className="home-final-button">Open the inline workspace<span>→</span></Link>
+        <Link href={entryHref(currentUser, agentStartHref)} className="home-final-button">Build my next session<span>→</span></Link>
       </section>
     </div>
   );

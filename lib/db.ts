@@ -124,9 +124,21 @@ async function runPostgresMigrations(sql: NeonClient) {
       repetitions INTEGER NOT NULL DEFAULT 0,
       created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
     )`,
+    `CREATE TABLE IF NOT EXISTS mastery_agent_runs (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      status TEXT NOT NULL DEFAULT 'proposed',
+      model TEXT NOT NULL,
+      source TEXT NOT NULL,
+      output_json TEXT NOT NULL,
+      tool_trace_json TEXT NOT NULL,
+      accepted_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
     "CREATE INDEX IF NOT EXISTS sessions_user_id_idx ON sessions(user_id)",
     "CREATE INDEX IF NOT EXISTS attempts_user_created_idx ON attempts(user_id, created_at DESC)",
     "CREATE INDEX IF NOT EXISTS review_items_user_due_idx ON review_items(user_id, due_at)",
+    "CREATE INDEX IF NOT EXISTS mastery_agent_runs_user_created_idx ON mastery_agent_runs(user_id, created_at DESC)",
   ];
 
   for (const statement of statements) {
@@ -171,6 +183,17 @@ function runSqliteMigrations(db: DatabaseSync) {
         contrast_pattern_label TEXT NOT NULL,
         review_question TEXT NOT NULL,
         urgency TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS mastery_agent_runs (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'proposed',
+        model TEXT NOT NULL,
+        source TEXT NOT NULL,
+        output_json TEXT NOT NULL,
+        tool_trace_json TEXT NOT NULL,
+        accepted_at TEXT,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
     `);
