@@ -59,7 +59,7 @@ export function GlobalCoachDock() {
   const searchParams = useSearchParams();
   const [messages, setMessages] = useState<DockMessage[]>([]);
   const [draft, setDraft] = useState("");
-  const [isOpen, setIsOpen] = useState(pathname === "/");
+  const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recordingState, setRecordingState] = useState<"idle" | "recording" | "transcribing">(
@@ -166,7 +166,7 @@ export function GlobalCoachDock() {
   }, [activeProblem?.id, introMessage, pageKind, primaryPattern?.id]);
 
   useEffect(() => {
-    setIsOpen(pathname === "/");
+    setIsOpen(false);
   }, [pathname]);
 
   useEffect(() => {

@@ -145,8 +145,8 @@ export function AppShell({
   return (
     <div className="min-h-screen">
       {isHome ? (
-        <div className="px-5 py-6 sm:px-8 sm:py-8">
-          <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 pb-80">
+        <div className="px-4 py-5 sm:px-7 sm:py-7">
+          <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
             {children}
           </div>
         </div>

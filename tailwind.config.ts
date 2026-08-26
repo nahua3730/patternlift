@@ -9,12 +9,12 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: "#111111",
-        mist: "#f4f1ea",
-        fern: "#7cc47c",
-        ember: "#e85d3d",
-        coral: "#ff5c5c",
-        lake: "#59a5d8"
+        ink: "#111827",
+        mist: "#eef2f7",
+        fern: "#14b8a6",
+        ember: "#7c3aed",
+        coral: "#6366f1",
+        lake: "#0891b2"
       }
     }
   },

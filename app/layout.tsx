@@ -5,8 +5,9 @@ import { getCurrentUser } from "@/lib/auth";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "PatternLift",
-  description: "AI-assisted LeetCode pattern coach for recognition, recall, and review."
+  title: "PatternLift — Adaptive Coding Interview Coach",
+  description:
+    "Train coding-pattern recognition with adaptive mastery, confusion-pair diagnosis, spaced recall, and voice interview practice."
 };
 
 export default async function RootLayout({
