@@ -12,6 +12,14 @@ type DockMessage = {
   text: string;
 };
 
+function cleanCoachReply(reply: string) {
+  return reply
+    .replace(/\*\*/g, "")
+    .replace(/^#{1,4}\s+/gm, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 const coachQuickActions: Record<string, string[]> = {
   home: [
     "Help me choose the right mode.",
@@ -61,6 +69,7 @@ export function GlobalCoachDock() {
   const [draft, setDraft] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recordingState, setRecordingState] = useState<"idle" | "recording" | "transcribing">(
     "idle"
@@ -115,7 +124,7 @@ export function GlobalCoachDock() {
       `Current page: ${pageTitles[pageKind]}.`,
       primaryPattern ? `Current pattern focus: ${primaryPattern.label}.` : null,
       pageKind === "home"
-        ? "The learner is deciding how to study today and wants practical guidance."
+        ? "The learner is choosing between PatternLift's three coding-pattern modes: Learn builds understanding with guided reps; Recognize trains pattern identification before coding; Practice is independent coding with optional hints. Recommend exactly one based on their need."
         : "The learner wants coaching that matches what they are trying to do on this page."
     ]
       .filter(Boolean)
@@ -163,6 +172,7 @@ export function GlobalCoachDock() {
     ]);
     setDraft("");
     setError(null);
+    setComposerOpen(false);
   }, [activeProblem?.id, introMessage, pageKind, primaryPattern?.id]);
 
   useEffect(() => {
@@ -189,6 +199,7 @@ export function GlobalCoachDock() {
     const nextConversation = [...messages, nextUserMessage];
     setMessages(nextConversation);
     setDraft("");
+    setComposerOpen(false);
     setIsLoading(true);
     setError(null);
 
@@ -239,7 +250,7 @@ export function GlobalCoachDock() {
         {
           id: `coach-${Date.now()}`,
           speaker: "coach",
-          text: payload.reply
+          text: cleanCoachReply(payload.reply)
         }
       ]);
     } catch (sendError) {
@@ -367,7 +378,7 @@ export function GlobalCoachDock() {
     <aside
       className={`fixed bottom-4 right-4 z-40 transition-all duration-300 ${
         isOpen
-          ? "w-[min(28rem,calc(100vw-1.5rem))] translate-y-0 opacity-100"
+          ? "w-[min(24rem,calc(100vw-1.5rem))] translate-y-0 opacity-100"
           : "w-auto translate-y-0 opacity-100"
       }`}
     >
@@ -399,8 +410,8 @@ export function GlobalCoachDock() {
         </div>
 
           <>
-            <div className="max-h-80 space-y-3 overflow-y-auto px-4 py-4">
-              {messages.map((message) => (
+            <div className="coach-conversation space-y-3 overflow-y-auto px-4 py-4">
+              {(messages.length > 1 ? messages.slice(-2) : messages).map((message) => (
                 <div
                   key={message.id}
                   className={`coach-message ${message.speaker === "coach" ? "coach-message-ai" : "coach-message-user"}`}
@@ -422,22 +433,29 @@ export function GlobalCoachDock() {
               ) : null}
             </div>
 
-            <div className="border-t border-slate-200 px-4 py-4">
-              <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400">Continue with</p>
-              <div className="mb-3 grid gap-1.5">
-                {quickActions.slice(0, 3).map((action) => (
-                  <button
-                    key={action}
-                    type="button"
-                    onClick={() => void sendMessage(action)}
-                    className="coach-suggestion"
-                  >
-                    <span>{action}</span><span aria-hidden="true">→</span>
-                  </button>
-                ))}
-              </div>
+            <div className="coach-next-actions border-t border-slate-200 px-4 py-3">
+              {messages.length === 1 && !composerOpen ? (
+                <>
+                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400">Choose one</p>
+                  <div className="grid gap-1">
+                    {quickActions.slice(0, 3).map((action) => (
+                      <button key={action} type="button" onClick={() => void sendMessage(action)} className="coach-suggestion">
+                        <span>{action}</span><span aria-hidden="true">→</span>
+                      </button>
+                    ))}
+                  </div>
+                  <button type="button" onClick={() => setComposerOpen(true)} className="coach-own-question">Ask my own question</button>
+                </>
+              ) : null}
 
-              <div className="coach-composer">
+              {messages.length > 1 && !composerOpen && !isLoading ? (
+                <div className="coach-response-actions">
+                  <button type="button" onClick={() => setComposerOpen(true)}>Ask a follow-up</button>
+                  <button type="button" onClick={() => setIsOpen(false)}>Done</button>
+                </div>
+              ) : null}
+
+              {composerOpen ? <div className="coach-composer">
                 <textarea
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
@@ -451,8 +469,8 @@ export function GlobalCoachDock() {
                   className="w-full resize-none border-0 bg-transparent text-sm leading-6 text-slate-900 outline-none placeholder:text-slate-400"
                   placeholder={
                     pageKind === "practice"
-                      ? "Ask for a hint, sanity check, complexity read, or cleaner path..."
-                      : "Ask anything about the pattern, next step, or what still feels fuzzy..."
+                      ? "Ask for one hint or a quick check..."
+                      : "Ask one focused question..."
                   }
                 />
                 <div className="flex items-center justify-between gap-3 pt-2">
@@ -463,7 +481,7 @@ export function GlobalCoachDock() {
                         ? "Transcribing your recording..."
                         : primaryPattern
                           ? `Pattern context: ${primaryPattern.label}`
-                          : "General coaching"}
+                          : "Keep it focused"}
                   </p>
                   <div className="flex items-center gap-2">
                     <button
@@ -510,7 +528,7 @@ export function GlobalCoachDock() {
                     </button>
                   </div>
                 </div>
-              </div>
+              </div> : null}
             </div>
           </>
           </div>

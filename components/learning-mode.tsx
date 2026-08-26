@@ -2,268 +2,168 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import {
-  allProblems,
-  getOfficialProblemRoadmapMeta,
-  patternOptions,
-  type AppProblem
-} from "@/lib/product";
+import { allProblems, getOfficialProblemRoadmapMeta, patternOptions, type AppProblem } from "@/lib/product";
 
-type LearningModeProps = {
-  patternIds: string[];
-  coachStyle: "beginner" | "guided" | "optional" | "off";
-};
+type CoachStyle = "beginner" | "guided" | "optional" | "off";
+type LearningModeProps = { patternIds: string[]; coachStyle: CoachStyle };
 
-const difficultyRank: Record<string, number> = {
-  Easy: 0,
-  Medium: 1,
-  Hard: 2,
-  Official: 3
-};
+const difficultyRank: Record<string, number> = { Easy: 0, Medium: 1, Hard: 2, Official: 3 };
+const coachChoices: Array<{ id: CoachStyle; title: string; detail: string; badge?: string }> = [
+  { id: "beginner", title: "Teach me as I go", detail: "More explanation and smaller hints.", badge: "Best for first reps" },
+  { id: "guided", title: "Nudge me when I drift", detail: "Balanced support without taking over.", badge: "Recommended" },
+  { id: "optional", title: "Wait until I ask", detail: "A quiet workspace with hints on demand." },
+  { id: "off", title: "No coach", detail: "Solve independently this time." }
+];
 
 export function LearningMode({ patternIds, coachStyle }: LearningModeProps) {
-  const [selectedCoachStyle, setSelectedCoachStyle] = useState(coachStyle);
-  const selectedPatterns = useMemo(() => {
-    return patternOptions.filter((pattern) =>
-      patternIds.length > 0 ? patternIds.includes(pattern.id) : true
-    );
-  }, [patternIds]);
+  const selectedPatterns = useMemo(() => patternOptions.filter((pattern) => patternIds.includes(pattern.id)), [patternIds]);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [selectedPatternId, setSelectedPatternId] = useState(selectedPatterns[0]?.id ?? patternIds[0] ?? patternOptions[0].id);
+  const [selectedCoachStyle, setSelectedCoachStyle] = useState<CoachStyle>(coachStyle);
+  const [showAlternatives, setShowAlternatives] = useState(false);
+  const selectedPattern = selectedPatterns.find((pattern) => pattern.id === selectedPatternId) ?? selectedPatterns[0] ?? patternOptions[0];
 
-  const selectedPatternIds = selectedPatterns.map((pattern) => pattern.id);
+  const problems = useMemo(() => allProblems
+    .filter((problem) => problem.targetPatternId === selectedPatternId)
+    .sort((left, right) => {
+      const difficultyGap = (difficultyRank[left.difficulty] ?? 99) - (difficultyRank[right.difficulty] ?? 99);
+      if (difficultyGap !== 0) return difficultyGap;
+      const leftOfficial = getOfficialProblemRoadmapMeta(left.id)?.tracks.length ?? 0;
+      const rightOfficial = getOfficialProblemRoadmapMeta(right.id)?.tracks.length ?? 0;
+      return rightOfficial - leftOfficial || left.title.localeCompare(right.title);
+    })
+    .slice(0, 4), [selectedPatternId]);
 
-  const suggestedProblems = useMemo(() => {
-    return allProblems
-      .filter((problem) =>
-        selectedPatternIds.length > 0
-          ? selectedPatternIds.includes(problem.targetPatternId)
-          : true
-      )
-      .sort((left, right) => {
-        const difficultyGap =
-          (difficultyRank[left.difficulty] ?? 99) - (difficultyRank[right.difficulty] ?? 99);
+  const recommendedProblem = problems[0];
+  const selectedCoach = coachChoices.find((choice) => choice.id === selectedCoachStyle)!;
 
-        if (difficultyGap !== 0) return difficultyGap;
-
-        const leftOfficial = getOfficialProblemRoadmapMeta(left.id)?.tracks.length ?? 0;
-        const rightOfficial = getOfficialProblemRoadmapMeta(right.id)?.tracks.length ?? 0;
-        return rightOfficial - leftOfficial || left.title.localeCompare(right.title);
-      })
-      .slice(0, 18);
-  }, [selectedPatternIds]);
-
-  const groupedProblems = useMemo(() => {
-    return selectedPatterns.map((pattern) => ({
-      pattern,
-      problems: suggestedProblems.filter((problem) => problem.targetPatternId === pattern.id).slice(0, 6)
-    }));
-  }, [selectedPatterns, suggestedProblems]);
-
-  return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-      <section className="uiverse-panel px-6 py-7 md:px-8">
-        <div className="max-w-4xl">
-          <p className="text-sm font-semibold uppercase tracking-wide text-coral">
-            Learning Mode
-          </p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-ink">
-            Learn one pattern family at a time.
-          </h1>
-          <p className="mt-4 text-base leading-7 text-black/70">
-            This mode is for focused learning, not just testing yourself. We&apos;ll
-            suggest problems from the patterns you picked, and the coach style stays
-            on{" "}
-            <span className="font-semibold text-ink">
-              {selectedCoachStyle === "beginner"
-                ? "Beginner Guided"
-                : selectedCoachStyle === "guided"
-                  ? "Guided"
-                  : selectedCoachStyle === "optional"
-                    ? "Hints On Demand"
-                    : "Coach Off"}
-            </span>
-            .
-          </p>
-        </div>
-
-        <div className="mt-5 flex flex-wrap gap-3">
-          {selectedPatterns.map((pattern) => (
-            <span
-              key={pattern.id}
-              className="rounded-full border border-white/14 bg-coral px-4 py-3 text-sm font-medium text-white shadow-[0_10px_20px_rgba(255,92,92,0.18)]"
-            >
-              {pattern.label}
-            </span>
-          ))}
-        </div>
-      </section>
-
-      <section className="uiverse-panel px-6 py-6 md:px-8">
-        <div className="flex flex-col gap-4">
-          <div>
-            <p className="text-lg font-semibold text-ink">Choose how the coach behaves</p>
-            <p className="mt-1 text-sm leading-6 text-black/64">
-              Pick the teaching style first, then open one of the suggested questions below.
-            </p>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {[
-              {
-                id: "beginner",
-                title: "Beginner Guided",
-                body: "Stronger teaching, clearer nudges, and more explanation of why choices work."
-              },
-              {
-                id: "guided",
-                title: "Guided",
-                body: "Balanced support that still leaves the main solving work in your hands."
-              },
-              {
-                id: "optional",
-                title: "Hints On Demand",
-                body: "Mostly self-driven, with help ready whenever you want it."
-              },
-              {
-                id: "off",
-                title: "Coach Off",
-                body: "A quieter coding run with no extra teaching until you ask for it."
-              }
-            ].map((style) => {
-              const isActive = selectedCoachStyle === style.id;
-
-              return (
-                <button
-                  key={style.id}
-                  type="button"
-                  onClick={() => setSelectedCoachStyle(style.id as LearningModeProps["coachStyle"])}
-                  className={`mode-choice p-5 text-left ${
-                    isActive ? "uiverse-choice-active text-white" : "text-ink"
-                  }`}
-                >
-                  <p className="text-sm font-semibold">{style.title}</p>
-                  <p className={`mt-3 text-sm leading-6 ${isActive ? "text-white/80" : "text-black/64"}`}>
-                    {style.body}
-                  </p>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      <section className="grid gap-5 lg:grid-cols-3">
-        <InfoCard
-          title="How this mode teaches"
-          body="Start with easier reps, let the coach explain the pattern signals, then move toward harder variants once the core loop feels natural."
-        />
-        <InfoCard
-          title="What the coach should do"
-          body="Explain why a structure helps, when your instinct is drifting, and how the brute force path differs from the cleaner optimal path."
-        />
-        <InfoCard
-          title="What you can switch later"
-          body="You can always jump into Pattern Recognition or Pure Practice once you no longer want the heavier teaching layer."
-        />
-      </section>
-
-      <div className="grid gap-6 xl:grid-cols-2">
-        {groupedProblems.map(({ pattern, problems }) => (
-          <section key={pattern.id} className="pattern-cluster p-6">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xl font-semibold text-ink">{pattern.label}</p>
-                <p className="mt-2 text-sm leading-6 text-black/66">
-                  {pattern.coachPrompt}
-                </p>
-              </div>
-              <span className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/60">
-                {problems.length} suggestions
-              </span>
-            </div>
-
-            <div className="mt-5 space-y-3">
-              {problems.map((problem) => (
-                <ProblemSuggestionCard
-                  key={problem.id}
-                  problem={problem}
-                  coachStyle={selectedCoachStyle}
-                  patternIds={selectedPatternIds}
-                />
-              ))}
-            </div>
-          </section>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ProblemSuggestionCard({
-  problem,
-  coachStyle,
-  patternIds
-}: {
-  problem: AppProblem;
-  coachStyle: "beginner" | "guided" | "optional" | "off";
-  patternIds: string[];
-}) {
-  const roadmapMeta = getOfficialProblemRoadmapMeta(problem.id);
-  const params = new URLSearchParams();
-  params.set("problem", problem.id);
-  params.set("mode", "learn");
-  params.set("coach", coachStyle);
-  if (patternIds.length > 0) {
-    params.set("patterns", patternIds.join(","));
+  function moveToStep(nextStep: 1 | 2 | 3) {
+    setStep(nextStep);
+    setShowAlternatives(false);
+    requestAnimationFrame(() => {
+      const wizard = document.querySelector(".learning-wizard");
+      if (!wizard) return;
+      const top = wizard.getBoundingClientRect().top + window.scrollY - 88;
+      window.scrollTo({ top, behavior: "smooth" });
+    });
   }
-  const practiceHref = `/practice?${params.toString()}`;
 
   return (
-    <div className="rounded-[8px] border border-black/10 bg-white/88 p-4 transition duration-200 hover:-translate-y-0.5 hover:border-black/16">
-      <div className="flex flex-wrap items-center gap-2">
-        <p className="text-sm font-semibold text-ink">{problem.title}</p>
-        {roadmapMeta?.leetcodeNumber ? (
-          <span className="rounded-full border border-black/10 bg-mist px-2 py-1 text-[11px] font-medium text-black/60">
-            #{roadmapMeta.leetcodeNumber}
-          </span>
+    <div className="learning-wizard mx-auto w-full max-w-5xl">
+      <header className="learning-wizard-header">
+        <div>
+          <p className="learning-wizard-kicker">Build today&apos;s session</p>
+          <h2>One decision at a time.</h2>
+          <p>Choose a focus, set the support level, then start one problem.</p>
+        </div>
+        <span className="learning-step-count">{step} / 3</span>
+      </header>
+
+      <nav className="learning-stepper" aria-label="Learning session setup">
+        {[
+          { id: 1, label: "Focus", summary: selectedPattern.label },
+          { id: 2, label: "Support", summary: selectedCoach.title },
+          { id: 3, label: "Start", summary: recommendedProblem?.title ?? "Choose a problem" }
+        ].map((item) => {
+          const active = step === item.id;
+          const complete = step > item.id;
+          return (
+            <button key={item.id} type="button" onClick={() => { if (item.id <= step) moveToStep(item.id as 1 | 2 | 3); }}
+              className={`learning-step ${active ? "learning-step-active" : ""} ${complete ? "learning-step-complete" : ""}`} aria-current={active ? "step" : undefined}>
+              <span className="learning-step-index">{complete ? "✓" : item.id}</span>
+              <span><strong>{item.label}</strong><small>{active || complete ? item.summary : "Up next"}</small></span>
+            </button>
+          );
+        })}
+      </nav>
+
+      <section className="learning-wizard-panel">
+        {step === 1 ? (
+          <div className="learning-step-view">
+            <div className="learning-step-copy"><span>Step 1</span><h3>What should we focus on?</h3><p>Pick just one for this session. You can come back for the others later.</p></div>
+            <div className="learning-focus-list">
+              {selectedPatterns.map((pattern, index) => {
+                const active = pattern.id === selectedPatternId;
+                return (
+                  <button key={pattern.id} type="button" onClick={() => setSelectedPatternId(pattern.id)} className={`learning-focus-option ${active ? "learning-focus-option-active" : ""}`}>
+                    <span className="learning-focus-number">{String(index + 1).padStart(2, "0")}</span>
+                    <span className="min-w-0 flex-1"><strong>{pattern.label}</strong><small>{pattern.clues[0]}</small></span>
+                    <span className="learning-radio" aria-hidden="true"><i /></span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="learning-wizard-actions">
+              <Link href="/learn/setup" className="learning-text-action">Change my focus set</Link>
+              <button type="button" onClick={() => moveToStep(2)} className="learning-primary-action">Continue <span aria-hidden="true">→</span></button>
+            </div>
+          </div>
         ) : null}
-        {roadmapMeta?.tracks.map((track) => (
-          <span
-            key={`${problem.id}-${track}`}
-            className="rounded-full border border-black/10 bg-mist px-2 py-1 text-[11px] font-medium text-black/60"
-          >
-            {track === "blind75" ? "75" : "150"}
-          </span>
-        ))}
-        <span className="rounded-full border border-black/10 bg-mist px-2 py-1 text-[11px] font-medium text-black/60">
-          {problem.difficulty}
-        </span>
-      </div>
 
-      <p className="mt-3 text-sm leading-6 text-black/66">{problem.reviewQuestion}</p>
+        {step === 2 ? (
+          <div className="learning-step-view">
+            <div className="learning-step-copy"><span>Step 2</span><h3>How much help feels right?</h3><p>This only changes how quickly the coach steps in.</p></div>
+            <div className="learning-support-list">
+              {coachChoices.map((choice) => {
+                const active = choice.id === selectedCoachStyle;
+                return (
+                  <button key={choice.id} type="button" onClick={() => setSelectedCoachStyle(choice.id)} className={`learning-support-option ${active ? "learning-support-option-active" : ""}`}>
+                    <span className="learning-radio" aria-hidden="true"><i /></span>
+                    <span className="min-w-0 flex-1"><strong>{choice.title}</strong><small>{choice.detail}</small></span>
+                    {choice.badge ? <span className="learning-choice-badge">{choice.badge}</span> : null}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="learning-wizard-actions">
+              <button type="button" onClick={() => moveToStep(1)} className="learning-text-action">← Back</button>
+              <button type="button" onClick={() => moveToStep(3)} className="learning-primary-action">Find my first problem <span aria-hidden="true">→</span></button>
+            </div>
+          </div>
+        ) : null}
 
-      <div className="mt-4 flex flex-wrap gap-3">
-        <Link
-          href={practiceHref}
-          className="uiverse-button inline-flex items-center justify-center px-4 py-2 text-sm font-medium"
-        >
-          Start with coach
-        </Link>
-        <Link
-          href={`/practice?problem=${encodeURIComponent(problem.id)}&mode=practice&coach=off`}
-          className="uiverse-button-secondary inline-flex items-center justify-center px-4 py-2 text-sm font-medium"
-        >
-          Open as pure practice
-        </Link>
-      </div>
+        {step === 3 ? (
+          <div className="learning-step-view">
+            <div className="learning-step-copy"><span>Step 3</span><h3>Start here.</h3><p>We picked the clearest first rep for {selectedPattern.label}.</p></div>
+            {recommendedProblem ? <RecommendedProblem problem={recommendedProblem} coachStyle={selectedCoachStyle} patternId={selectedPatternId} /> : <div className="learning-no-problem">No starter problem is available for this pattern yet.</div>}
+            {problems.length > 1 ? (
+              <div className="learning-alternatives">
+                <button type="button" onClick={() => setShowAlternatives((current) => !current)} className="learning-alternatives-toggle" aria-expanded={showAlternatives}>
+                  <span>Prefer a different problem?</span><span aria-hidden="true">{showAlternatives ? "−" : "+"}</span>
+                </button>
+                {showAlternatives ? <div className="learning-alternative-list">{problems.slice(1).map((problem) => <ProblemLink key={problem.id} problem={problem} coachStyle={selectedCoachStyle} patternId={selectedPatternId} />)}</div> : null}
+              </div>
+            ) : null}
+            <div className="learning-wizard-actions learning-wizard-actions-left"><button type="button" onClick={() => moveToStep(2)} className="learning-text-action">← Change support</button></div>
+          </div>
+        ) : null}
+      </section>
     </div>
   );
 }
 
-function InfoCard({ title, body }: { title: string; body: string }) {
+function buildPracticeHref(problem: AppProblem, coachStyle: CoachStyle, patternId: string) {
+  return `/practice?${new URLSearchParams({ problem: problem.id, mode: "learn", coach: coachStyle, patterns: patternId }).toString()}`;
+}
+
+function RecommendedProblem({ problem, coachStyle, patternId }: { problem: AppProblem; coachStyle: CoachStyle; patternId: string }) {
+  const meta = getOfficialProblemRoadmapMeta(problem.id);
   return (
-    <section className="uiverse-panel p-6">
-      <p className="text-lg font-semibold text-ink">{title}</p>
-      <p className="mt-3 text-sm leading-6 text-black/66">{body}</p>
-    </section>
+    <div className="learning-recommended-card">
+      <div className="learning-recommended-topline"><span>Recommended first rep</span><span>{problem.difficulty} · 12–18 min</span></div>
+      <div className="learning-recommended-body">
+        <div className="learning-problem-number">{meta?.leetcodeNumber ? `#${meta.leetcodeNumber}` : "01"}</div>
+        <div className="min-w-0 flex-1"><h4>{problem.title}</h4><p>{problem.reviewQuestion}</p></div>
+      </div>
+      <Link href={buildPracticeHref(problem, coachStyle, patternId)} className="learning-start-button">Start guided session <span aria-hidden="true">→</span></Link>
+    </div>
+  );
+}
+
+function ProblemLink({ problem, coachStyle, patternId }: { problem: AppProblem; coachStyle: CoachStyle; patternId: string }) {
+  return (
+    <Link href={buildPracticeHref(problem, coachStyle, patternId)} className="learning-alternative-row">
+      <span><strong>{problem.title}</strong><small>{problem.difficulty}</small></span><span aria-hidden="true">→</span>
+    </Link>
   );
 }

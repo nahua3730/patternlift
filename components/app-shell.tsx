@@ -19,7 +19,7 @@ const navigation: Array<{ href: string; match: string; label: string; icon: NavI
 
 const pageMeta: Record<string, { eyebrow: string; title: string; backHref: string }> = {
   "/learn/setup": { eyebrow: "Learning path", title: "Choose your focus", backHref: "/" },
-  "/learn": { eyebrow: "Learning path", title: "Choose a problem", backHref: "/learn/setup" },
+  "/learn": { eyebrow: "Learning path", title: "Build your session", backHref: "/learn/setup" },
   "/recognize/setup": { eyebrow: "Recognition", title: "Set your coaching level", backHref: "/" },
   "/practice/setup": { eyebrow: "Practice", title: "Set your coaching level", backHref: "/" },
   "/practice/select": { eyebrow: "Practice", title: "Select a problem", backHref: "/practice/setup" },
