@@ -33,10 +33,34 @@ type InlineCoachHint = {
   id: string;
   lineNumber: number;
   sourceLine: string;
-  kind: "feedback" | "question";
-  status: "loading" | "ready" | "error";
+  kind: "feedback" | "question" | "voice";
+  status: "listening" | "loading" | "streaming" | "ready" | "error";
   text: string;
 };
+
+type SpeechRecognitionResultLike = {
+  isFinal: boolean;
+  0: { transcript: string };
+};
+
+type SpeechRecognitionEventLike = {
+  resultIndex: number;
+  results: ArrayLike<SpeechRecognitionResultLike>;
+};
+
+type SpeechRecognitionLike = {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: ((event: { error: string }) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+};
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
 
 export type AttemptResult = {
   problemId: string;
@@ -157,6 +181,7 @@ export function PracticeWorkspace({
   const [isCoachLoading, setIsCoachLoading] = useState(false);
   const [isCoachPanelOpen, setIsCoachPanelOpen] = useState(false);
   const [showQuickStartGuide, setShowQuickStartGuide] = useState(quickStart);
+  const [editorVoiceState, setEditorVoiceState] = useState<"idle" | "listening" | "thinking">("idle");
   const [isBeginnerLineCoachLoading, setIsBeginnerLineCoachLoading] = useState(false);
   const [inlineCoachHints, setInlineCoachHints] = useState<InlineCoachHint[]>([]);
   const [editorReadyVersion, setEditorReadyVersion] = useState(0);
@@ -191,9 +216,16 @@ export function PracticeWorkspace({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingChunksRef = useRef<Blob[]>([]);
   const recordingStreamRef = useRef<MediaStream | null>(null);
-  const queuedBeginnerFeedbackRef = useRef<{ code: string; line: string; lineNumber: number; kind: "feedback" | "question" } | null>(null);
   const inlineZoneIdsRef = useRef<string[]>([]);
   const lastInlineRequestRef = useRef<string | null>(null);
+  const editorSpeechRecognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const liveVoiceTranscriptRef = useRef("");
+  const liveVoiceFinalRef = useRef("");
+  const liveVoiceLineRef = useRef(1);
+  const liveVoiceHintIdRef = useRef("");
+  const liveVoiceSubmittedRef = useRef(false);
+  const liveVoiceSilenceTimerRef = useRef<number | null>(null);
+  const voiceInputTargetRef = useRef<"drawer" | "inline">("drawer");
 
   const activeProblem = useMemo(
     () => allProblems.find((problem) => problem.id === problemId) ?? allProblems[0],
@@ -351,15 +383,16 @@ export function PracticeWorkspace({
         .sort((left, right) => left.lineNumber - right.lineNumber)
         .forEach((hint) => {
           const node = document.createElement("div");
-          node.className = `inline-coach-zone inline-coach-zone-${hint.status}`;
+          node.className = `inline-coach-zone inline-coach-zone-${hint.kind} inline-coach-zone-${hint.status}`;
+          node.setAttribute("aria-live", "polite");
 
           const signal = document.createElement("span");
           signal.className = "inline-coach-signal";
-          signal.textContent = hint.status === "loading" ? "" : hint.kind === "question" ? "?" : hint.status === "error" ? "!" : "✓";
+          signal.textContent = hint.status === "loading" || hint.status === "listening" ? "" : hint.status === "error" ? "!" : hint.kind === "question" || hint.kind === "voice" ? "?" : "✓";
 
           const message = document.createElement("span");
           message.className = "inline-coach-copy";
-          message.textContent = hint.status === "loading" ? "Coach is reading this line…" : hint.text;
+          message.textContent = hint.status === "loading" ? hint.text || "Coach is reading this line…" : hint.text;
 
           const actions = document.createElement("span");
           actions.className = "inline-coach-actions";
@@ -387,7 +420,7 @@ export function PracticeWorkspace({
           node.append(signal, message, actions);
           const zoneId = accessor.addZone({
             afterLineNumber: hint.lineNumber,
-            heightInPx: 48,
+            heightInPx: hint.kind === "voice" ? 68 : 48,
             domNode: node,
             suppressMouseDown: false
           });
@@ -405,6 +438,8 @@ export function PracticeWorkspace({
 
   useEffect(() => {
     return () => {
+      clearLiveVoiceSilenceTimer();
+      editorSpeechRecognitionRef.current?.abort();
       mediaRecorderRef.current?.stop();
       recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
     };
@@ -646,34 +681,36 @@ export function PracticeWorkspace({
     codeSnapshot: string,
     completedLine: string,
     lineNumber: number,
-    kind: "feedback" | "question"
+    kind: "feedback" | "question" | "voice",
+    options?: { questionText?: string; hintId?: string }
   ) => {
     if (activeCoachStyle === "off") return;
     const automaticInlineEnabled = activeCoachStyle === "beginner" || (mode === "learn" && activeCoachStyle === "guided");
     if (kind === "feedback" && !automaticInlineEnabled) return;
+    if (kind === "voice") setEditorVoiceState("thinking");
 
-    if (isBeginnerLineCoachLoading || isCoachLoading) {
-      queuedBeginnerFeedbackRef.current = { code: codeSnapshot, line: completedLine, lineNumber, kind };
-      return;
-    }
+    if (kind === "feedback" && (isBeginnerLineCoachLoading || isCoachLoading)) return;
 
     setCoachError(null);
     setIsBeginnerLineCoachLoading(true);
-    const hintId = `inline-${lineNumber}-${Date.now()}`;
-    setInlineCoachHints((current) => [
-      ...current.filter((hint) => hint.lineNumber !== lineNumber),
-      { id: hintId, lineNumber, sourceLine: completedLine, kind, status: "loading", text: "" }
-    ]);
+    const hintId = options?.hintId ?? `inline-${lineNumber}-${Date.now()}`;
+    setInlineCoachHints((current) => {
+      const nextHint: InlineCoachHint = { id: hintId, lineNumber, sourceLine: completedLine, kind, status: "loading", text: "" };
+      return current.some((hint) => hint.id === hintId)
+        ? current.map((hint) => hint.id === hintId ? nextHint : hint)
+        : [...current.filter((hint) => hint.lineNumber !== lineNumber), nextHint];
+    });
 
-    const question = completedLine.replace(/^\s*(?:\/\/|#)\s*\?\s*/, "").trim();
+    const question = options?.questionText?.trim() || completedLine.replace(/^\s*(?:\/\/|#)\s*\?\s*/, "").trim();
+    const isQuestion = kind === "question" || kind === "voice";
 
     const coachPayload: CoachRequest = {
       studyMode: mode,
       coachStyle: activeCoachStyle,
       problemTitle: activeProblem.title,
       problemPrompt: problemText,
-      userResponse: kind === "question"
-        ? [`The learner asked this question inside the editor on line ${lineNumber}: ${question}`, "Answer only that question using the current code context.", "Use no more than 24 words and do not provide the full solution."].join(" ")
+      userResponse: isQuestion
+        ? [`The learner asked this ${kind === "voice" ? "voice " : ""}question at code line ${lineNumber}: ${question}`, "Answer only that question using the current code context.", kind === "voice" ? "Use no more than 45 words. Give one clear answer and one immediate next move. Do not provide the full solution." : "Use no more than 24 words and do not provide the full solution."].join(" ")
         : [`The learner just completed line ${lineNumber}: ${completedLine}`, "Give one inline coaching note: confirm the direction, identify one concrete issue, or ask one useful next-step question.", "Use no more than 24 words. Do not provide the full solution."].join(" "),
       conversationHistory: chatMessages.map((message) => ({
         speaker: message.speaker,
@@ -685,8 +722,8 @@ export function PracticeWorkspace({
       suggestedTechniques: buildTechniqueBriefs(suggestedTechniques),
       selectedClues: [],
       selectedFirstStep: null,
-      learnerNote: kind === "question"
-        ? "This is an explicit // ? or # ? question from inside the code editor. Reply as a tiny inline IDE note."
+      learnerNote: isQuestion
+        ? kind === "voice" ? "This was spoken naturally inside the editor. Reply directly beneath the active code line as a concise, conversational coach note." : "This is an explicit // ? or # ? question from inside the code editor. Reply as a tiny inline IDE note."
         : "This is automatic beginner-mode line coaching. Reply as a tiny inline IDE note beneath the relevant line.",
       currentCode: codeSnapshot,
       localOutcome: "partial",
@@ -695,32 +732,46 @@ export function PracticeWorkspace({
     };
 
     try {
-      const response = await fetch("/api/coach", {
+      const response = await fetch("/api/coach/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(coachPayload)
       });
 
-      const payload = (await response.json()) as { reply?: string; error?: string };
-      if (!response.ok || !payload.reply) {
-        throw new Error(payload.error ?? "Unable to load beginner coaching right now.");
+      if (!response.ok || !response.body) {
+        throw new Error((await response.text()) || "Unable to load inline coaching right now.");
       }
 
-      const reply = payload.reply.replace(/\*\*/g, "").replace(/\n+/g, " ").trim();
-      if (!reply) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let reply = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        reply += decoder.decode(value, { stream: true });
+        const visibleReply = reply.replace(/\*\*/g, "").replace(/\n+/g, " ").trimStart();
+        setInlineCoachHints((current) => current.map((hint) => hint.id === hintId ? { ...hint, status: "streaming", text: visibleReply } : hint));
+      }
+      reply += decoder.decode();
+      const finalReply = reply.replace(/\*\*/g, "").replace(/\n+/g, " ").trim();
+      if (!finalReply) {
         throw new Error("The coach did not return anything for that line.");
       }
 
-      setInlineCoachHints((current) => current.map((hint) => hint.id === hintId ? { ...hint, status: "ready", text: reply } : hint));
+      setInlineCoachHints((current) => current.map((hint) => hint.id === hintId ? { ...hint, status: "ready", text: finalReply } : hint));
+      if (kind === "voice") {
+        const turnId = Date.now();
+        setChatMessages((current) => [
+          ...current,
+          { id: `voice-question-${turnId}`, speaker: "user", title: "You", body: question },
+          { id: `voice-answer-${turnId}`, speaker: "coach", title: "Coach", body: finalReply }
+        ]);
+      }
     } catch (error) {
       setInlineCoachHints((current) => current.map((hint) => hint.id === hintId ? { ...hint, status: "error", text: "Coach could not read this line. Try again in a moment." } : hint));
     } finally {
       setIsBeginnerLineCoachLoading(false);
-      const queued = queuedBeginnerFeedbackRef.current;
-      queuedBeginnerFeedbackRef.current = null;
-      if (queued) {
-        void sendInlineLineFeedback(queued.code, queued.line, queued.lineNumber, queued.kind);
-      }
+      if (kind === "voice") setEditorVoiceState("idle");
     }
   }, [
     activeCoachStyle,
@@ -773,7 +824,160 @@ export function PracticeWorkspace({
     };
   }, [activeCoachStyle, mode, selectedLanguage, sendInlineLineFeedback]);
 
-  async function toggleVoiceInput() {
+  function updateLiveVoiceHint(status: InlineCoachHint["status"], text: string) {
+    const hintId = liveVoiceHintIdRef.current;
+    if (!hintId) return;
+    setInlineCoachHints((current) => current.map((hint) => hint.id === hintId ? { ...hint, status, text } : hint));
+  }
+
+  function clearLiveVoiceSilenceTimer() {
+    if (liveVoiceSilenceTimerRef.current !== null) {
+      window.clearTimeout(liveVoiceSilenceTimerRef.current);
+      liveVoiceSilenceTimerRef.current = null;
+    }
+  }
+
+  function submitLiveVoiceQuestion() {
+    if (liveVoiceSubmittedRef.current) return;
+    const transcript = (liveVoiceTranscriptRef.current || liveVoiceFinalRef.current).trim();
+    if (!transcript) {
+      updateLiveVoiceHint("error", "I didn’t catch that. Tap the microphone and try again.");
+      setEditorVoiceState("idle");
+      editorSpeechRecognitionRef.current = null;
+      return;
+    }
+
+    liveVoiceSubmittedRef.current = true;
+    clearLiveVoiceSilenceTimer();
+    updateLiveVoiceHint("loading", "Coach is reading your question in context…");
+    const model = codeEditorRef.current?.getModel();
+    const lineNumber = liveVoiceLineRef.current;
+    const sourceLine = model?.getLineContent(lineNumber).trim() || "Voice question";
+    void sendInlineLineFeedback(
+      model?.getValue() ?? codeByLanguage[selectedLanguage],
+      sourceLine,
+      lineNumber,
+      "voice",
+      { questionText: transcript, hintId: liveVoiceHintIdRef.current }
+    );
+  }
+
+  async function toggleEditorVoice() {
+    if (editorVoiceState === "thinking") return;
+    if (activeCoachStyle === "off") {
+      setCoachError("Turn coaching support on before asking a voice question.");
+      return;
+    }
+
+    if (editorVoiceState === "listening") {
+      if (editorSpeechRecognitionRef.current) {
+        editorSpeechRecognitionRef.current.stop();
+        submitLiveVoiceQuestion();
+      } else if (mediaRecorderRef.current) {
+        mediaRecorderRef.current.stop();
+        setRecordingState("transcribing");
+        setEditorVoiceState("thinking");
+        updateLiveVoiceHint("loading", "Transcribing your voice question…");
+      }
+      return;
+    }
+
+    const editor = codeEditorRef.current;
+    const model = editor?.getModel();
+    const position = editor?.getPosition();
+    if (!editor || !model || !position) return;
+
+    setShowQuickStartGuide(false);
+    setCoachError(null);
+    liveVoiceLineRef.current = position.lineNumber;
+    liveVoiceHintIdRef.current = `voice-${position.lineNumber}-${Date.now()}`;
+    liveVoiceTranscriptRef.current = "";
+    liveVoiceFinalRef.current = "";
+    liveVoiceSubmittedRef.current = false;
+    setInlineCoachHints((current) => [
+      ...current.filter((hint) => hint.lineNumber !== position.lineNumber),
+      {
+        id: liveVoiceHintIdRef.current,
+        lineNumber: position.lineNumber,
+        sourceLine: model.getLineContent(position.lineNumber).trim() || "Voice question",
+        kind: "voice",
+        status: "listening",
+        text: "Listening… start speaking naturally."
+      }
+    ]);
+    setEditorVoiceState("listening");
+
+    const speechWindow = window as unknown as {
+      SpeechRecognition?: SpeechRecognitionConstructor;
+      webkitSpeechRecognition?: SpeechRecognitionConstructor;
+    };
+    const Recognition = speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition;
+
+    if (!Recognition) {
+      voiceInputTargetRef.current = "inline";
+      updateLiveVoiceHint("listening", "Recording… tap the microphone again when you finish.");
+      await toggleVoiceInput("inline");
+      return;
+    }
+
+    const recognition = new Recognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = navigator.language || "en-US";
+    editorSpeechRecognitionRef.current = recognition;
+
+    recognition.onresult = (event) => {
+      let interim = "";
+      let newlyFinal = "";
+      for (let index = event.resultIndex; index < event.results.length; index += 1) {
+        const result = event.results[index];
+        const words = result[0]?.transcript ?? "";
+        if (result.isFinal) newlyFinal += words;
+        else interim += words;
+      }
+      if (newlyFinal) liveVoiceFinalRef.current = `${liveVoiceFinalRef.current} ${newlyFinal}`.trim();
+      const visibleTranscript = `${liveVoiceFinalRef.current} ${interim}`.trim();
+      liveVoiceTranscriptRef.current = visibleTranscript;
+      updateLiveVoiceHint("listening", visibleTranscript ? `You: ${visibleTranscript}` : "Listening… start speaking naturally.");
+      clearLiveVoiceSilenceTimer();
+      if (visibleTranscript) {
+        liveVoiceSilenceTimerRef.current = window.setTimeout(() => {
+          recognition.stop();
+          submitLiveVoiceQuestion();
+        }, 2200);
+      }
+    };
+
+    recognition.onerror = (event) => {
+      clearLiveVoiceSilenceTimer();
+      liveVoiceSubmittedRef.current = true;
+      if (event.error === "no-speech") {
+        updateLiveVoiceHint("error", "I didn’t hear anything. Tap the microphone to try again.");
+      } else if (event.error === "not-allowed") {
+        updateLiveVoiceHint("error", "Microphone access is blocked. Allow it in the browser, then try again.");
+      } else {
+        updateLiveVoiceHint("error", "Voice input paused unexpectedly. Tap the microphone to try again.");
+      }
+      editorSpeechRecognitionRef.current = null;
+      setEditorVoiceState("idle");
+    };
+
+    recognition.onend = () => {
+      editorSpeechRecognitionRef.current = null;
+      if (!liveVoiceSubmittedRef.current && liveVoiceTranscriptRef.current.trim()) submitLiveVoiceQuestion();
+      else if (!liveVoiceSubmittedRef.current) setEditorVoiceState("idle");
+    };
+
+    try {
+      recognition.start();
+    } catch {
+      updateLiveVoiceHint("error", "Voice input could not start. Tap the microphone to try again.");
+      editorSpeechRecognitionRef.current = null;
+      setEditorVoiceState("idle");
+    }
+  }
+
+  async function toggleVoiceInput(target: "drawer" | "inline" = "drawer") {
     if (recordingState === "transcribing") {
       return;
     }
@@ -786,10 +990,15 @@ export function PracticeWorkspace({
 
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
       setCoachError("Audio recording is not supported in this browser.");
+      if (target === "inline") {
+        updateLiveVoiceHint("error", "Voice input is not supported in this browser. You can still ask with // ?");
+        setEditorVoiceState("idle");
+      }
       return;
     }
 
     try {
+      voiceInputTargetRef.current = target;
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mimeType = pickRecordingMimeType();
       const recorder = mimeType
@@ -811,6 +1020,10 @@ export function PracticeWorkspace({
         setCoachError("Recording ran into a problem. Please try again.");
         setRecordingState("idle");
         setVoiceStream(null);
+        if (voiceInputTargetRef.current === "inline") {
+          updateLiveVoiceHint("error", "Recording paused unexpectedly. Tap the microphone to try again.");
+          setEditorVoiceState("idle");
+        }
       };
 
       recorder.onstop = () => {
@@ -827,6 +1040,10 @@ export function PracticeWorkspace({
           : "I couldn't start recording. Please try again.";
       setCoachError(message);
       setRecordingState("idle");
+      if (target === "inline") {
+        updateLiveVoiceHint("error", message);
+        setEditorVoiceState("idle");
+      }
     }
   }
 
@@ -841,6 +1058,10 @@ export function PracticeWorkspace({
     if (chunks.length === 0) {
       setRecordingState("idle");
       setCoachError("No audio was captured. Try recording again.");
+      if (voiceInputTargetRef.current === "inline") {
+        updateLiveVoiceHint("error", "No audio was captured. Tap the microphone to try again.");
+        setEditorVoiceState("idle");
+      }
       return;
     }
 
@@ -870,8 +1091,22 @@ export function PracticeWorkspace({
         throw new Error("The recording came back empty. Try a slightly longer note.");
       }
 
-      setCoachDraft((current) => [current.trim(), transcript].filter(Boolean).join(current.trim() ? " " : ""));
-      setNextInputMethod("voice");
+      if (voiceInputTargetRef.current === "inline") {
+        const model = codeEditorRef.current?.getModel();
+        const lineNumber = liveVoiceLineRef.current;
+        const sourceLine = model?.getLineContent(lineNumber).trim() || "Voice question";
+        updateLiveVoiceHint("loading", "Coach is reading your question in context…");
+        void sendInlineLineFeedback(
+          model?.getValue() ?? codeByLanguage[selectedLanguage],
+          sourceLine,
+          lineNumber,
+          "voice",
+          { questionText: transcript, hintId: liveVoiceHintIdRef.current }
+        );
+      } else {
+        setCoachDraft((current) => [current.trim(), transcript].filter(Boolean).join(current.trim() ? " " : ""));
+        setNextInputMethod("voice");
+      }
       setCoachError(null);
     } catch (error) {
       setCoachError(
@@ -879,6 +1114,10 @@ export function PracticeWorkspace({
           ? error.message
           : "I couldn't transcribe that recording. Please try again."
       );
+      if (voiceInputTargetRef.current === "inline") {
+        updateLiveVoiceHint("error", error instanceof Error ? error.message : "I couldn't transcribe that recording.");
+        setEditorVoiceState("idle");
+      }
     } finally {
       recordingChunksRef.current = [];
       setRecordingState("idle");
@@ -1103,7 +1342,7 @@ export function PracticeWorkspace({
               <ol className="quick-start-steps" aria-label="How inline coaching works">
                 <li><span>1</span><div><strong>Write</strong><small>Add your first useful line</small></div></li>
                 <li><span>2</span><div><strong>Press Enter</strong><small>Get a concise coach note</small></div></li>
-                <li><span>3</span><div><strong>Ask inline</strong><small>Type <code>{"// ? your question"}</code></small></div></li>
+                <li><span>3</span><div><strong>Ask by voice</strong><small>Tap the mic and speak naturally</small></div></li>
               </ol>
               <button type="button" onClick={beginQuickStart} className="quick-start-action">Start coding <span aria-hidden="true">→</span></button>
             </div>
@@ -1115,6 +1354,18 @@ export function PracticeWorkspace({
                 <p className="mt-1 text-sm font-semibold text-slate-900">Write, run, and refine</p>
               </div>
               <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => void toggleEditorVoice()}
+                  disabled={editorVoiceState === "thinking" || activeCoachStyle === "off"}
+                  className={`editor-voice-button ${editorVoiceState !== "idle" ? "editor-voice-button-active" : ""}`}
+                  aria-label={editorVoiceState === "listening" ? "Finish voice question" : "Ask the coach by voice"}
+                  title={editorVoiceState === "listening" ? "Finish voice question" : "Ask the coach by voice"}
+                >
+                  <span className="editor-voice-icon">{editorVoiceState === "thinking" ? <span className="session-mini-loader" /> : <MicrophoneIcon />}</span>
+                  <span>{editorVoiceState === "listening" ? "Listening…" : editorVoiceState === "thinking" ? "Coach typing…" : "Ask by voice"}</span>
+                  {editorVoiceState === "listening" ? <span className="editor-voice-bars" aria-hidden="true"><i /><i /><i /><i /></span> : null}
+                </button>
                 <button
                   type="button"
                   onClick={runExamples}
@@ -1177,7 +1428,7 @@ export function PracticeWorkspace({
                       Editor
                     </span>
                     <span className="text-xs text-black/44">
-                      Ask inline with <strong className="font-mono text-indigo-500">{"// ?"}</strong> or <strong className="font-mono text-cyan-600"># ?</strong>
+                      Speak from the toolbar, or type <strong className="font-mono text-indigo-500">{"// ?"}</strong> when voice isn’t convenient
                     </span>
                   </div>
                   <Editor
