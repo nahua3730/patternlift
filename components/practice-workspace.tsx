@@ -68,6 +68,7 @@ type PracticeWorkspaceProps = {
   mode?: "learn" | "recognize" | "practice";
   coachStyle?: CoachStyle;
   selectedPatternIds?: string[];
+  quickStart?: boolean;
 };
 
 type RunResult = {
@@ -144,7 +145,8 @@ export function PracticeWorkspace({
   initialProblemId,
   mode = "recognize",
   coachStyle = "guided",
-  selectedPatternIds = []
+  selectedPatternIds = [],
+  quickStart = false
 }: PracticeWorkspaceProps) {
   const [problemId, setProblemId] = useState<string>(initialProblemId ?? allProblems[0].id);
   const [problemText, setProblemText] = useState(allProblems[0].prompt);
@@ -154,6 +156,7 @@ export function PracticeWorkspace({
   const [coachError, setCoachError] = useState<string | null>(null);
   const [isCoachLoading, setIsCoachLoading] = useState(false);
   const [isCoachPanelOpen, setIsCoachPanelOpen] = useState(false);
+  const [showQuickStartGuide, setShowQuickStartGuide] = useState(quickStart);
   const [isBeginnerLineCoachLoading, setIsBeginnerLineCoachLoading] = useState(false);
   const [inlineCoachHints, setInlineCoachHints] = useState<InlineCoachHint[]>([]);
   const [editorReadyVersion, setEditorReadyVersion] = useState(0);
@@ -328,6 +331,11 @@ export function PracticeWorkspace({
     monacoRef.current = monaco;
     setEditorReadyVersion((current) => current + 1);
   };
+
+  function beginQuickStart() {
+    setShowQuickStartGuide(false);
+    codeEditorRef.current?.focus();
+  }
 
   useEffect(() => {
     const editor = codeEditorRef.current;
@@ -1085,6 +1093,21 @@ export function PracticeWorkspace({
         </section>
 
         <section className="session-editor-main">
+          {showQuickStartGuide ? (
+            <div className="quick-start-guide" role="status">
+              <div className="quick-start-copy">
+                <span className="quick-start-kicker">You’re already in the workspace</span>
+                <strong>No setup. Start with one line.</strong>
+                <p>The coach reacts beneath your code, so you never have to leave the editor to ask for help.</p>
+              </div>
+              <ol className="quick-start-steps" aria-label="How inline coaching works">
+                <li><span>1</span><div><strong>Write</strong><small>Add your first useful line</small></div></li>
+                <li><span>2</span><div><strong>Press Enter</strong><small>Get a concise coach note</small></div></li>
+                <li><span>3</span><div><strong>Ask inline</strong><small>Type <code>{"// ? your question"}</code></small></div></li>
+              </ol>
+              <button type="button" onClick={beginQuickStart} className="quick-start-action">Start coding <span aria-hidden="true">→</span></button>
+            </div>
+          ) : null}
           <div className="border-b border-black/8 px-4 py-3">
             <div className="flex items-center justify-between gap-4">
               <div>

@@ -10,12 +10,14 @@ export function PracticePageView({
   initialProblemId,
   mode,
   coachStyle,
-  selectedPatternIds
+  selectedPatternIds,
+  quickStart
 }: {
   initialProblemId?: string;
   mode?: "learn" | "recognize" | "practice";
   coachStyle?: "beginner" | "guided" | "optional" | "off";
   selectedPatternIds?: string[];
+  quickStart?: boolean;
 }) {
   const { addAttempt } = usePatternLiftState();
   return (
@@ -25,6 +27,7 @@ export function PracticePageView({
       mode={mode}
       coachStyle={coachStyle}
       selectedPatternIds={selectedPatternIds}
+      quickStart={quickStart}
     />
   );
 }

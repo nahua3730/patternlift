@@ -10,6 +10,7 @@ export default async function PracticePage({
     mode?: "learn" | "recognize" | "practice";
     coach?: "beginner" | "guided" | "optional" | "off";
     patterns?: string;
+    quick?: string;
   };
 }) {
   const params = new URLSearchParams();
@@ -17,6 +18,7 @@ export default async function PracticePage({
   if (searchParams?.mode) params.set("mode", searchParams.mode);
   if (searchParams?.coach) params.set("coach", searchParams.coach);
   if (searchParams?.patterns) params.set("patterns", searchParams.patterns);
+  if (searchParams?.quick) params.set("quick", searchParams.quick);
   await requireUser(`/practice${params.toString() ? `?${params.toString()}` : ""}`);
 
   if (!searchParams?.problem) {
@@ -36,6 +38,7 @@ export default async function PracticePage({
       mode={searchParams?.mode}
       coachStyle={searchParams?.coach}
       selectedPatternIds={searchParams?.patterns?.split(",").filter(Boolean) ?? []}
+      quickStart={searchParams?.quick === "1"}
     />
   );
 }

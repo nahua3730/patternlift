@@ -19,14 +19,22 @@ const modeCards = [
       "Commit to a pattern and explain why it fits before code can hide a weak read of the prompt."
   },
   {
-    href: "/practice/setup",
+    href: "/practice?problem=contains-duplicate&mode=learn&coach=guided&patterns=hashing&quick=1",
     number: "03",
-    eyebrow: "Prove the transfer",
-    title: "Solve it cold",
+    eyebrow: "Coach in the code",
+    title: "Practice with inline help",
     body:
-      "Use a real editor and test runner, with an interviewer nearby only when you ask for a nudge."
+      "Write in a real editor and get a small, relevant coaching note directly beneath the line you are working on."
   }
 ] as const;
+
+const quickStartHref =
+  "/practice?problem=contains-duplicate&mode=learn&coach=guided&patterns=hashing&quick=1";
+
+function entryHref(currentUser: SessionUser | null, target: string) {
+  if (currentUser) return target;
+  return `/signup?next=${encodeURIComponent(target)}`;
+}
 
 export function HomePage({ currentUser }: { currentUser: SessionUser | null }) {
   return (
@@ -83,22 +91,22 @@ export function HomePage({ currentUser }: { currentUser: SessionUser | null }) {
 
           <div className="mt-9 flex flex-wrap gap-3">
             <Link
-              href={currentUser ? "/recognize/setup" : "/signup"}
+              href={entryHref(currentUser, quickStartHref)}
               className="home-primary-cta inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-semibold"
             >
-              {currentUser ? "Start a recognition drill" : "Build your mastery profile"}
+              Try the inline coach
               <span aria-hidden="true">↗</span>
             </Link>
-            <a
-              href="#how-it-works"
+            <Link
+              href={entryHref(currentUser, "/learn/setup")}
               className="inline-flex items-center justify-center rounded-xl border border-white/14 bg-white/6 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
             >
-              See the learning loop
-            </a>
+              Build my learning path
+            </Link>
           </div>
 
           <div className="mt-10 flex flex-wrap gap-x-6 gap-y-3 text-sm text-slate-400">
-            {["Mastery by pattern", "Confusion-pair detection", "Voice interview mode"].map((item) => (
+            {["Coach notes inside your code", "No setup required", "Mastery by pattern"].map((item) => (
               <span key={item} className="flex items-center gap-2">
                 <span className="text-cyan-300">✓</span>{item}
               </span>
@@ -221,7 +229,7 @@ export function HomePage({ currentUser }: { currentUser: SessionUser | null }) {
           <p className="home-section-kicker text-cyan-300">Your next rep is not random</p>
           <h2 className="mt-4 max-w-2xl text-3xl font-semibold tracking-[-0.045em] text-white sm:text-4xl">Train the decision before the implementation.</h2>
         </div>
-        <Link href={currentUser ? "/learn/setup" : "/signup"} className="home-final-button">{currentUser ? "Open your workspace" : "Start building mastery"}<span>→</span></Link>
+        <Link href={entryHref(currentUser, quickStartHref)} className="home-final-button">Open the inline workspace<span>→</span></Link>
       </section>
     </div>
   );

@@ -10,9 +10,9 @@ import type { SessionUser } from "@/lib/auth";
 type NavIcon = "learn" | "recognize" | "practice" | "progress" | "review";
 
 const navigation: Array<{ href: string; match: string; label: string; icon: NavIcon }> = [
-  { href: "/learn/setup", match: "/learn", label: "Learn", icon: "learn" },
+  { href: "/practice?problem=contains-duplicate&mode=learn&coach=guided&patterns=hashing&quick=1", match: "/practice", label: "Start", icon: "practice" },
+  { href: "/learn/setup", match: "/learn", label: "My Path", icon: "learn" },
   { href: "/recognize/setup", match: "/recognize", label: "Recognize", icon: "recognize" },
-  { href: "/practice/setup", match: "/practice", label: "Practice", icon: "practice" },
   { href: "/progress", match: "/progress", label: "Progress", icon: "progress" },
   { href: "/review", match: "/review", label: "Review", icon: "review" }
 ];
@@ -23,7 +23,7 @@ const pageMeta: Record<string, { eyebrow: string; title: string; backHref: strin
   "/recognize/setup": { eyebrow: "Recognition", title: "Set your coaching level", backHref: "/" },
   "/practice/setup": { eyebrow: "Practice", title: "Set your coaching level", backHref: "/" },
   "/practice/select": { eyebrow: "Practice", title: "Select a problem", backHref: "/practice/setup" },
-  "/practice": { eyebrow: "Active session", title: "Problem workspace", backHref: "/practice/select" },
+  "/practice": { eyebrow: "Inline coach", title: "Problem workspace", backHref: "/" },
   "/progress": { eyebrow: "Analytics", title: "Mastery dashboard", backHref: "/" },
   "/review": { eyebrow: "Recall", title: "Review queue", backHref: "/" },
   "/techniques": { eyebrow: "Library", title: "Technique library", backHref: "/" }
