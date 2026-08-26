@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Editor, { type Monaco, type OnMount } from "@monaco-editor/react";
 import type { editor as MonacoEditor } from "monaco-editor";
-import type { CoachRequest } from "@/lib/coach";
+import { parseCoachAgentStream, type CoachRequest } from "@/lib/coach";
 import {
   allProblems,
   patternOptions
@@ -28,7 +28,18 @@ type ChatMessage = {
   speaker: "coach" | "user";
   title: string;
   body: string;
+  toolTrace?: string[];
 };
+
+const coachToolLabels: Record<string, string> = {
+  get_technique_detail: "Reviewing technique notes",
+  get_mastery_snapshot: "Checking your mastery data",
+  list_similar_problems: "Scanning the problem bank"
+};
+
+function coachToolLabel(name: string) {
+  return coachToolLabels[name] ?? "Looking something up";
+}
 
 type InlineCoachHint = {
   id: string;
@@ -182,6 +193,7 @@ export function PracticeWorkspace({
   const [coachDraft, setCoachDraft] = useState("");
   const [coachError, setCoachError] = useState<string | null>(null);
   const [isCoachLoading, setIsCoachLoading] = useState(false);
+  const [activeCoachTool, setActiveCoachTool] = useState<string | null>(null);
   const [isCoachPanelOpen, setIsCoachPanelOpen] = useState(false);
   const [showQuickStartGuide, setShowQuickStartGuide] = useState(quickStart);
   const [activeContextPanel, setActiveContextPanel] = useState<WorkspaceContextPanel>("coach");
@@ -582,10 +594,14 @@ export function PracticeWorkspace({
       localScore: score,
       reviewQuestion: activeProblem.reviewQuestion,
       inputMethod,
-      learnerConfidence: confidence
+      learnerConfidence: confidence,
+      problemId: activeProblem.id,
+      patternId: correctPattern.id,
+      contrastPatternId: contrastPattern?.id
     };
 
     setIsCoachLoading(true);
+    setActiveCoachTool(null);
     setNextInputMethod("text");
 
     const streamingCoachId = `coach-${Date.now()}`;
@@ -600,34 +616,42 @@ export function PracticeWorkspace({
     ]);
 
     try {
-      const coachResponse = await fetch("/api/coach/stream", {
+      const coachResponse = await fetch("/api/coach/agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(coachPayload)
       });
 
-      if (!coachResponse.ok || !coachResponse.body) {
-        const errorText = (await coachResponse.text()) || "Unable to load AI coaching.";
-        throw new Error(errorText);
+      if (!coachResponse.ok) {
+        throw new Error("Unable to load AI coaching.");
       }
 
-      const reader = coachResponse.body.getReader();
-      const decoder = new TextDecoder();
       let coachReply = "";
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        coachReply += decoder.decode(value, { stream: true });
-        setChatMessages((current) =>
-          current.map((message) =>
-            message.id === streamingCoachId ? { ...message, body: coachReply } : message
-          )
-        );
+      for await (const event of parseCoachAgentStream(coachResponse)) {
+        if (event.type === "tool_call") {
+          setActiveCoachTool(event.name);
+        } else if (event.type === "text_delta") {
+          coachReply += event.text;
+          setActiveCoachTool(null);
+          setChatMessages((current) =>
+            current.map((message) =>
+              message.id === streamingCoachId ? { ...message, body: coachReply } : message
+            )
+          );
+        } else if (event.type === "done") {
+          setChatMessages((current) =>
+            current.map((message) =>
+              message.id === streamingCoachId
+                ? { ...message, toolTrace: event.toolTrace }
+                : message
+            )
+          );
+        } else if (event.type === "error") {
+          throw new Error(event.message);
+        }
       }
 
-      coachReply += decoder.decode();
       const finalReply = coachReply.trim();
       if (!finalReply) {
         throw new Error("The coach did not send a reply. Please try again.");
@@ -649,6 +673,7 @@ export function PracticeWorkspace({
       );
     } finally {
       setIsCoachLoading(false);
+      setActiveCoachTool(null);
     }
   }
 
@@ -1266,19 +1291,37 @@ export function PracticeWorkspace({
             ref={chatScrollRef}
             className="session-coach-thread min-h-0 flex-[1_1_0] space-y-3 overflow-y-auto px-4 py-4 overscroll-contain"
           >
-            {chatMessages.map((message) => (
-              <ThreadMessage key={message.id} speaker={message.speaker} title={message.title}>
-                <p className="whitespace-pre-wrap text-sm leading-6">{message.body}</p>
-              </ThreadMessage>
-            ))}
+            {chatMessages.map((message, index) => {
+              const isStreamingEmpty =
+                isCoachLoading &&
+                index === chatMessages.length - 1 &&
+                message.speaker === "coach" &&
+                !message.body;
 
-            {isCoachLoading ? (
-              <ThreadMessage speaker="coach" title="Coach is thinking...">
-                <p className="text-sm leading-6">
-                  I&apos;m reading your last message and shaping the next step.
-                </p>
-              </ThreadMessage>
-            ) : null}
+              return (
+                <ThreadMessage key={message.id} speaker={message.speaker} title={message.title}>
+                  {isStreamingEmpty ? (
+                    <p className="coach-tool-status">
+                      <span className="coach-thinking"><i /><i /><i /></span>
+                      {activeCoachTool ? coachToolLabel(activeCoachTool) : "Reading your message"}…
+                    </p>
+                  ) : (
+                    <>
+                      <p className="whitespace-pre-wrap text-sm leading-6">{message.body}</p>
+                      {message.toolTrace && message.toolTrace.length > 0 ? (
+                        <div className="coach-tool-trace">
+                          {message.toolTrace.map((name, traceIndex) => (
+                            <span key={`${name}-${traceIndex}`} className="coach-tool-chip">
+                              {coachToolLabel(name)}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                    </>
+                  )}
+                </ThreadMessage>
+              );
+            })}
 
             {coachError ? (
               <ThreadMessage speaker="coach" title="AI coaching unavailable">
@@ -1888,7 +1931,7 @@ function ThreadMessage({
       {isCoach ? <Avatar label="Coach" tone="coach" /> : null}
 
       <div
-        className={`max-w-[86%] rounded-[14px] border px-4 py-3 ${
+        className={`chat-bubble-in max-w-[86%] rounded-[14px] border px-4 py-3 ${
           isCoach
             ? "border-slate-200 bg-slate-50"
             : "border-slate-900 bg-slate-900"

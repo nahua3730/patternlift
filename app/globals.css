@@ -1881,7 +1881,7 @@ select {
   padding: 0.9rem 1rem;
 }
 
-.coach-conversation { max-height: 15.5rem; }
+.coach-conversation { max-height: 24rem; scroll-behavior: smooth; }
 
 .coach-close-button {
   display: grid;
@@ -2000,6 +2000,41 @@ select {
 .coach-thinking i:nth-child(3) { animation-delay: .32s; }
 
 @keyframes coach-pulse { from { opacity: .25; transform: translateY(1px); } to { opacity: 1; transform: translateY(-1px); } }
+@keyframes chat-bubble-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes tool-chip-in { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: scale(1); } }
+
+.chat-bubble-in { animation: chat-bubble-in 220ms ease both; }
+
+.coach-tool-status {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4f46e5;
+  padding: .4rem .75rem;
+  font-size: .74rem;
+  font-weight: 600;
+}
+.coach-tool-status .coach-thinking i { background: #6366f1; }
+
+.coach-tool-trace { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .55rem; }
+.coach-tool-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  border: 1px solid #e0e7ff;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4f46e5;
+  padding: .2rem .55rem;
+  font-size: .62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  animation: tool-chip-in 180ms ease both;
+}
+.coach-tool-chip::before { content: "\2699"; font-size: .6rem; }
 
 @media (min-width: 760px) {
   .home-mode-visual { display: flex; }

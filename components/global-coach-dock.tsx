@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import type { CoachReplyResponse, CoachRequest } from "@/lib/coach";
+import { parseCoachAgentStream, type CoachRequest } from "@/lib/coach";
 import { allProblems, patternOptions } from "@/lib/product";
 import { buildTechniqueBriefs, getSuggestedTechniques } from "@/lib/techniques";
 
@@ -10,7 +10,18 @@ type DockMessage = {
   id: string;
   speaker: "coach" | "user";
   text: string;
+  toolTrace?: string[];
 };
+
+const coachToolLabels: Record<string, string> = {
+  get_technique_detail: "Reviewing technique notes",
+  get_mastery_snapshot: "Checking your mastery data",
+  list_similar_problems: "Scanning the problem bank"
+};
+
+function coachToolLabel(name: string) {
+  return coachToolLabels[name] ?? "Looking something up";
+}
 
 function cleanCoachReply(reply: string) {
   return reply
@@ -69,6 +80,7 @@ export function GlobalCoachDock() {
   const [draft, setDraft] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [activeTool, setActiveTool] = useState<string | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recordingState, setRecordingState] = useState<"idle" | "recording" | "transcribing">(
@@ -77,6 +89,7 @@ export function GlobalCoachDock() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingChunksRef = useRef<Blob[]>([]);
   const recordingStreamRef = useRef<MediaStream | null>(null);
+  const conversationRef = useRef<HTMLDivElement | null>(null);
 
   const pageKind = useMemo(() => {
     if (pathname.startsWith("/learn")) return "learn";
@@ -186,6 +199,12 @@ export function GlobalCoachDock() {
     };
   }, []);
 
+  useEffect(() => {
+    const node = conversationRef.current;
+    if (!node) return;
+    node.scrollTop = node.scrollHeight;
+  }, [messages, activeTool]);
+
   async function sendMessage(messageText?: string) {
     const nextText = (messageText ?? draft).trim();
     if (!nextText || isLoading) return;
@@ -201,6 +220,7 @@ export function GlobalCoachDock() {
     setDraft("");
     setComposerOpen(false);
     setIsLoading(true);
+    setActiveTool(null);
     setError(null);
 
     const requestBody: CoachRequest = {
@@ -225,38 +245,59 @@ export function GlobalCoachDock() {
       localScore: 50,
       reviewQuestion:
         activeProblem?.reviewQuestion ??
-        "What clue should you remember next time so the right pattern becomes easier to spot?"
+        "What clue should you remember next time so the right pattern becomes easier to spot?",
+      problemId: activeProblem?.id,
+      patternId: primaryPattern?.id,
+      contrastPatternId: contrastPattern?.id
     };
 
+    const coachMessageId = `coach-${Date.now()}`;
+    setMessages((current) => [...current, { id: coachMessageId, speaker: "coach", text: "" }]);
+
     try {
-      const response = await fetch("/api/coach", {
+      const response = await fetch("/api/coach/agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody)
       });
 
-      const payload = (await response.json()) as CoachReplyResponse | { error: string };
-
       if (!response.ok) {
-        throw new Error("error" in payload ? payload.error : "Unable to reach the coach.");
+        throw new Error("Unable to reach the coach.");
       }
 
-      if ("error" in payload) {
-        throw new Error(payload.error);
-      }
-
-      setMessages((current) => [
-        ...current,
-        {
-          id: `coach-${Date.now()}`,
-          speaker: "coach",
-          text: cleanCoachReply(payload.reply)
+      let reply = "";
+      for await (const event of parseCoachAgentStream(response)) {
+        if (event.type === "tool_call") {
+          setActiveTool(event.name);
+        } else if (event.type === "text_delta") {
+          reply += event.text;
+          setActiveTool(null);
+          const cleaned = cleanCoachReply(reply);
+          setMessages((current) =>
+            current.map((message) =>
+              message.id === coachMessageId ? { ...message, text: cleaned } : message
+            )
+          );
+        } else if (event.type === "done") {
+          setMessages((current) =>
+            current.map((message) =>
+              message.id === coachMessageId ? { ...message, toolTrace: event.toolTrace } : message
+            )
+          );
+        } else if (event.type === "error") {
+          throw new Error(event.message);
         }
-      ]);
+      }
+
+      if (!reply.trim()) {
+        throw new Error("The coach did not send a reply. Please try again.");
+      }
     } catch (sendError) {
+      setMessages((current) => current.filter((message) => message.id !== coachMessageId));
       setError(sendError instanceof Error ? sendError.message : "Unable to reach the coach.");
     } finally {
       setIsLoading(false);
+      setActiveTool(null);
     }
   }
 
@@ -410,21 +451,38 @@ export function GlobalCoachDock() {
         </div>
 
           <>
-            <div className="coach-conversation space-y-3 overflow-y-auto px-4 py-4">
-              {(messages.length > 1 ? messages.slice(-2) : messages).map((message) => (
-                <div
-                  key={message.id}
-                  className={`coach-message ${message.speaker === "coach" ? "coach-message-ai" : "coach-message-user"}`}
-                >
-                  {message.text}
-                </div>
-              ))}
+            <div ref={conversationRef} className="coach-conversation space-y-3 overflow-y-auto px-4 py-4">
+              {messages.map((message, index) => {
+                const isStreamingEmpty =
+                  isLoading && index === messages.length - 1 && message.speaker === "coach" && !message.text;
 
-              {isLoading ? (
-                <div className="coach-message coach-message-ai flex items-center gap-2">
-                  <span className="coach-thinking"><i /><i /><i /></span> Reading the signal…
-                </div>
-              ) : null}
+                return (
+                  <div
+                    key={message.id}
+                    className={`coach-message chat-bubble-in ${message.speaker === "coach" ? "coach-message-ai" : "coach-message-user"}`}
+                  >
+                    {isStreamingEmpty ? (
+                      <span className="coach-tool-status">
+                        <span className="coach-thinking"><i /><i /><i /></span>
+                        {activeTool ? coachToolLabel(activeTool) : "Reading the signal"}…
+                      </span>
+                    ) : (
+                      <>
+                        {message.text}
+                        {message.toolTrace && message.toolTrace.length > 0 ? (
+                          <div className="coach-tool-trace">
+                            {message.toolTrace.map((name, traceIndex) => (
+                              <span key={`${name}-${traceIndex}`} className="coach-tool-chip">
+                                {coachToolLabel(name)}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
+                      </>
+                    )}
+                  </div>
+                );
+              })}
 
               {error ? (
                 <div className="mr-8 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

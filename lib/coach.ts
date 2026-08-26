@@ -30,11 +30,44 @@ export type CoachRequest = {
   reviewQuestion: string;
   inputMethod?: "text" | "voice";
   learnerConfidence?: 1 | 2 | 3;
+  problemId?: string;
+  patternId?: string;
+  contrastPatternId?: string;
 };
 
-export type CoachReplyResponse = {
-  reply: string;
-};
+export type CoachAgentEvent =
+  | { type: "tool_call"; name: string }
+  | { type: "text_delta"; text: string }
+  | { type: "done"; toolTrace: string[] }
+  | { type: "error"; message: string };
+
+export async function* parseCoachAgentStream(response: Response): AsyncGenerator<CoachAgentEvent> {
+  if (!response.body) {
+    yield { type: "error", message: "The coach did not send a response." };
+    return;
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    let newlineIndex = buffer.indexOf("\n");
+    while (newlineIndex !== -1) {
+      const line = buffer.slice(0, newlineIndex).trim();
+      buffer = buffer.slice(newlineIndex + 1);
+      if (line) yield JSON.parse(line) as CoachAgentEvent;
+      newlineIndex = buffer.indexOf("\n");
+    }
+  }
+
+  const trailing = buffer.trim();
+  if (trailing) yield JSON.parse(trailing) as CoachAgentEvent;
+}
 
 export function buildCoachInstructions(coachStyle: CoachRequest["coachStyle"] = "guided") {
   const styleInstruction =

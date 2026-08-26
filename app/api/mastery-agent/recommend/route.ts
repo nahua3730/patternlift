@@ -2,7 +2,8 @@ import OpenAI from "openai";
 import type { ResponseFunctionToolCall } from "openai/resources/responses/responses";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { createId, dbAll, dbExecute } from "@/lib/db";
+import { createId, dbExecute } from "@/lib/db";
+import { loadRecentAttempts } from "@/lib/attempts-repo";
 import { buildMasteryModel, type MasteryAttempt } from "@/lib/mastery";
 import {
   buildFallbackMasteryPlan,
@@ -69,7 +70,7 @@ export async function POST() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const attempts = await loadAttempts(user.id);
+  const attempts = await loadRecentAttempts(user.id);
   const fallback = buildFallbackMasteryPlan(attempts);
   const runId = createId("mastery-run");
   const toolTrace: string[] = [];
@@ -226,44 +227,4 @@ function safeArguments(value: string): Record<string, unknown> {
   } catch {
     return {};
   }
-}
-
-async function loadAttempts(userId: string): Promise<MasteryAttempt[]> {
-  const rows = await dbAll<{
-    problem_id: string;
-    problem_title: string;
-    selected_pattern_label: string;
-    correct_pattern_label: string;
-    outcome: "solid" | "partial" | "confused";
-    score: number;
-    hints_used: number;
-    code_passed: number | null;
-    confidence: number;
-    confused_with: string | null;
-    created_at: string;
-  }>(
-    `
-      SELECT problem_id, problem_title, selected_pattern_label, correct_pattern_label,
-        outcome, score, hints_used, code_passed, confidence, confused_with, created_at
-      FROM attempts
-      WHERE user_id = ?
-      ORDER BY created_at DESC
-      LIMIT 24
-    `,
-    [userId]
-  );
-
-  return rows.map((row) => ({
-    problemId: row.problem_id,
-    problemTitle: row.problem_title,
-    selectedPatternLabel: row.selected_pattern_label,
-    actualPatternLabel: row.correct_pattern_label,
-    outcome: row.outcome,
-    score: row.score,
-    hintsUsed: row.hints_used,
-    codePassed: row.code_passed == null ? null : row.code_passed === 1,
-    confidence: row.confidence,
-    confusedWith: row.confused_with,
-    createdAt: row.created_at
-  }));
 }
