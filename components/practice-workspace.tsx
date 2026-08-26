@@ -19,6 +19,7 @@ import {
 import { buildTechniqueBriefs, getSuggestedTechniques } from "@/lib/techniques";
 import Link from "next/link";
 import { AudioWaveform } from "@/components/audio-waveform";
+import { runPythonInBrowser } from "@/lib/browser-python-runner";
 
 type PatternId = (typeof patternOptions)[number]["id"];
 type CoachStyle = "beginner" | "guided" | "optional" | "off";
@@ -212,6 +213,7 @@ export function PracticeWorkspace({
   });
   const [runResults, setRunResults] = useState<RunResult[] | null>(null);
   const [runnerError, setRunnerError] = useState<string | null>(null);
+  const [isRunningCode, setIsRunningCode] = useState(false);
   const [testCases, setTestCases] = useState<EditableExample[]>([]);
   const [selectedTestCaseId, setSelectedTestCaseId] = useState<string | null>(null);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
@@ -1114,32 +1116,44 @@ export function PracticeWorkspace({
     if (!activeCodeConfig) return;
 
     try {
-      const response = await fetch("/api/run-code", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          language: selectedLanguage,
-          code: codeByLanguage[selectedLanguage],
+      setIsRunningCode(true);
+      setRunnerError(null);
+      const examples = testCases.map((testCase) => ({
+        label: testCase.label,
+        argsExpression: testCase.argsExpression,
+        expectedExpression: testCase.expectedExpression
+      }));
+      let rawResults: { label: string; actual: unknown; expected: unknown }[];
+
+      if (selectedLanguage === "python") {
+        rawResults = await runPythonInBrowser({
+          code: codeByLanguage.python,
           functionName: activeCodeConfig.functionName,
-          signature: activeCodeConfig.signature,
-          compareMode: activeCodeConfig.compareMode ?? "strict",
-          examples: testCases.map((testCase) => ({
-            label: testCase.label,
-            argsExpression: testCase.argsExpression,
-            expectedExpression: testCase.expectedExpression
-          }))
-        })
-      });
-
-      const data = (await response.json()) as
-        | { results: { label: string; actual: unknown; expected: unknown }[] }
-        | { error: string };
-
-      if (!response.ok || "error" in data) {
-        throw new Error("error" in data ? data.error : "Unable to run the current code.");
+          examples
+        });
+      } else {
+        const response = await fetch("/api/run-code", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            language: selectedLanguage,
+            code: codeByLanguage[selectedLanguage],
+            functionName: activeCodeConfig.functionName,
+            signature: activeCodeConfig.signature,
+            compareMode: activeCodeConfig.compareMode ?? "strict",
+            examples
+          })
+        });
+        const data = (await response.json()) as
+          | { results: { label: string; actual: unknown; expected: unknown }[] }
+          | { error: string };
+        if (!response.ok || "error" in data) {
+          throw new Error("error" in data ? data.error : "Unable to run the current code.");
+        }
+        rawResults = data.results;
       }
 
-      const results = data.results.map((result) => ({
+      const results = rawResults.map((result) => ({
         label: result.label,
         passed: compareValues(
           result.actual,
@@ -1157,6 +1171,8 @@ export function PracticeWorkspace({
         error instanceof Error ? error.message : "Unable to run the current code."
       );
       setRunResults(null);
+    } finally {
+      setIsRunningCode(false);
     }
   }
 
@@ -1209,8 +1225,8 @@ export function PracticeWorkspace({
               {activeCoachStyle === "off" ? <option value="off">Coach off</option> : null}
             </select>
           </label>
-          <button type="button" onClick={runExamples} className="session-run-action">
-            Run <span aria-hidden="true">▶</span>
+          <button type="button" onClick={runExamples} disabled={isRunningCode} className="session-run-action">
+            {isRunningCode ? "Running Python…" : "Run"} {!isRunningCode ? <span aria-hidden="true">▶</span> : null}
           </button>
           <button type="button" onClick={resetCodeEditor} className="session-reset-action">
             Reset
