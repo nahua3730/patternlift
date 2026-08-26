@@ -6,7 +6,6 @@ import type { editor as MonacoEditor } from "monaco-editor";
 import type { CoachRequest } from "@/lib/coach";
 import {
   allProblems,
-  getOfficialProblemRoadmapMeta,
   patternOptions
 } from "@/lib/product";
 import {
@@ -19,6 +18,7 @@ import {
 } from "@/lib/problem-code";
 import { buildTechniqueBriefs, getSuggestedTechniques } from "@/lib/techniques";
 import Link from "next/link";
+import { AudioWaveform } from "@/components/audio-waveform";
 
 type PatternId = (typeof patternOptions)[number]["id"];
 type CoachStyle = "beginner" | "guided" | "optional" | "off";
@@ -144,10 +144,12 @@ export function PracticeWorkspace({
   const [coachDraft, setCoachDraft] = useState("");
   const [coachError, setCoachError] = useState<string | null>(null);
   const [isCoachLoading, setIsCoachLoading] = useState(false);
+  const [isCoachPanelOpen, setIsCoachPanelOpen] = useState(false);
   const [isBeginnerLineCoachLoading, setIsBeginnerLineCoachLoading] = useState(false);
   const [recordingState, setRecordingState] = useState<"idle" | "recording" | "transcribing">(
     "idle"
   );
+  const [voiceStream, setVoiceStream] = useState<MediaStream | null>(null);
   const [hasLoggedAttempt, setHasLoggedAttempt] = useState(false);
   const [confidence, setConfidence] = useState<1 | 2 | 3>(2);
   const [nextInputMethod, setNextInputMethod] = useState<"text" | "voice">("text");
@@ -169,10 +171,7 @@ export function PracticeWorkspace({
   const [runnerError, setRunnerError] = useState<string | null>(null);
   const [testCases, setTestCases] = useState<EditableExample[]>([]);
   const [selectedTestCaseId, setSelectedTestCaseId] = useState<string | null>(null);
-  const [splitRatio, setSplitRatio] = useState(44);
-  const [isDesktopSplit, setIsDesktopSplit] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
-  const splitLayoutRef = useRef<HTMLDivElement | null>(null);
   const codeEditorRef = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<Monaco | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -196,7 +195,6 @@ export function PracticeWorkspace({
   const contrastPatternLabel = contrastPattern?.label ?? "Neighboring pattern";
   const activeCodeConfig = getProblemCodeConfig(activeProblem);
   const hasNativeCodeConfig = hasNativeProblemCodeConfig(activeProblem.id);
-  const activeRoadmapMeta = getOfficialProblemRoadmapMeta(activeProblem.id);
   const availableLanguages = useMemo(
     () => getAvailableLanguages(activeCodeConfig),
     [activeCodeConfig]
@@ -232,48 +230,6 @@ export function PracticeWorkspace({
     if (!container) return;
     container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
   }, [chatMessages, isCoachLoading]);
-
-  useEffect(() => {
-    function updateViewportMode() {
-      setIsDesktopSplit(window.innerWidth >= 1280);
-    }
-
-    updateViewportMode();
-    window.addEventListener("resize", updateViewportMode);
-    return () => window.removeEventListener("resize", updateViewportMode);
-  }, []);
-
-  useEffect(() => {
-    function handlePointerMove(event: PointerEvent) {
-      const layout = splitLayoutRef.current;
-      if (!layout || !isDesktopSplit) return;
-
-      const bounds = layout.getBoundingClientRect();
-      const nextRatio = ((event.clientX - bounds.left) / bounds.width) * 100;
-      const clamped = Math.min(62, Math.max(30, nextRatio));
-      setSplitRatio(clamped);
-    }
-
-    function handlePointerUp() {
-      window.removeEventListener("pointermove", handlePointerMove);
-      window.removeEventListener("pointerup", handlePointerUp);
-    }
-
-    function handleStart(event: PointerEvent) {
-      const target = event.target as HTMLElement | null;
-      if (!target?.closest("[data-split-handle='true']")) return;
-      event.preventDefault();
-      window.addEventListener("pointermove", handlePointerMove);
-      window.addEventListener("pointerup", handlePointerUp);
-    }
-
-    window.addEventListener("pointerdown", handleStart);
-    return () => {
-      window.removeEventListener("pointerdown", handleStart);
-      window.removeEventListener("pointermove", handlePointerMove);
-      window.removeEventListener("pointerup", handlePointerUp);
-    };
-  }, [isDesktopSplit]);
 
   useEffect(() => {
     setActiveCoachStyle(coachStyle);
@@ -748,6 +704,7 @@ export function PracticeWorkspace({
         : new MediaRecorder(stream);
 
       recordingStreamRef.current = stream;
+      setVoiceStream(stream);
       recordingChunksRef.current = [];
       mediaRecorderRef.current = recorder;
 
@@ -760,6 +717,7 @@ export function PracticeWorkspace({
       recorder.onerror = () => {
         setCoachError("Recording ran into a problem. Please try again.");
         setRecordingState("idle");
+        setVoiceStream(null);
       };
 
       recorder.onstop = () => {
@@ -783,6 +741,7 @@ export function PracticeWorkspace({
     const chunks = recordingChunksRef.current;
     const stream = recordingStreamRef.current;
     recordingStreamRef.current = null;
+    setVoiceStream(null);
     mediaRecorderRef.current = null;
     stream?.getTracks().forEach((track) => track.stop());
 
@@ -910,107 +869,56 @@ export function PracticeWorkspace({
   }, [activeCoachStyle, mode, selectedPatternIds]);
 
   return (
-    <div className="flex min-h-[calc(100vh-1.5rem)] w-full flex-col gap-3">
-      <section className="uiverse-panel px-4 py-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="session-workspace flex min-h-[calc(100vh-1.5rem)] w-full flex-col gap-3">
+      <section className="session-command-bar">
+        <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            {coachStyles.map((style) => {
-              const isActive = activeCoachStyle === style.id;
-              return (
-                <button
-                  key={style.id}
-                  type="button"
-                onClick={() => setActiveCoachStyle(style.id)}
-                className={`rounded-[8px] px-3 py-2 text-xs font-medium transition ${
-                  isActive
-                      ? "bg-ink text-white"
-                      : "border border-black/10 bg-white text-black/68"
-                  }`}
-                >
-                  {style.label}
-                </button>
-              );
-            })}
+            <span className="session-mode-label">{mode === "learn" ? "Guided session" : mode === "recognize" ? "Recognition session" : "Practice session"}</span>
+            <span className="session-pattern-label">{correctPattern.label}</span>
           </div>
-
-          <Link
-            href={selectionBackHref}
-            className="coach-chip px-4 py-2 text-sm font-medium text-black/66"
-          >
-            Choose another problem
-          </Link>
+          <h2>{activeProblem.title}</h2>
+        </div>
+        <div className="session-command-actions">
+          <label className="session-coach-select">
+            <span>Support</span>
+            <select value={activeCoachStyle} onChange={(event) => setActiveCoachStyle(event.target.value as CoachStyle)}>
+              {coachStyles.map((style) => <option key={style.id} value={style.id}>{style.label}</option>)}
+            </select>
+          </label>
+          <button type="button" onClick={() => setIsCoachPanelOpen(true)} className="session-open-coach">
+            <CoachSparkIcon /> <span>Open coach</span>
+          </button>
+          <Link href={selectionBackHref} className="session-more-action" aria-label="Choose another problem">•••</Link>
         </div>
       </section>
 
-      <div
-        ref={splitLayoutRef}
-        className="grid flex-1 gap-3 xl:grid-cols-[minmax(0,1fr)_10px_minmax(0,1fr)]"
-        style={
-          isDesktopSplit
-            ? {
-                gridTemplateColumns: `minmax(0, ${splitRatio}fr) 10px minmax(0, ${100 - splitRatio}fr)`
-              }
-            : undefined
-        }
-      >
-        <section className="uiverse-panel flex min-h-[84vh] flex-col overflow-hidden xl:h-[calc(100vh-6rem)]">
-          <div className="border-b border-black/8 px-4 py-3">
-            <div className="flex items-center gap-3 border-b border-black/8 pb-3 text-sm">
-              <span className="rounded-[6px] bg-mist px-3 py-2 font-medium text-ink">
-                Coach
-              </span>
-              <span className="text-black/46">Conversation</span>
+      <div className="relative flex-1">
+        {isCoachPanelOpen ? <button type="button" className="session-coach-backdrop" onClick={() => setIsCoachPanelOpen(false)} aria-label="Close coach" /> : null}
+        <section aria-hidden={!isCoachPanelOpen} className={`session-coach-drawer ${isCoachPanelOpen ? "session-coach-drawer-open" : ""}`}>
+          <div className="session-coach-header">
+            <div className="flex items-center gap-3">
+              <span className="session-coach-mark"><CoachSparkIcon /></span>
+              <div>
+                <p>Pattern coach</p>
+                <span>{activeProblem.title}</span>
+              </div>
             </div>
-
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <p className="text-[1.35rem] font-semibold leading-tight text-ink">
-                {activeProblem.title}
-              </p>
-              <span className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/66">
-                {mode === "learn"
-                  ? "Learning mode"
-                  : mode === "recognize"
-                    ? "Recognition mode"
-                    : "Practice mode"}
-              </span>
-            </div>
-
-            <div className="mt-2 flex flex-wrap gap-2 text-xs">
-              {activeRoadmapMeta?.leetcodeNumber ? (
-                <span className="rounded-full border border-black/10 bg-white px-3 py-1 font-medium text-black/68">
-                  LeetCode #{activeRoadmapMeta.leetcodeNumber}
-                </span>
-              ) : null}
-              {activeRoadmapMeta?.tracks.map((track) => (
-                <span
-                  key={`${activeProblem.id}-${track}`}
-                  className="rounded-full border border-black/10 bg-white px-3 py-1 font-medium text-black/68"
-                >
-                  {track === "blind75" ? "Blind 75" : "NeetCode 150"}
-                </span>
-              ))}
-              <span className="rounded-full border border-black/10 bg-white px-3 py-1 font-medium text-black/66">
-                {correctPattern.label}
-              </span>
-              <span className="rounded-full border border-black/10 bg-white px-3 py-1 font-medium text-black/66">
-                vs {contrastPatternLabel}
-              </span>
-            </div>
+            <button type="button" onClick={() => setIsCoachPanelOpen(false)} aria-label="Close coach">×</button>
           </div>
 
           <div
             ref={chatScrollRef}
-            className="min-h-0 flex-[1_1_0] space-y-4 overflow-y-auto px-4 py-4 pb-32 overscroll-contain"
+            className="session-coach-thread min-h-0 flex-[1_1_0] space-y-3 overflow-y-auto px-4 py-4 overscroll-contain"
           >
             {chatMessages.map((message) => (
               <ThreadMessage key={message.id} speaker={message.speaker} title={message.title}>
-                <p className="whitespace-pre-wrap text-lg leading-9">{message.body}</p>
+                <p className="whitespace-pre-wrap text-sm leading-6">{message.body}</p>
               </ThreadMessage>
             ))}
 
             {isCoachLoading ? (
               <ThreadMessage speaker="coach" title="Coach is thinking...">
-                <p className="text-lg leading-8">
+                <p className="text-sm leading-6">
                   I&apos;m reading your last message and shaping the next step.
                 </p>
               </ThreadMessage>
@@ -1018,7 +926,7 @@ export function PracticeWorkspace({
 
             {isBeginnerLineCoachLoading ? (
               <ThreadMessage speaker="coach" title="Coach is checking your latest line...">
-                <p className="text-lg leading-8">
+                <p className="text-sm leading-6">
                   Give me a second. I&apos;m looking at the line you just finished and what it does to the solution.
                 </p>
               </ThreadMessage>
@@ -1026,13 +934,13 @@ export function PracticeWorkspace({
 
             {coachError ? (
               <ThreadMessage speaker="coach" title="AI coaching unavailable">
-                <p className="text-lg leading-8 text-red-400">{coachError}</p>
+                <p className="text-sm leading-6 text-red-500">{coachError}</p>
               </ThreadMessage>
             ) : null}
           </div>
 
-          <div className="sticky bottom-0 z-10 border-t border-black/8 bg-white/95 px-4 py-2 backdrop-blur">
-            <div className="coach-input-shell">
+          <div className="session-coach-composer-wrap">
+            <div className="session-coach-composer">
               {!hasLoggedAttempt ? (
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2 border-b border-black/8 pb-2">
                   <span className="text-xs font-medium text-black/52">
@@ -1060,103 +968,51 @@ export function PracticeWorkspace({
                   </div>
                 </div>
               ) : null}
-              <textarea
-                value={coachDraft}
-                onChange={(event) => setCoachDraft(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && !event.shiftKey) {
-                    event.preventDefault();
-                    void sendCoachMessage();
-                  }
-                }}
-                rows={2}
-                className="w-full resize-none border-0 bg-transparent text-lg leading-8 text-ink outline-none placeholder:text-black/34"
-                placeholder={
-                  mode === "recognize"
-                    ? "Tell the coach what pattern you suspect, what clues led you there, or what feels ambiguous."
-                    : mode === "learn"
-                      ? "Tell the coach what seems confusing, what first move you want to try, or ask for a nudge."
-                      : "Ask for a hint, a sanity check on your approach, or feedback on your code direction."
-                }
-              />
-              <div className="mt-2 flex items-center justify-between gap-3">
-                <p className="text-xs text-black/48">
-                  {recordingState === "recording"
-                    ? "Recording now. Tap the mic again when you want me to transcribe it."
-                    : recordingState === "transcribing"
-                      ? "Transcribing your recording..."
-                      : nextInputMethod === "voice"
-                        ? "Interview answer ready. The coach will probe your reasoning after you send it."
-                        : "Ask naturally. The coach will react to what you actually say."}
-                </p>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => void toggleVoiceInput()}
-                    aria-label={
-                      recordingState === "recording"
-                        ? "Stop recording and transcribe"
-                        : recordingState === "transcribing"
-                          ? "Transcribing recording"
-                          : "Start recording for transcription"
-                    }
-                    title={
-                      recordingState === "recording"
-                        ? "Stop recording and transcribe"
-                        : recordingState === "transcribing"
-                          ? "Transcribing recording"
-                          : "Start recording for transcription"
-                    }
-                    disabled={recordingState === "transcribing"}
-                    className={`rounded-[8px] border px-3 py-2 text-sm font-medium transition ${
-                      recordingState === "recording"
-                        ? "border-coral/20 bg-coral text-white shadow-[0_10px_18px_rgba(255,92,92,0.18)]"
-                        : recordingState === "transcribing"
-                          ? "cursor-wait border-black/10 bg-black/6 text-black/40"
-                        : "border-black/10 bg-white text-black/68"
-                    }`}
-                  >
-                    <span aria-hidden="true" className="block text-lg leading-none">
-                      {recordingState === "recording"
-                        ? "◼"
-                        : recordingState === "transcribing"
-                          ? "⋯"
-                          : "🎙"}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void sendCoachMessage()}
-                    disabled={coachDraft.trim().length === 0 || isCoachLoading}
-                    className="uiverse-button px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {isCoachLoading ? "Sending..." : "Send"}
-                  </button>
+              {recordingState === "recording" ? (
+                <div className="session-recording-row">
+                  <span className="session-recording-dot"><MicrophoneIcon /></span>
+                  <span className="session-recording-label">Recording</span>
+                  <span className="session-recording-wave"><AudioWaveform stream={voiceStream} /></span>
+                  <button type="button" onClick={() => void toggleVoiceInput()} aria-label="Stop recording and transcribe" className="session-stop-recording"><span /></button>
                 </div>
-              </div>
+              ) : (
+                <>
+                  <textarea
+                    value={coachDraft}
+                    onChange={(event) => setCoachDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && !event.shiftKey) {
+                        event.preventDefault();
+                        void sendCoachMessage();
+                      }
+                    }}
+                    rows={2}
+                    className="w-full resize-none border-0 bg-transparent text-sm leading-6 text-ink outline-none placeholder:text-black/34"
+                    placeholder={mode === "recognize" ? "What pattern do you see?" : mode === "learn" ? "Ask for one hint or explain your next move..." : "Ask for a hint or a quick code check..."}
+                  />
+                  <div className="session-composer-actions">
+                    <span>{recordingState === "transcribing" ? "Transcribing voice note…" : nextInputMethod === "voice" ? "Voice note ready" : "Enter to send"}</span>
+                    <div>
+                      <button type="button" onClick={() => void toggleVoiceInput()} aria-label="Record voice note" title="Record voice note" disabled={recordingState === "transcribing"} className="session-mic-button">
+                        {recordingState === "transcribing" ? <span className="session-mini-loader" /> : <MicrophoneIcon />}
+                      </button>
+                      <button type="button" onClick={() => void sendCoachMessage()} disabled={coachDraft.trim().length === 0 || isCoachLoading} className="session-send-button" aria-label="Send message">
+                        <SendArrowIcon />
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </section>
 
-        <div className="hidden xl:flex items-stretch justify-center">
-          <button
-            type="button"
-            data-split-handle="true"
-            aria-label="Resize panels"
-            className="group flex w-[10px] cursor-col-resize items-center justify-center rounded-full bg-transparent"
-          >
-            <span className="h-20 w-[4px] rounded-full bg-black/10 transition group-hover:bg-coral/30 group-active:bg-coral/45" />
-          </button>
-        </div>
-
-        <section className="uiverse-panel flex min-h-[84vh] flex-col overflow-hidden xl:h-[calc(100vh-6rem)]">
+        <section className="session-editor-main">
           <div className="border-b border-black/8 px-4 py-3">
             <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3 text-sm">
-                <span className="rounded-[6px] bg-mist px-3 py-2 font-medium text-ink">
-                  Editor
-                </span>
-                <span className="text-black/46">Code</span>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Code workspace</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">Write, run, and refine</p>
               </div>
               <div className="flex flex-wrap gap-3">
                 <button
@@ -1199,32 +1055,20 @@ export function PracticeWorkspace({
                     </span>
                   ) : null}
                 </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {editorLanguages
-                    .filter((language) => availableLanguages.includes(language.id))
-                    .map((language) => {
-                      const isActive = selectedLanguage === language.id;
-
-                      return (
-                        <button
-                          key={language.id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedLanguage(language.id);
-                            setRunResults(null);
-                            setRunnerError(null);
-                          }}
-                          className={`rounded-full px-3 py-2 text-sm font-medium transition ${
-                            isActive
-                              ? "bg-ink text-white"
-                              : "border border-black/10 bg-white text-black/70"
-                          }`}
-                        >
-                          {language.label}
-                        </button>
-                      );
-                    })}
-                </div>
+                <label className="mt-3 inline-flex items-center gap-2 rounded-[9px] border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-500">
+                  Language
+                  <select
+                    value={selectedLanguage}
+                    onChange={(event) => {
+                      setSelectedLanguage(event.target.value as SupportedLanguage);
+                      setRunResults(null);
+                      setRunnerError(null);
+                    }}
+                    className="border-0 bg-transparent text-sm font-semibold text-slate-900 outline-none"
+                  >
+                    {editorLanguages.filter((language) => availableLanguages.includes(language.id)).map((language) => <option key={language.id} value={language.id}>{language.label}</option>)}
+                  </select>
+                </label>
                 <div className="mt-3 overflow-hidden rounded-[8px] border border-black/10 bg-[#fffdf9] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]">
                   <div className="flex items-center justify-between border-b border-black/8 bg-white/84 px-4 py-2">
                     <span className="text-xs font-semibold uppercase tracking-[0.16em] text-black/44">
@@ -1444,6 +1288,31 @@ export function PracticeWorkspace({
   );
 }
 
+function MicrophoneIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="9" y="3" width="6" height="11" rx="3" />
+      <path d="M5.5 10.5v.5a6.5 6.5 0 0 0 13 0v-.5M12 17.5V21M9 21h6" />
+    </svg>
+  );
+}
+
+function SendArrowIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m6 12 6-6 6 6M12 18V6" />
+    </svg>
+  );
+}
+
+function CoachSparkIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3 9.8 8.8 4 11l5.8 2.2L12 19l2.2-5.8L20 11l-5.8-2.2L12 3Z" />
+    </svg>
+  );
+}
+
 function buildOpeningMessage({
   mode,
   problemTitle,
@@ -1580,27 +1449,25 @@ function ThreadMessage({
   const isCoach = speaker === "coach";
 
   return (
-    <section className={`flex gap-3 ${isCoach ? "justify-start" : "justify-end"}`}>
+    <section className={`flex gap-2 ${isCoach ? "justify-start" : "justify-end"}`}>
       {isCoach ? <Avatar label="Coach" tone="coach" /> : null}
 
       <div
-        className={`w-full max-w-3xl rounded-[8px] border p-5 shadow-sm ${
+        className={`max-w-[86%] rounded-[14px] border px-4 py-3 ${
           isCoach
-            ? "border-black/10 bg-white"
-            : "border-coral/14 bg-[linear-gradient(180deg,rgba(255,245,245,0.98),rgba(255,236,236,0.98))]"
+            ? "border-slate-200 bg-slate-50"
+            : "border-slate-900 bg-slate-900"
         }`}
       >
         <p
           className={`text-xs font-semibold uppercase tracking-wide ${
-            isCoach ? "text-black/44" : "text-coral/70"
+            isCoach ? "text-slate-400" : "text-slate-400"
           }`}
         >
           {isCoach ? "Coach" : "You"}
         </p>
-        <h2 className={`mt-1 text-xl font-semibold ${isCoach ? "text-ink" : "text-ink"}`}>
-          {title}
-        </h2>
-        <div className={`mt-4 ${isCoach ? "text-black/80" : "text-black/78"}`}>{children}</div>
+        {title !== (isCoach ? "Coach" : "You") ? <h2 className={`mt-1 text-sm font-semibold ${isCoach ? "text-ink" : "text-white"}`}>{title}</h2> : null}
+        <div className={`mt-2 ${isCoach ? "text-slate-700" : "text-white"}`}>{children}</div>
         {controls ? <div className="mt-5">{controls}</div> : null}
       </div>
 
@@ -1612,7 +1479,7 @@ function ThreadMessage({
 function Avatar({ label, tone }: { label: string; tone: "coach" | "user" }) {
   return (
     <div
-      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-sm font-semibold shadow-sm ${
+      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-semibold ${
         tone === "coach"
           ? "border-white/10 bg-white text-[#111111]"
           : "border-coral/16 bg-[linear-gradient(180deg,rgba(255,245,245,1),rgba(255,231,231,1))] text-coral"
