@@ -192,7 +192,7 @@ export function PracticeWorkspace({
   const [hasLoggedAttempt, setHasLoggedAttempt] = useState(false);
   const [confidence, setConfidence] = useState<1 | 2 | 3>(2);
   const [nextInputMethod, setNextInputMethod] = useState<"text" | "voice">("text");
-  const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>("javascript");
+  const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>("python");
   const [codeByLanguage, setCodeByLanguage] = useState<Record<SupportedLanguage, string>>({
     javascript: "",
     typescript: "",
