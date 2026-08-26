@@ -12,28 +12,22 @@ const coachStyles: Array<{
   body: string;
 }> = [
   {
-    id: "beginner",
-    title: "Beginner Guided",
+    id: "guided",
+    title: "Adaptive",
     body:
-      "More teaching, more structure, and clearer nudges when your reasoning or code starts drifting."
+      "The coach stays quiet on routine steps and steps in when your code or reasoning starts drifting."
   },
   {
-    id: "guided",
-    title: "Guided",
+    id: "beginner",
+    title: "Step-by-step",
     body:
-      "A balanced coach that helps you think, compares approaches, and keeps the problem in your hands."
+      "More explanation, smaller next steps, and clearer teaching while you build the solution."
   },
   {
     id: "optional",
-    title: "Hints On Demand",
+    title: "On demand",
     body:
       "Mostly independent practice, with help ready whenever you want a push or a second opinion."
-  },
-  {
-    id: "off",
-    title: "Coach Off",
-    body:
-      "A quieter workspace for when you want to solve first and only reflect later."
   }
 ];
 
@@ -66,7 +60,7 @@ const modeContent: Record<
     body:
       "Choose how close the coach should stay, then pick the question before you open the workspace.",
     nextLabel: "Continue",
-    defaultCoach: "off",
+    defaultCoach: "optional",
     supportTitle: "Best for",
     supportBody:
       "Users who already know what they want to practice and mostly need a strong workspace with smart support nearby."

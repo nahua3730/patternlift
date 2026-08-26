@@ -129,10 +129,9 @@ const editorLanguages: Array<{ id: SupportedLanguage; label: string }> = [
 ];
 
 const coachStyles: Array<{ id: CoachStyle; label: string }> = [
-  { id: "beginner", label: "Beginner Guided" },
-  { id: "guided", label: "Guided" },
-  { id: "optional", label: "Hints On Demand" },
-  { id: "off", label: "Coach Off" }
+  { id: "guided", label: "Adaptive" },
+  { id: "beginner", label: "Step-by-step" },
+  { id: "optional", label: "On demand" }
 ];
 
 const monacoLanguageMap: Record<SupportedLanguage, string> = {
@@ -659,8 +658,9 @@ export function PracticeWorkspace({
     options?: { questionText?: string; hintId?: string }
   ) => {
     if (activeCoachStyle === "off") return;
-    const automaticInlineEnabled = activeCoachStyle === "beginner" || (mode === "learn" && activeCoachStyle === "guided");
+    const automaticInlineEnabled = activeCoachStyle === "beginner" || activeCoachStyle === "guided";
     if (kind === "feedback" && !automaticInlineEnabled) return;
+    if (kind === "feedback" && activeCoachStyle === "guided" && !isAdaptiveCoachingMilestone(completedLine)) return;
     if (kind === "voice") setEditorVoiceState("thinking");
 
     if (kind === "feedback" && (isBeginnerLineCoachLoading || isCoachLoading)) return;
@@ -782,8 +782,9 @@ export function PracticeWorkspace({
 
         const isQuestion = /^(?:\/\/|#)\s*\?\s*\S+/.test(completedLine);
         if (!isQuestion && (completedLine.startsWith("//") || completedLine.startsWith("#"))) return;
-        const automaticInlineEnabled = activeCoachStyle === "beginner" || (mode === "learn" && activeCoachStyle === "guided");
+        const automaticInlineEnabled = activeCoachStyle === "beginner" || activeCoachStyle === "guided";
         if (!isQuestion && !automaticInlineEnabled) return;
+        if (!isQuestion && activeCoachStyle === "guided" && !isAdaptiveCoachingMilestone(completedLine)) return;
 
         const requestKey = `${selectedLanguage}:${completedLineNumber}:${completedLine}`;
         if (lastInlineRequestRef.current === requestKey) return;
@@ -1202,9 +1203,10 @@ export function PracticeWorkspace({
             </select>
           </label>
           <label className="session-coach-select">
-            <span>Support</span>
+            <span>Coach</span>
             <select value={activeCoachStyle} onChange={(event) => setActiveCoachStyle(event.target.value as CoachStyle)}>
               {coachStyles.map((style) => <option key={style.id} value={style.id}>{style.label}</option>)}
+              {activeCoachStyle === "off" ? <option value="off">Coach off</option> : null}
             </select>
           </label>
           <button type="button" onClick={runExamples} className="session-run-action">
@@ -1216,7 +1218,17 @@ export function PracticeWorkspace({
           <button type="button" onClick={() => setIsCoachPanelOpen(true)} className="session-open-coach">
             <CoachSparkIcon /> <span>Conversation</span>
           </button>
-          <Link href={selectionBackHref} className="session-more-action" aria-label="Choose another problem">•••</Link>
+          <details className="session-more-menu">
+            <summary className="session-more-action" aria-label="More workspace options">•••</summary>
+            <div className="session-more-popover">
+              <Link href={selectionBackHref}>Choose another problem</Link>
+              {activeCoachStyle === "off" ? (
+                <button type="button" onClick={() => setActiveCoachStyle("guided")}>Turn coach on</button>
+              ) : (
+                <button type="button" onClick={() => setActiveCoachStyle("off")}>Turn coach off</button>
+              )}
+            </div>
+          </details>
         </div>
       </section>
 
@@ -1686,6 +1698,13 @@ export function PracticeWorkspace({
       </div>
     </div>
   );
+}
+
+function isAdaptiveCoachingMilestone(line: string) {
+  const normalized = line.trim();
+  if (!normalized || /^(?:\/\/|#)/.test(normalized)) return false;
+
+  return /(?:\b(?:def|function|class|for|while|if|else|elif|switch|case|return|throw|try|catch|finally)\b|(?:^|[^=!<>])=(?!=)|\.(?:add|append|push|set|delete|remove)\s*\(|\b(?:set|map|dict|list|queue|stack)\s*\()/i.test(normalized);
 }
 
 function MicrophoneIcon() {

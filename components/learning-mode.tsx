@@ -9,10 +9,9 @@ type LearningModeProps = { patternIds: string[]; coachStyle: CoachStyle };
 
 const difficultyRank: Record<string, number> = { Easy: 0, Medium: 1, Hard: 2, Official: 3 };
 const coachChoices: Array<{ id: CoachStyle; title: string; detail: string; badge?: string }> = [
-  { id: "beginner", title: "Teach me as I go", detail: "More explanation and smaller hints.", badge: "Best for first reps" },
-  { id: "guided", title: "Nudge me when I drift", detail: "Balanced support without taking over.", badge: "Recommended" },
-  { id: "optional", title: "Wait until I ask", detail: "A quiet workspace with hints on demand." },
-  { id: "off", title: "No coach", detail: "Solve independently this time." }
+  { id: "guided", title: "Adaptive", detail: "Quiet on routine steps; more present when you drift.", badge: "Recommended" },
+  { id: "beginner", title: "Step-by-step", detail: "More explanation and smaller next steps.", badge: "Best for first reps" },
+  { id: "optional", title: "On demand", detail: "No automatic feedback until you ask." }
 ];
 
 export function LearningMode({ patternIds, coachStyle }: LearningModeProps) {

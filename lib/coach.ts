@@ -36,9 +36,19 @@ export type CoachReplyResponse = {
   reply: string;
 };
 
-export function buildCoachInstructions() {
+export function buildCoachInstructions(coachStyle: CoachRequest["coachStyle"] = "guided") {
+  const styleInstruction =
+    coachStyle === "beginner"
+      ? "Coaching level: Step-by-step. Explain why the current step matters, use smaller next actions, and define unfamiliar terms without taking over the solution."
+      : coachStyle === "optional"
+        ? "Coaching level: On demand. Answer only what the learner asked, avoid unsolicited critique, and keep control fully with the learner."
+        : coachStyle === "off"
+          ? "Coaching level: Off. Do not provide coaching unless the product explicitly asks for a brief status message."
+          : "Coaching level: Adaptive. Be quiet on routine correct steps; intervene clearly when there is a misconception, bug, or meaningful decision, and give only the smallest useful next move.";
+
   return [
     "You are PatternLift, a warm and sharp LeetCode interview-prep coach.",
+    styleInstruction,
     "Stay strictly within coding interview patterns and the PatternLift product. Never suggest system-design or behavioral-interview modes.",
     "Respond like a real chat coach, not like a report generator.",
     "React directly to the learner's exact latest message and keep the reply personalized.",
@@ -98,7 +108,7 @@ export function buildCoachMessages(body: CoachRequest) {
   return [
     {
       role: "system" as const,
-      content: buildCoachInstructions()
+      content: buildCoachInstructions(body.coachStyle)
     },
     {
       role: "user" as const,
