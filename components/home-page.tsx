@@ -30,7 +30,7 @@ const modeCards = [
 
 export function HomePage({ currentUser }: { currentUser: SessionUser | null }) {
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-24 pb-12">
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-10 pb-12">
       <header className="flex items-center justify-between py-2">
         <Link href="/" className="flex items-center gap-3">
           <span className="brand-mark" aria-hidden="true">
@@ -153,65 +153,75 @@ export function HomePage({ currentUser }: { currentUser: SessionUser | null }) {
         </div>
       </section>
 
-      <section id="how-it-works" className="scroll-mt-10">
-        <div className="max-w-3xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-indigo-600">The adaptive loop</p>
-          <h2 className="mt-4 text-3xl font-semibold tracking-[-0.04em] text-ink sm:text-5xl">
-            Every attempt changes what happens next.
+      <section id="how-it-works" className="home-loop-stage scroll-mt-10">
+        <div className="home-loop-copy">
+          <p className="home-section-kicker">The adaptive loop</p>
+          <h2 className="mt-5 text-4xl font-semibold leading-[1.05] tracking-[-0.05em] text-white sm:text-5xl">
+            Your mistakes become<br />the curriculum.
           </h2>
-          <p className="mt-5 max-w-2xl text-base leading-7 text-slate-600">
-            The product is not a solution generator. It is a feedback system for recognition,
-            explanation, transfer, and long-term recall.
+          <p className="mt-6 max-w-lg text-base leading-8 text-slate-300">
+            Every prediction, explanation, hint, and code result updates a living model of what you actually understand.
           </p>
+          <div className="mt-9 grid grid-cols-3 gap-3">
+            {[["12", "pattern signals"], ["4", "confusion pairs"], ["8m", "next recall"]].map(([value, label]) => (
+              <div key={label} className="home-signal-stat"><p>{value}</p><span>{label}</span></div>
+            ))}
+          </div>
         </div>
 
-        <div className="mt-10 grid gap-px overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 md:grid-cols-4">
-          {[
-            ["01", "Commit", "Predict the pattern and explain the signal before seeing a solution."],
-            ["02", "Diagnose", "Measure confidence, hints, explanation quality, and code results."],
-            ["03", "Update", "Recalculate mastery and surface the exact pattern confusion."],
-            ["04", "Schedule", "Choose the next drill and bring it back at the right recall interval."]
-          ].map(([number, title, body]) => (
-            <article key={number} className="bg-white p-6 sm:p-7">
-              <span className="text-xs font-mono text-indigo-500">{number}</span>
-              <h3 className="mt-8 text-lg font-semibold text-ink">{title}</h3>
-              <p className="mt-3 text-sm leading-6 text-slate-600">{body}</p>
-            </article>
+        <div className="home-loop-console">
+          <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+            <div className="flex items-center gap-2"><span className="console-dot bg-rose-400" /><span className="console-dot bg-amber-300" /><span className="console-dot bg-emerald-300" /></div>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Session intelligence</span>
+          </div>
+          <div className="p-5">
+            {[
+              ["01", "Commit", "Sliding Window · 72% confidence"],
+              ["02", "Diagnose", "Confused with Two Pointers"],
+              ["03", "Update", "Mastery signal +6"],
+              ["04", "Schedule", "Recall tomorrow · 8 min"]
+            ].map(([number, title, detail], index) => (
+              <div key={number} className="home-loop-row">
+                <span className={`home-loop-node ${index === 3 ? "home-loop-node-active" : ""}`}>{number}</span>
+                <div><p className="text-sm font-semibold text-white">{title}</p><p className="mt-1 text-xs text-slate-400">{detail}</p></div>
+                {index < 3 ? <span className="ml-auto text-slate-700">→</span> : <span className="ml-auto rounded-full bg-cyan-300/10 px-2 py-1 text-[10px] font-semibold text-cyan-200">Ready</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="home-mode-stage">
+        <div className="home-mode-heading">
+          <p className="home-section-kicker text-indigo-600">Three training gears</p>
+          <h2 className="mt-4 text-4xl font-semibold tracking-[-0.05em] text-slate-950 sm:text-5xl">Build it. Spot it. Prove it.</h2>
+          <p className="mt-4 max-w-xl text-base leading-7 text-slate-500">Move from guided understanding to cold recognition without losing the thread between sessions.</p>
+        </div>
+
+        <div className="home-mode-list">
+          {modeCards.map((card, index) => (
+            <Link key={card.href} href={card.href} className="home-mode-row group">
+              <span className="home-mode-number">{card.number}</span>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold uppercase tracking-[0.15em] text-indigo-500">{card.eyebrow}</p>
+                <h3 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-950">{card.title}</h3>
+                <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">{card.body}</p>
+              </div>
+              <div className="home-mode-visual" aria-hidden="true">
+                <span style={{ height: `${36 + index * 16}%` }} /><span style={{ height: `${68 - index * 8}%` }} /><span style={{ height: `${52 + index * 10}%` }} />
+              </div>
+              <span className="home-mode-arrow" aria-hidden="true">↗</span>
+            </Link>
           ))}
         </div>
       </section>
 
-      <section>
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-indigo-600">Choose your training mode</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-ink">One system, three kinds of rep.</h2>
-          </div>
-          <p className="max-w-md text-sm leading-6 text-slate-500">Start guided, test recognition, then prove you can transfer the pattern without scaffolding.</p>
+      <section className="home-final-cta">
+        <div>
+          <p className="home-section-kicker text-cyan-300">Your next rep is not random</p>
+          <h2 className="mt-4 max-w-2xl text-3xl font-semibold tracking-[-0.045em] text-white sm:text-4xl">Train the decision before the implementation.</h2>
         </div>
-        <div className="mt-8 grid gap-4 lg:grid-cols-3">
-        {modeCards.map((card) => (
-          <Link
-            key={card.href}
-            href={card.href}
-            className="mode-card group flex min-h-[290px] flex-col justify-between p-7"
-          >
-            <div>
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-indigo-600">{card.eyebrow}</p>
-                <span className="font-mono text-xs text-slate-400">{card.number}</span>
-              </div>
-              <h3 className="mt-12 text-2xl font-semibold tracking-[-0.03em] text-ink">{card.title}</h3>
-              <p className="mt-4 text-sm leading-7 text-slate-600">{card.body}</p>
-            </div>
-
-            <div className="mt-8 flex items-center justify-between text-sm font-semibold text-indigo-600">
-              <span>Start this mode</span>
-              <span className="transition-transform group-hover:translate-x-1" aria-hidden="true">→</span>
-            </div>
-          </Link>
-        ))}
-        </div>
+        <Link href={currentUser ? "/learn/setup" : "/signup"} className="home-final-button">{currentUser ? "Open your workspace" : "Start building mastery"}<span>→</span></Link>
       </section>
     </div>
   );

@@ -376,48 +376,42 @@ export function GlobalCoachDock() {
           <button
             type="button"
             onClick={() => setIsOpen(true)}
-            className="uiverse-button inline-flex items-center gap-2 rounded-full px-4 py-3 text-sm font-medium"
+            className="coach-launcher"
           >
-            Ask the coach
+            <span className="coach-orb" aria-hidden="true"><span /></span>
+            <span className="text-left">
+              <span className="block text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-500">Pattern copilot</span>
+              <span className="mt-0.5 block text-sm font-semibold text-white">Think it through</span>
+            </span>
+            <span className="ml-2 text-slate-600" aria-hidden="true">↗</span>
           </button>
         ) : (
-          <div className="coach-dock">
-        <div className="flex items-center justify-between gap-4 border-b border-black/8 px-4 py-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-coral">
-              Ask the coach
-            </p>
-            <p className="mt-1 text-sm font-medium text-ink">
-              {pageTitles[pageKind]}
-            </p>
+          <div className="coach-copilot">
+        <div className="coach-copilot-header">
+          <div className="flex items-center gap-3">
+            <span className="coach-orb" aria-hidden="true"><span /></span>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">Pattern copilot</p>
+              <p className="mt-1 text-sm font-medium text-white">{pageTitles[pageKind]} · in context</p>
+            </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setIsOpen((current) => !current)}
-            className="uiverse-button-secondary px-3 py-2 text-xs font-medium"
-          >
-            {isOpen ? "Hide" : "Open"}
-          </button>
+          <button type="button" onClick={() => setIsOpen(false)} className="coach-close-button" aria-label="Close coach">×</button>
         </div>
 
           <>
-            <div className="max-h-72 space-y-3 overflow-y-auto px-4 py-4">
+            <div className="max-h-80 space-y-3 overflow-y-auto px-4 py-4">
               {messages.map((message) => (
                 <div
                   key={message.id}
-                  className={`rounded-2xl px-4 py-3 text-sm leading-6 transition ${
-                    message.speaker === "coach"
-                      ? "mr-8 border border-black/8 bg-white text-black/74"
-                      : "ml-8 bg-coral text-white shadow-[0_10px_20px_rgba(255,92,92,0.18)]"
-                  }`}
+                  className={`coach-message ${message.speaker === "coach" ? "coach-message-ai" : "coach-message-user"}`}
                 >
                   {message.text}
                 </div>
               ))}
 
               {isLoading ? (
-                <div className="mr-8 rounded-2xl border border-black/8 bg-white px-4 py-3 text-sm text-black/60">
-                  Thinking through the next nudge...
+                <div className="coach-message coach-message-ai flex items-center gap-2">
+                  <span className="coach-thinking"><i /><i /><i /></span> Reading the signal…
                 </div>
               ) : null}
 
@@ -428,21 +422,22 @@ export function GlobalCoachDock() {
               ) : null}
             </div>
 
-            <div className="border-t border-black/8 px-4 py-4">
-              <div className="mb-3 flex flex-wrap gap-2">
-                {quickActions.map((action) => (
+            <div className="border-t border-slate-200 px-4 py-4">
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400">Continue with</p>
+              <div className="mb-3 grid gap-1.5">
+                {quickActions.slice(0, 3).map((action) => (
                   <button
                     key={action}
                     type="button"
                     onClick={() => void sendMessage(action)}
-                    className="coach-chip px-3 py-2 text-xs font-medium text-black/66"
+                    className="coach-suggestion"
                   >
-                    {action}
+                    <span>{action}</span><span aria-hidden="true">→</span>
                   </button>
                 ))}
               </div>
 
-              <div className="coach-input-shell">
+              <div className="coach-composer">
                 <textarea
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
@@ -452,16 +447,16 @@ export function GlobalCoachDock() {
                       void sendMessage();
                     }
                   }}
-                  rows={3}
-                  className="w-full resize-none border-0 bg-transparent text-sm leading-6 text-ink outline-none placeholder:text-black/36"
+                  rows={2}
+                  className="w-full resize-none border-0 bg-transparent text-sm leading-6 text-slate-900 outline-none placeholder:text-slate-400"
                   placeholder={
                     pageKind === "practice"
                       ? "Ask for a hint, sanity check, complexity read, or cleaner path..."
                       : "Ask anything about the pattern, next step, or what still feels fuzzy..."
                   }
                 />
-                <div className="flex items-center justify-between gap-3 pt-3">
-                  <p className="text-xs text-black/46">
+                <div className="flex items-center justify-between gap-3 pt-2">
+                  <p className="text-[11px] text-slate-400">
                     {recordingState === "recording"
                       ? "Recording now. Tap the mic again when you want me to transcribe it."
                       : recordingState === "transcribing"
@@ -489,12 +484,12 @@ export function GlobalCoachDock() {
                             : "Start recording for transcription"
                       }
                       disabled={recordingState === "transcribing"}
-                      className={`rounded-[8px] border px-3 py-2 text-sm font-medium transition ${
+                      className={`coach-voice-button ${
                         recordingState === "recording"
                           ? "border-coral/20 bg-coral text-white shadow-[0_10px_18px_rgba(255,92,92,0.18)]"
                           : recordingState === "transcribing"
                             ? "cursor-wait border-black/10 bg-black/6 text-black/40"
-                            : "border-black/10 bg-white text-black/68"
+                            : "text-slate-500"
                       }`}
                     >
                       <span aria-hidden="true" className="block text-lg leading-none">
@@ -509,9 +504,9 @@ export function GlobalCoachDock() {
                       type="button"
                       onClick={() => void sendMessage()}
                       disabled={!draft.trim() || isLoading}
-                      className="uiverse-button px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
+                      className="coach-send-button disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      Send
+                      <span aria-hidden="true">↑</span>
                     </button>
                   </div>
                 </div>

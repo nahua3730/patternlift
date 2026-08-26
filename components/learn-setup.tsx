@@ -4,16 +4,15 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { patternOptions } from "@/lib/product";
 
+const recommendedIds = ["sliding-window", "two-pointers", "hashing"];
+
 export function LearnSetup() {
   const [selectedPatterns, setSelectedPatterns] = useState<string[]>([]);
+  const selectedDetails = patternOptions.filter((pattern) => selectedPatterns.includes(pattern.id));
 
   const nextHref = useMemo(() => {
     const params = new URLSearchParams();
-
-    if (selectedPatterns.length > 0) {
-      params.set("patterns", selectedPatterns.join(","));
-    }
-
+    if (selectedPatterns.length > 0) params.set("patterns", selectedPatterns.join(","));
     return `/learn?${params.toString()}`;
   }, [selectedPatterns]);
 
@@ -25,141 +24,119 @@ export function LearnSetup() {
     );
   }
 
-  const selectedCount = selectedPatterns.length;
-
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-      <section className="uiverse-panel px-6 py-7 md:px-8">
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-coral">
-          Learning Mode
-        </p>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight text-ink">
-          Choose the patterns you want to focus on first.
-        </h1>
-        <p className="mt-4 max-w-3xl text-base leading-7 text-black/70">
-          We&apos;ll build your next page around these pattern families, so this
-          should feel like choosing a lane, not committing to your whole life.
-        </p>
+    <div className="learn-planner">
+      <section className="learn-signal-hero">
+        <div className="relative z-10 max-w-3xl">
+          <div className="learn-live-label"><span /> Mastery path builder</div>
+          <h2 className="mt-6 text-4xl font-semibold leading-[1.05] tracking-[-0.05em] text-white sm:text-5xl">
+            What do you want to<br className="hidden sm:block" /> recognize on sight?
+          </h2>
+          <p className="mt-5 max-w-2xl text-base leading-7 text-slate-300">
+            Choose the pattern signals you want to sharpen. PatternLift will turn them into a sequence of contrasts, guided reps, and recall checks.
+          </p>
+        </div>
+
+        <div className="learn-hero-meter">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Path signal</span>
+            <span className="text-xs font-medium text-cyan-200">Live</span>
+          </div>
+          <div className="mt-5 flex items-end justify-between gap-4">
+            <div>
+              <p className="text-4xl font-semibold tracking-[-0.05em] text-white">{selectedPatterns.length}</p>
+              <p className="mt-1 text-xs text-slate-500">patterns selected</p>
+            </div>
+            <div className="flex h-10 items-end gap-1" aria-hidden="true">
+              {[36, 58, 44, 76, 62, 92].map((height, index) => (
+                <span key={height + index} className="w-1.5 rounded-full bg-gradient-to-t from-indigo-500 to-cyan-300" style={{ height: `${height}%`, opacity: selectedPatterns.length ? 1 : 0.28 }} />
+              ))}
+            </div>
+          </div>
+          <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-white/8">
+            <div className="h-full rounded-full bg-gradient-to-r from-indigo-400 to-cyan-300 transition-all duration-300" style={{ width: `${Math.min(100, selectedPatterns.length * 20)}%` }} />
+          </div>
+        </div>
       </section>
 
-      <section className="uiverse-panel px-6 py-6 md:px-8">
-        <div className="flex flex-col gap-5">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="learn-planner-grid">
+        <section className="min-w-0">
+          <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="text-lg font-semibold text-ink">Pattern families</p>
-              <p className="mt-1 text-sm leading-6 text-black/64">
-                Pick one or several. You can always come back and choose a different path.
-              </p>
+              <p className="product-kicker">Pattern library</p>
+              <h3 className="mt-2 text-2xl font-semibold tracking-[-0.035em] text-slate-950">Build your focus set</h3>
+              <p className="mt-2 text-sm text-slate-500">Start with 1–3 patterns for the clearest learning signal.</p>
             </div>
-
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => setSelectedPatterns(patternOptions.map((pattern) => pattern.id))}
-                className="uiverse-button-secondary px-4 py-2 text-sm font-medium"
-              >
-                Select all
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedPatterns([])}
-                className="uiverse-button-secondary px-4 py-2 text-sm font-medium"
-              >
-                Clear all
-              </button>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => setSelectedPatterns(recommendedIds)} className="planner-text-button">Use starter set</button>
+              {selectedPatterns.length ? <button type="button" onClick={() => setSelectedPatterns([])} className="planner-text-button">Reset</button> : null}
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {patternOptions.map((pattern) => {
-              const isActive = selectedPatterns.includes(pattern.id);
-
+          <div className="pattern-matrix mt-6">
+            {patternOptions.map((pattern, index) => {
+              const active = selectedPatterns.includes(pattern.id);
               return (
-                <button
-                  key={pattern.id}
-                  type="button"
-                  onClick={() => togglePattern(pattern.id)}
-                  className={`pattern-card text-left ${
-                    isActive ? "pattern-card-active text-white" : "text-ink"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-lg font-semibold">{pattern.label}</p>
-                      <p
-                        className={`mt-2 text-sm leading-6 ${
-                          isActive ? "text-white/80" : "text-black/60"
-                        }`}
-                      >
-                        {pattern.coachPrompt}
-                      </p>
-                    </div>
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                        isActive ? "bg-white/18 text-white" : "bg-black/6 text-black/60"
-                      }`}
-                    >
-                      {selectedPatterns.includes(pattern.id) ? "Selected" : "Tap to add"}
-                    </span>
-                  </div>
-
-                  <div className="mt-5 flex flex-wrap gap-2">
-                    {pattern.clues.slice(0, 2).map((clue) => (
-                      <span
-                        key={`${pattern.id}-${clue}`}
-                        className={`rounded-full px-3 py-2 text-xs ${
-                          isActive
-                            ? "border border-white/16 bg-white/12 text-white/82"
-                            : "border border-black/8 bg-white/76 text-black/60"
-                        }`}
-                      >
-                        {clue}
-                      </span>
-                    ))}
-                  </div>
+                <button key={pattern.id} type="button" onClick={() => togglePattern(pattern.id)} className={`pattern-matrix-row ${active ? "pattern-matrix-row-active" : ""}`}>
+                  <span className="pattern-index">{String(index + 1).padStart(2, "0")}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-slate-900">{pattern.label}</span>
+                    <span className="mt-1 block line-clamp-2 text-xs leading-5 text-slate-500">{pattern.clues[0]}</span>
+                  </span>
+                  <span className={`pattern-check ${active ? "pattern-check-active" : ""}`} aria-hidden="true">{active ? "✓" : "+"}</span>
                 </button>
               );
             })}
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section className="uiverse-panel px-6 py-6 md:px-8">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-2xl">
-            <p className="text-lg font-semibold text-ink">Next step</p>
-            <p className="mt-2 text-sm leading-7 text-black/68">
-              You&apos;ve selected{" "}
-              <span className="font-semibold text-ink">{selectedCount}</span>{" "}
-              {selectedCount === 1 ? "pattern" : "patterns"}. On the next page,
-              we&apos;ll suggest problems and let you choose how much help the coach gives.
-            </p>
+        <aside className="learning-path-preview">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="product-kicker text-cyan-300">Your next session</p>
+              <h3 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-white">Adaptive learning path</h3>
+            </div>
+            <span className="path-count">{selectedPatterns.length || 0}/3</span>
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href="/"
-              className="uiverse-button-secondary inline-flex items-center justify-center px-5 py-3 text-sm font-medium"
-            >
-              Back
-            </Link>
+          {selectedDetails.length ? (
+            <div className="mt-7 space-y-1">
+              {selectedDetails.slice(0, 5).map((pattern, index) => (
+                <div key={pattern.id} className="path-step">
+                  <div className="path-step-node">{index + 1}</div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-white">{pattern.label}</p>
+                    <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">{index === 0 ? "Learn the core signal and invariant" : index === 1 ? "Contrast it with the closest lookalike" : "Prove recognition with a cold prompt"}</p>
+                  </div>
+                  <span className="text-xs font-medium text-slate-600">{index === 0 ? "8m" : "6m"}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="path-empty-state">
+              <div className="path-orbit" aria-hidden="true"><span /></div>
+              <p className="mt-5 text-sm font-semibold text-white">Your path will build here</p>
+              <p className="mt-2 text-xs leading-5 text-slate-400">Choose a pattern to preview the sequence PatternLift will generate.</p>
+            </div>
+          )}
+
+          <div className="mt-auto border-t border-white/10 pt-5">
+            <div className="flex items-center justify-between text-xs text-slate-500">
+              <span>Estimated session</span>
+              <span>{selectedPatterns.length ? `${Math.max(12, selectedPatterns.length * 8)} min` : "—"}</span>
+            </div>
             <Link
               href={nextHref}
-              aria-disabled={selectedCount === 0}
-              className={`inline-flex items-center justify-center px-5 py-3 text-sm font-medium ${
-                selectedCount === 0
-                  ? "cursor-not-allowed rounded-[8px] border border-black/10 bg-white/70 text-black/34"
-                  : "uiverse-button"
-              }`}
-              onClick={(event) => {
-                if (selectedCount === 0) event.preventDefault();
-              }}
+              aria-disabled={selectedPatterns.length === 0}
+              onClick={(event) => { if (!selectedPatterns.length) event.preventDefault(); }}
+              className={`path-launch-button ${selectedPatterns.length ? "" : "path-launch-button-disabled"}`}
             >
-              Continue
+              <span>{selectedPatterns.length ? "Build my learning path" : "Select a pattern to continue"}</span>
+              <span aria-hidden="true">→</span>
             </Link>
           </div>
-        </div>
-      </section>
+        </aside>
+      </div>
     </div>
   );
 }
