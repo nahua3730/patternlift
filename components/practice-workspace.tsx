@@ -39,6 +39,8 @@ type InlineCoachHint = {
   prompt?: string;
 };
 
+type WorkspaceContextPanel = "coach" | "problem" | "tests";
+
 type SpeechRecognitionResultLike = {
   isFinal: boolean;
   0: { transcript: string };
@@ -182,6 +184,8 @@ export function PracticeWorkspace({
   const [isCoachLoading, setIsCoachLoading] = useState(false);
   const [isCoachPanelOpen, setIsCoachPanelOpen] = useState(false);
   const [showQuickStartGuide, setShowQuickStartGuide] = useState(quickStart);
+  const [activeContextPanel, setActiveContextPanel] = useState<WorkspaceContextPanel>("coach");
+  const [isContextPanelCollapsed, setIsContextPanelCollapsed] = useState(false);
   const [editorVoiceState, setEditorVoiceState] = useState<"idle" | "listening" | "thinking">("idle");
   const [isBeginnerLineCoachLoading, setIsBeginnerLineCoachLoading] = useState(false);
   const [inlineCoachHints, setInlineCoachHints] = useState<InlineCoachHint[]>([]);
@@ -259,6 +263,13 @@ export function PracticeWorkspace({
   }, [runResults]);
 
   const activeInlineCoachHint = inlineCoachHints[inlineCoachHints.length - 1] ?? null;
+
+  useEffect(() => {
+    if (!activeInlineCoachHint) return;
+    setShowQuickStartGuide(false);
+    setActiveContextPanel("coach");
+    setIsContextPanelCollapsed(false);
+  }, [activeInlineCoachHint]);
 
   const suggestedTechniques = useMemo(
     () =>
@@ -1087,6 +1098,8 @@ export function PracticeWorkspace({
   }
 
   function runExamples() {
+    setActiveContextPanel("tests");
+    setIsContextPanelCollapsed(false);
     if (!activeCodeConfig) {
       setRunnerError("This problem does not have a starter template yet.");
       setRunResults(null);
@@ -1314,7 +1327,7 @@ export function PracticeWorkspace({
           </div>
         </section>
 
-        <section className="session-editor-main">
+        <section className={`session-editor-main ${showQuickStartGuide ? "session-editor-main-has-guide" : ""} ${isContextPanelCollapsed ? "session-editor-main-context-collapsed" : ""}`}>
           {showQuickStartGuide ? (
             <div className="quick-start-guide" role="status">
               <div className="quick-start-copy">
@@ -1330,9 +1343,9 @@ export function PracticeWorkspace({
               <button type="button" onClick={beginQuickStart} className="quick-start-action">Start coding <span aria-hidden="true">→</span></button>
             </div>
           ) : null}
-          <div className="ide-scroll-area min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <div className="ide-scroll-area min-h-0 overflow-y-auto overscroll-contain">
             <div className="space-y-4">
-              <details className="ide-disclosure">
+              <details className="ide-disclosure ide-legacy-panel">
                 <summary className="cursor-pointer text-sm font-semibold text-ink">
                   Problem statement
                 </summary>
@@ -1363,13 +1376,14 @@ export function PracticeWorkspace({
                     </span>
                   </div>
                   <Editor
-                    height="19rem"
+                    height="100%"
                     beforeMount={handleEditorMount}
                     onMount={handleEditorReady}
                     theme="patternlift-ide"
                     language={monacoLanguageMap[selectedLanguage]}
                     value={codeByLanguage[selectedLanguage]}
                     onChange={(value) => {
+                      setShowQuickStartGuide(false);
                       setCodeByLanguage((current) => ({
                         ...current,
                         [selectedLanguage]: value ?? ""
@@ -1411,7 +1425,7 @@ export function PracticeWorkspace({
                 </div>
               ) : null}
 
-              <details className="ide-disclosure">
+              <details className="ide-disclosure ide-legacy-panel">
                   <summary className="cursor-pointer text-sm font-semibold text-ink">
                     Test case panel
                   </summary>
@@ -1529,13 +1543,13 @@ export function PracticeWorkspace({
                 </details>
 
               {runnerError ? (
-                <div className="rounded-[8px] border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-700">
+                <div className="ide-legacy-panel rounded-[8px] border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-700">
                   {runnerError}
                 </div>
               ) : null}
 
               {runResults ? (
-                <div className="rounded-[8px] border border-black/10 bg-white/88 p-4">
+                <div className="ide-legacy-panel rounded-[8px] border border-black/10 bg-white/88 p-4">
                   <p className="text-sm font-semibold text-ink">Run results</p>
                   <div className="mt-3 space-y-3">
                     {runResults.map((result) => (
@@ -1566,57 +1580,108 @@ export function PracticeWorkspace({
               ) : null}
             </div>
           </div>
-          <section className={`ide-coach-console ${activeInlineCoachHint ? "ide-coach-console-active" : ""}`} aria-live="polite">
-            <div className="ide-coach-console-head">
-              <div className="flex min-w-0 items-center gap-3">
-                <span className={`ide-coach-orb ${editorVoiceState === "listening" ? "ide-coach-orb-listening" : ""}`}><CoachSparkIcon /></span>
-                <div className="min-w-0">
-                  <p>Pattern coach</p>
-                  <span>{activeInlineCoachHint ? `Focused on line ${activeInlineCoachHint.lineNumber}` : "Ready in your editor"}</span>
-                </div>
-              </div>
+          <aside className={`ide-context-rail ${isContextPanelCollapsed ? "ide-context-rail-collapsed" : ""}`}>
+            <div className="ide-context-tabs">
+              {!isContextPanelCollapsed ? ([
+                ["coach", "Coach"],
+                ["problem", "Problem"],
+                ["tests", runSummary ? `Tests ${runSummary.passed}/${runSummary.total}` : "Tests"]
+              ] as const).map(([panel, label]) => (
+                <button key={panel} type="button" onClick={() => setActiveContextPanel(panel)} className={activeContextPanel === panel ? "ide-context-tab-active" : ""}>{label}</button>
+              )) : null}
               <button
                 type="button"
-                onClick={() => void toggleEditorVoice()}
-                disabled={editorVoiceState === "thinking" || activeCoachStyle === "off"}
-                className={`ide-coach-voice ${editorVoiceState !== "idle" ? "ide-coach-voice-active" : ""}`}
-                aria-label={editorVoiceState === "listening" ? "Finish voice question" : "Ask the coach by voice"}
+                className="ide-context-collapse"
+                onClick={() => setIsContextPanelCollapsed((current) => !current)}
+                aria-label={isContextPanelCollapsed ? "Open context panel" : "Collapse context panel"}
               >
-                <span>{editorVoiceState === "thinking" ? <span className="session-mini-loader" /> : <MicrophoneIcon />}</span>
-                {editorVoiceState === "listening" ? "Listening — pause when done" : editorVoiceState === "thinking" ? "Coach is responding" : "Ask by voice"}
-                {editorVoiceState === "listening" ? <span className="editor-voice-bars" aria-hidden="true"><i /><i /><i /><i /></span> : null}
+                {isContextPanelCollapsed ? "‹" : "›"}
               </button>
             </div>
 
-            <div className="ide-coach-console-body">
-              {activeInlineCoachHint ? (
-                <>
-                  {activeInlineCoachHint.prompt ? <p className="ide-coach-question"><span>You asked</span>{activeInlineCoachHint.prompt}</p> : null}
-                  <div className={`ide-coach-answer ide-coach-answer-${activeInlineCoachHint.status}`}>
-                    <span>{activeInlineCoachHint.kind === "feedback" ? "Line note" : activeInlineCoachHint.status === "listening" ? "Live transcript" : "Coach"}</span>
-                    <p>{activeInlineCoachHint.status === "loading" ? activeInlineCoachHint.text || "Reading your code and shaping one useful next step…" : activeInlineCoachHint.text}</p>
+            {isContextPanelCollapsed ? (
+              <button type="button" className="ide-context-restore" onClick={() => setIsContextPanelCollapsed(false)}>
+                <CoachSparkIcon /><span>Open context</span>
+              </button>
+            ) : activeContextPanel === "coach" ? (
+              <section className={`ide-context-coach ide-coach-console ${activeInlineCoachHint ? "ide-coach-console-active" : ""}`} aria-live="polite">
+                <div className="ide-coach-console-head">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className={`ide-coach-orb ${editorVoiceState === "listening" ? "ide-coach-orb-listening" : ""}`}><CoachSparkIcon /></span>
+                    <div className="min-w-0">
+                      <p>Pattern coach</p>
+                      <span>{activeInlineCoachHint ? `Focused on line ${activeInlineCoachHint.lineNumber}` : "Ready in your editor"}</span>
+                    </div>
                   </div>
-                </>
-              ) : (
-                <div className="ide-coach-empty">
-                  <strong>Ask without leaving your code.</strong>
-                  <p>Place your cursor near the code you want to discuss, tap the microphone, and speak naturally. Your transcript and the complete answer will appear here.</p>
+                  <button
+                    type="button"
+                    onClick={() => void toggleEditorVoice()}
+                    disabled={editorVoiceState === "thinking" || activeCoachStyle === "off"}
+                    className={`ide-coach-voice ${editorVoiceState !== "idle" ? "ide-coach-voice-active" : ""}`}
+                    aria-label={editorVoiceState === "listening" ? "Finish voice question" : "Ask the coach by voice"}
+                  >
+                    <span>{editorVoiceState === "thinking" ? <span className="session-mini-loader" /> : <MicrophoneIcon />}</span>
+                    {editorVoiceState === "listening" ? "Listening" : editorVoiceState === "thinking" ? "Responding" : "Ask by voice"}
+                    {editorVoiceState === "listening" ? <span className="editor-voice-bars" aria-hidden="true"><i /><i /><i /><i /></span> : null}
+                  </button>
                 </div>
-              )}
-            </div>
-
-            <div className="ide-coach-console-foot">
-              <span>Code feedback appears here after you finish a meaningful line.</span>
-              {activeInlineCoachHint ? (
-                <div>
-                  {activeInlineCoachHint.status === "ready" ? (
-                    <button type="button" onClick={() => { setCoachDraft(`Can you explain your note on this line: ${activeInlineCoachHint.sourceLine}`); setIsCoachPanelOpen(true); }}>Continue in conversation</button>
+                <div className="ide-coach-console-body">
+                  {activeInlineCoachHint ? (
+                    <>
+                      {activeInlineCoachHint.prompt ? <p className="ide-coach-question"><span>You asked</span>{activeInlineCoachHint.prompt}</p> : null}
+                      <div className={`ide-coach-answer ide-coach-answer-${activeInlineCoachHint.status}`}>
+                        <span>{activeInlineCoachHint.kind === "feedback" ? "Line note" : activeInlineCoachHint.status === "listening" ? "Live transcript" : "Coach"}</span>
+                        <p>{activeInlineCoachHint.status === "loading" ? activeInlineCoachHint.text || "Reading your code and shaping one useful next step…" : activeInlineCoachHint.text}</p>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="ide-coach-empty">
+                      <strong>Ask without leaving your code.</strong>
+                      <p>Put your cursor near the code, tap the microphone, and speak naturally. The complete answer stays here beside the editor.</p>
+                    </div>
+                  )}
+                </div>
+                <div className="ide-coach-console-foot">
+                  <span>Feedback appears after a meaningful line.</span>
+                  {activeInlineCoachHint ? (
+                    <div>
+                      {activeInlineCoachHint.status === "ready" ? <button type="button" onClick={() => { setCoachDraft(`Can you explain your note on this line: ${activeInlineCoachHint.sourceLine}`); setIsCoachPanelOpen(true); }}>Continue</button> : null}
+                      <button type="button" onClick={() => setInlineCoachHints((current) => current.filter((hint) => hint.id !== activeInlineCoachHint.id))}>Clear</button>
+                    </div>
                   ) : null}
-                  <button type="button" onClick={() => setInlineCoachHints((current) => current.filter((hint) => hint.id !== activeInlineCoachHint.id))}>Clear</button>
                 </div>
-              ) : null}
-            </div>
-          </section>
+              </section>
+            ) : activeContextPanel === "problem" ? (
+              <section className="ide-context-content">
+                <p className="ide-context-kicker">Problem statement</p>
+                <h3>{activeProblem.title}</h3>
+                <div className="ide-context-badges"><span>{correctPattern.label}</span>{contrastPattern ? <span>vs {contrastPattern.label}</span> : null}</div>
+                <p className="ide-problem-copy">{problemText}</p>
+              </section>
+            ) : (
+              <section className="ide-context-content ide-tests-panel">
+                <div className="ide-tests-heading">
+                  <div><p className="ide-context-kicker">Test cases</p><h3>{runSummary ? `${runSummary.passed} of ${runSummary.total} passing` : "Check your solution"}</h3></div>
+                  <button type="button" onClick={addCustomTestCase}>+ Add</button>
+                </div>
+                <div className="ide-test-list">
+                  {testCases.map((testCase) => {
+                    const result = runResults?.find((entry) => entry.label === testCase.label);
+                    return <button key={testCase.id} type="button" onClick={() => setSelectedTestCaseId(testCase.id)} className={selectedTestCase?.id === testCase.id ? "ide-test-active" : ""}><span>{testCase.label}</span><small>{result ? result.passed ? "Passed" : "Failed" : testCase.kind === "custom" ? "Custom" : "Ready"}</small></button>;
+                  })}
+                </div>
+                {selectedTestCase ? (
+                  <div className="ide-test-editor">
+                    <div className="ide-test-editor-title"><strong>{selectedTestCase.label}</strong>{selectedTestCase.kind === "custom" ? <button type="button" onClick={() => removeCustomTestCase(selectedTestCase.id)}>Remove</button> : null}</div>
+                    <label>Input<textarea value={selectedTestCase.argsExpression} onChange={(event) => updateTestCase(selectedTestCase.id, "argsExpression", event.target.value)} rows={3} spellCheck={false} /></label>
+                    <label>Expected<textarea value={selectedTestCase.expectedExpression} onChange={(event) => updateTestCase(selectedTestCase.id, "expectedExpression", event.target.value)} rows={3} spellCheck={false} /></label>
+                  </div>
+                ) : null}
+                {runnerError ? <p className="ide-test-error">{runnerError}</p> : null}
+                {runResults ? <div className="ide-test-results">{runResults.map((result) => <div key={result.label} className={result.passed ? "ide-test-result-pass" : "ide-test-result-fail"}><strong>{result.label}</strong><span>{result.actual} / {result.expected}</span></div>)}</div> : null}
+              </section>
+            )}
+          </aside>
         </section>
       </div>
     </div>
