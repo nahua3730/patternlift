@@ -784,7 +784,7 @@ export function PracticeWorkspace({
     return () => {
       disposable.dispose();
     };
-  }, [activeCoachStyle, mode, selectedLanguage, sendInlineLineFeedback]);
+  }, [activeCoachStyle, editorReadyVersion, mode, selectedLanguage, sendInlineLineFeedback]);
 
   function updateLiveVoiceHint(status: InlineCoachHint["status"], text: string) {
     const hintId = liveVoiceHintIdRef.current;
