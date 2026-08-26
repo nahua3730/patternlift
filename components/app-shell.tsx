@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { GlobalCoachDock } from "@/components/global-coach-dock";
 import { LogoutButton } from "@/components/logout-button";
 import type { SessionUser } from "@/lib/auth";
@@ -30,6 +31,7 @@ const pageMeta: Record<string, { eyebrow: string; title: string; backHref: strin
 
 export function AppShell({ children, currentUser }: { children: React.ReactNode; currentUser: SessionUser | null }) {
   const pathname = usePathname();
+  const [railCollapsed, setRailCollapsed] = useState(false);
   const isHome = pathname === "/";
   const isAuthPage = pathname === "/login" || pathname === "/signup";
   const isPracticeWorkspace = pathname === "/practice";
@@ -60,16 +62,27 @@ export function AppShell({ children, currentUser }: { children: React.ReactNode;
 
   return (
     <div className="product-shell min-h-screen">
-      <aside className="product-rail hidden lg:flex">
-        <Brand dark />
+      <aside className={`product-rail hidden lg:flex ${railCollapsed ? "product-rail-collapsed" : ""}`}>
+        <div className="flex items-center justify-between gap-2">
+          <Brand dark compact={railCollapsed} />
+          <button
+            type="button"
+            className="rail-collapse-button"
+            onClick={() => setRailCollapsed((current) => !current)}
+            aria-label={railCollapsed ? "Expand navigation" : "Collapse navigation"}
+            title={railCollapsed ? "Expand navigation" : "Collapse navigation"}
+          >
+            {railCollapsed ? "→" : "←"}
+          </button>
+        </div>
         <div className="mt-10">
-          <p className="rail-section-label">Workspace</p>
+          <p className={`rail-section-label ${railCollapsed ? "sr-only" : ""}`}>Workspace</p>
           <nav className="mt-3 space-y-1">
             {navigation.slice(0, 3).map((item) => <RailLink key={item.href} item={item} pathname={pathname} />)}
           </nav>
         </div>
         <div className="mt-8">
-          <p className="rail-section-label">Insights</p>
+          <p className={`rail-section-label ${railCollapsed ? "sr-only" : ""}`}>Insights</p>
           <nav className="mt-3 space-y-1">
             {navigation.slice(3).map((item) => <RailLink key={item.href} item={item} pathname={pathname} />)}
           </nav>
@@ -78,21 +91,18 @@ export function AppShell({ children, currentUser }: { children: React.ReactNode;
           <div className="rail-avatar" aria-hidden="true">
             {(currentUser?.displayName || currentUser?.email || "P").slice(0, 1).toUpperCase()}
           </div>
-          <div className="min-w-0 flex-1">
+          <div className={`min-w-0 flex-1 ${railCollapsed ? "hidden" : ""}`}>
             <p className="truncate text-sm font-medium text-white">{currentUser?.displayName || "Your workspace"}</p>
             <p className="truncate text-xs text-slate-500">{currentUser?.email}</p>
           </div>
-          <LogoutButton className="rail-logout" aria-label="Log out">↗</LogoutButton>
+          <LogoutButton className={`rail-logout ${railCollapsed ? "hidden" : ""}`} aria-label="Log out">↗</LogoutButton>
         </div>
       </aside>
 
-      <div className="min-w-0 flex-1 lg:pl-[15.5rem]">
+      <div className={`product-stage min-w-0 flex-1 ${railCollapsed ? "product-stage-expanded" : ""}`}>
         <header className="mobile-product-header lg:hidden">
           <Brand dark={false} />
-          <nav className="flex items-center gap-1">
-            <Link href="/progress" className="mobile-header-link">Progress</Link>
-            <Link href="/review" className="mobile-header-link">Review</Link>
-          </nav>
+          <span className="status-dot" aria-label="Synced" />
         </header>
         <header className="product-topbar">
           <div className="flex min-w-0 items-center gap-3">
@@ -109,7 +119,7 @@ export function AppShell({ children, currentUser }: { children: React.ReactNode;
         </header>
         <main className={`workspace-content ${isPracticeWorkspace ? "workspace-content-wide" : ""}`}>{children}</main>
       </div>
-      <GlobalCoachDock />
+      <MobileTabBar pathname={pathname} />
     </div>
   );
 }
@@ -119,21 +129,37 @@ function RailLink({ item, pathname }: { item: (typeof navigation)[number]; pathn
   return (
     <Link href={item.href} className={`rail-link ${active ? "rail-link-active" : ""}`}>
       <NavGlyph icon={item.icon} />
-      <span>{item.label}</span>
+      <span className="rail-link-label">{item.label}</span>
       {active ? <span className="ml-auto h-1.5 w-1.5 rounded-full bg-cyan-300" /> : null}
     </Link>
   );
 }
 
-function Brand({ dark }: { dark: boolean }) {
+function Brand({ dark, compact = false }: { dark: boolean; compact?: boolean }) {
   return (
     <Link href="/" className="flex items-center gap-3">
       <span className={`brand-mark ${dark ? "brand-mark-rail" : ""}`} aria-hidden="true"><span /><span /><span /></span>
-      <span>
+      <span className={compact ? "hidden" : ""}>
         <span className={`block text-sm font-semibold tracking-[-0.02em] ${dark ? "text-white" : "text-slate-900"}`}>PatternLift</span>
         <span className="block text-[11px] text-slate-500">Adaptive mastery</span>
       </span>
     </Link>
+  );
+}
+
+function MobileTabBar({ pathname }: { pathname: string }) {
+  return (
+    <nav className="mobile-tab-bar lg:hidden" aria-label="Primary navigation">
+      {navigation.map((item) => {
+        const active = pathname === item.match || pathname.startsWith(`${item.match}/`);
+        return (
+          <Link key={item.href} href={item.href} className={active ? "mobile-tab-active" : ""}>
+            <NavGlyph icon={item.icon} />
+            <span>{item.label}</span>
+          </Link>
+        );
+      })}
+    </nav>
   );
 }
 

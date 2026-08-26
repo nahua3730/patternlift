@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { ProductList, ProductRow, StatusBadge } from "@/components/product-system";
 
 type ReviewItem = {
   id: string;
@@ -416,33 +417,17 @@ export function ReviewQueue({ items, history }: ReviewQueueProps) {
           </div>
           <span className="text-sm text-black/54">Intervals expand after strong recall</span>
         </div>
-        <div className="mt-4 space-y-3">
+        <ProductList className="mt-4">
           {scheduledItems.map((item) => (
-            <article key={item.id} className="rounded-[8px] border border-black/10 bg-white/88 p-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h3 className="text-sm font-semibold text-ink">{item.problemTitle}</h3>
-                <div className="flex flex-wrap gap-2">
-                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                    item.urgency === "high" ? "bg-rose-100 text-rose-700" : "bg-sky-100 text-sky-700"
-                  }`}>
-                    {item.urgency} priority
-                  </span>
-                  <span className="rounded-full border border-black/10 bg-mist px-3 py-1 text-xs font-medium text-black/60">
-                    {formatDueDate(item.dueAt)}
-                  </span>
-                </div>
-              </div>
-              <p className="mt-3 text-sm leading-6 text-black/74">
-                Review {item.targetPatternLabel} against {item.contrastPatternLabel}
-              </p>
-              <p className="mt-2 text-sm leading-6 text-black/62">{item.reviewQuestion}</p>
-              <p className="mt-3 text-xs text-black/44">
-                {item.intervalDays ? `${item.intervalDays}-day interval` : "First recall"}
-                {item.repetitions ? ` · review ${item.repetitions}` : ""}
-              </p>
-            </article>
+            <ProductRow
+              key={item.id}
+              leading={<span className="review-row-mark">↻</span>}
+              title={<span className="flex flex-wrap items-center gap-2">{item.problemTitle}<StatusBadge tone={item.urgency === "high" ? "attention" : "info"}>{item.urgency}</StatusBadge></span>}
+              description={<><span className="font-medium text-slate-700">{item.targetPatternLabel} vs. {item.contrastPatternLabel}</span><span className="mt-1 block">{item.reviewQuestion}</span></>}
+              meta={<span className="space-y-1 text-right"><span className="block font-semibold text-slate-700">{formatDueDate(item.dueAt)}</span><span className="block">{item.intervalDays ? `${item.intervalDays}-day interval` : "First recall"}</span></span>}
+            />
           ))}
-        </div>
+        </ProductList>
       </div>
     </section>
   );

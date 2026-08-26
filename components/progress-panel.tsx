@@ -9,6 +9,7 @@ import {
   roadmapTrackTotals
 } from "@/lib/product";
 import { buildMasteryModel } from "@/lib/mastery";
+import { ProductList, ProductRow, StatStrip, StatusBadge } from "@/components/product-system";
 
 type HistoryItem = {
   id: string;
@@ -188,12 +189,12 @@ export function ProgressPanel({
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Attempts" value={String(totalAttempts)} />
-          <StatCard label="Strong reps" value={String(solidAttempts)} />
-          <StatCard label="Review cards" value={String(reviewCount)} />
-          <StatCard label="Avg. mastery" value={`${averageMastery}%`} />
-        </div>
+        <StatStrip items={[
+          { label: "Attempts", value: String(totalAttempts) },
+          { label: "Strong reps", value: String(solidAttempts) },
+          { label: "Review cards", value: String(reviewCount) },
+          { label: "Average mastery", value: `${averageMastery}%` }
+        ]} />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
@@ -210,38 +211,19 @@ export function ProgressPanel({
             </span>
           </div>
 
-          <div className="mt-5 space-y-3">
+          <ProductList className="mt-5">
             {(practicedMastery.length > 0 ? practicedMastery : masteryModel.mastery.slice(0, 4))
               .slice(0, 5)
               .map((pattern) => (
-                <article key={pattern.id} className="rounded-[8px] border border-black/10 bg-white/88 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h4 className="font-semibold text-ink">{pattern.label}</h4>
-                        <span className="rounded-full bg-mist px-2.5 py-1 text-xs font-medium capitalize text-black/58">
-                          {pattern.status}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-sm text-black/54">
-                        {pattern.attempts} reps · {pattern.correctRecognitions} recognized cold · {pattern.averageHints.toFixed(1)} avg hints
-                      </p>
-                    </div>
-                    <span className="text-xl font-semibold text-ink">{pattern.mastery}%</span>
-                  </div>
-                  <ProgressBar percent={pattern.mastery} tone="lake" className="mt-3" />
-                  <p className="mt-3 text-sm leading-6 text-black/64">{pattern.diagnosis}</p>
-                  {pattern.recommendedProblemId ? (
-                    <Link
-                      href={`/practice?problem=${pattern.recommendedProblemId}&mode=recognize&coach=guided`}
-                      className="mt-3 inline-flex text-sm font-semibold text-coral hover:underline"
-                    >
-                      Next drill: {pattern.recommendedProblemTitle} →
-                    </Link>
-                  ) : null}
-                </article>
+                <ProductRow
+                  key={pattern.id}
+                  leading={<span className="mastery-row-score">{pattern.mastery}</span>}
+                  title={<span className="flex flex-wrap items-center gap-2">{pattern.label}<StatusBadge tone={pattern.status === "strong" ? "success" : "info"}>{pattern.status}</StatusBadge></span>}
+                  description={<><span>{pattern.attempts} reps · {pattern.correctRecognitions} recognized cold · {pattern.averageHints.toFixed(1)} avg hints</span><ProgressBar percent={pattern.mastery} tone="lake" className="mt-2" /><span className="mt-2 block">{pattern.diagnosis}</span></>}
+                  trailing={pattern.recommendedProblemId ? <Link href={`/practice?problem=${pattern.recommendedProblemId}&mode=recognize&coach=guided`} className="row-action">Next drill →</Link> : null}
+                />
               ))}
-          </div>
+          </ProductList>
         </div>
 
         <div className="uiverse-panel p-6">
@@ -249,21 +231,15 @@ export function ProgressPanel({
             Confusion pairs
           </p>
           <h3 className="mt-2 text-2xl font-semibold text-ink">Where your instinct crosses wires.</h3>
-          <div className="mt-5 space-y-3">
+          <ProductList className="mt-5">
             {masteryModel.confusions.length > 0 ? masteryModel.confusions.slice(0, 5).map((pair) => (
-              <article key={`${pair.predicted}-${pair.actual}`} className="rounded-[8px] border border-black/10 bg-white/88 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-black/44">
-                  Predicted → actual
-                </p>
-                <p className="mt-2 font-semibold text-ink">{pair.predicted} → {pair.actual}</p>
-                <p className="mt-2 text-sm text-black/58">Seen {pair.count} time{pair.count === 1 ? "" : "s"}. Contrast these before the next solve.</p>
-              </article>
+              <ProductRow key={`${pair.predicted}-${pair.actual}`} title={`${pair.predicted} → ${pair.actual}`} description={`Contrast these before the next solve.`} meta={`${pair.count} miss${pair.count === 1 ? "" : "es"}`} />
             )) : (
               <div className="rounded-[8px] border border-dashed border-black/12 bg-white/60 p-5 text-sm leading-6 text-black/58">
                 No confusion pair yet. PatternLift will surface one as soon as a prediction differs from the actual pattern.
               </div>
             )}
-          </div>
+          </ProductList>
           <div className="mt-4 rounded-[8px] bg-[#fff5ed] p-4 text-sm leading-6 text-black/64">
             Current recognition accuracy: <span className="font-semibold text-ink">{accuracy}%</span>. High-confidence misses are weighted more heavily so calibration improves too.
           </div>
@@ -422,15 +398,6 @@ export function ProgressPanel({
         </div>
       </div>
     </section>
-  );
-}
-
-function StatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[8px] border border-black/10 bg-white/88 p-4">
-      <p className="text-sm text-black/58">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-ink">{value}</p>
-    </div>
   );
 }
 

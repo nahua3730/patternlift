@@ -4,6 +4,14 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { usePatternLiftState } from "@/components/patternlift-state";
 import {
+  ProductEmptyState,
+  ProductList,
+  ProductRow,
+  ProductSurface,
+  SegmentedControl,
+  StatusBadge
+} from "@/components/product-system";
+import {
   allProblems,
   getOfficialProblemRoadmapMeta,
   patternOptions,
@@ -111,95 +119,63 @@ export function ProblemSelection({
         ) : null}
       </section>
 
-      <section className="uiverse-panel px-6 py-6 md:px-8">
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-          <label className="text-sm text-black/68">
-            Search questions
+      <ProductSurface className="overflow-hidden">
+        <div className="flex flex-col gap-4 border-b border-slate-200 p-4 sm:flex-row sm:items-end sm:justify-between sm:p-5">
+          <label className="min-w-0 flex-1 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+            Search problems
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              className="uiverse-field mt-2 block w-full px-4 py-3 text-sm text-ink"
+              className="uiverse-field mt-2 block w-full px-4 py-3 text-sm font-normal normal-case tracking-normal text-ink"
               placeholder="Try: graph, substring, dp, binary search..."
             />
           </label>
 
-          <div className="flex flex-wrap gap-2">
-            {[
-              { id: "all" as const, label: "All" },
-              { id: "official" as const, label: "Official" },
-              { id: "blind75" as const, label: "75" },
-              { id: "neetcode150" as const, label: "150" }
-            ].map((filterOption) => {
-              const isActive = roadmapFilter === filterOption.id;
-              return (
-                <button
-                  key={filterOption.id}
-                  type="button"
-                  onClick={() => setRoadmapFilter(filterOption.id)}
-                  className={`coach-chip px-4 py-3 text-sm font-medium ${
-                    isActive ? "border-coral/18 bg-coral text-white" : "text-black/68"
-                  }`}
-                >
-                  {filterOption.label}
-                </button>
-              );
-            })}
-          </div>
+          <SegmentedControl
+            value={roadmapFilter}
+            onChange={setRoadmapFilter}
+            options={[
+              { value: "all", label: "All" },
+              { value: "official", label: "Official" },
+              { value: "blind75", label: "Blind 75" },
+              { value: "neetcode150", label: "NC 150" }
+            ]}
+          />
         </div>
-      </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {filteredProblems.map(({ problem }) => {
+        <div className="flex items-center justify-between gap-3 px-5 py-3 text-xs text-slate-500">
+          <span>{filteredProblems.length} problems</span>
+          <span>{completedProblemIds.size} practiced</span>
+        </div>
+
+        {filteredProblems.length > 0 ? <ProductList>{filteredProblems.map(({ problem }) => {
           const meta = getOfficialProblemRoadmapMeta(problem.id);
           const params = new URLSearchParams(baseParams);
           params.set("problem", problem.id);
           const href = `/practice?${params.toString()}`;
 
+          const pattern = patternOptions.find((entry) => entry.id === problem.targetPatternId);
           return (
-            <Link key={problem.id} href={href} className="pattern-card text-left">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-lg font-semibold text-ink">{problem.title}</p>
-                {completedProblemIds.has(problem.id) ? (
-                  <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700">
-                    Practiced
+            <Link key={problem.id} href={href} className="product-row-link">
+              <ProductRow
+                leading={<span className="problem-row-index">{meta?.leetcodeNumber ?? problem.title.slice(0, 2).toUpperCase()}</span>}
+                title={
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span>{problem.title}</span>
+                    {completedProblemIds.has(problem.id) ? <StatusBadge tone="success">Practiced</StatusBadge> : null}
+                    <StatusBadge tone={problem.difficulty === "Hard" ? "attention" : problem.difficulty === "Easy" ? "success" : "neutral"}>{problem.difficulty}</StatusBadge>
                   </span>
-                ) : null}
-                {meta?.leetcodeNumber ? (
-                  <span className="rounded-full border border-black/10 bg-white px-2 py-1 text-[11px] font-medium text-black/60">
-                    #{meta.leetcodeNumber}
-                  </span>
-                ) : null}
-              </div>
-
-              <p className="mt-3 line-clamp-4 text-sm leading-7 text-black/66">
-                {problem.prompt}
-              </p>
-
-              <div className="mt-5 flex flex-wrap gap-2">
-                <span className="rounded-full border border-black/10 bg-white px-3 py-2 text-xs font-medium text-black/62">
-                  {problem.category}
-                </span>
-                <span className="rounded-full border border-black/10 bg-white px-3 py-2 text-xs font-medium text-black/62">
-                  {problem.difficulty}
-                </span>
-                {meta?.tracks.map((track) => (
-                  <span
-                    key={`${problem.id}-${track}`}
-                    className="rounded-full border border-black/10 bg-white px-3 py-2 text-xs font-medium text-black/62"
-                  >
-                    {track === "blind75" ? "Blind 75" : "NeetCode 150"}
-                  </span>
-                ))}
-              </div>
-
-              <div className="mt-6 flex items-center justify-between text-sm font-medium text-ink">
-                <span>Open workspace</span>
-                <span aria-hidden="true">→</span>
-              </div>
+                }
+                description={<span className="line-clamp-2">{problem.prompt}</span>}
+                meta={<span>{pattern?.label ?? problem.category}</span>}
+                trailing={<span className="product-row-arrow" aria-hidden="true">→</span>}
+              />
             </Link>
           );
-        })}
-      </section>
+        })}</ProductList> : (
+          <ProductEmptyState title="No matching problems" description="Try a broader search or switch back to all roadmaps." />
+        )}
+      </ProductSurface>
     </div>
   );
 }
