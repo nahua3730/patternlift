@@ -66,7 +66,10 @@ export async function dbAll<T>(query: string, params: SqlValue[] = []) {
 
 export async function ensureDatabase() {
   if (!postgresSql) return;
-  globalForDb.patternliftMigration ??= runPostgresMigrations(postgresSql);
+  globalForDb.patternliftMigration ??= runPostgresMigrations(postgresSql).catch((error) => {
+    globalForDb.patternliftMigration = undefined;
+    throw error;
+  });
   await globalForDb.patternliftMigration;
 }
 
@@ -76,23 +79,21 @@ function toPostgresQuery(query: string) {
 }
 
 async function runPostgresMigrations(sql: NeonClient) {
-  await sql.query(`
-    CREATE TABLE IF NOT EXISTS users (
+  const statements = [
+    `CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
       email TEXT NOT NULL UNIQUE,
       password_hash TEXT NOT NULL,
       display_name TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS sessions (
+    )`,
+    `CREATE TABLE IF NOT EXISTS sessions (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       expires_at TIMESTAMPTZ NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS attempts (
+    )`,
+    `CREATE TABLE IF NOT EXISTS attempts (
       id TEXT PRIMARY KEY,
       user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
       problem_id TEXT NOT NULL,
@@ -109,9 +110,8 @@ async function runPostgresMigrations(sql: NeonClient) {
       confused_with TEXT,
       input_method TEXT NOT NULL DEFAULT 'text',
       created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS review_items (
+    )`,
+    `CREATE TABLE IF NOT EXISTS review_items (
       id TEXT PRIMARY KEY,
       user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
       problem_title TEXT NOT NULL,
@@ -123,12 +123,15 @@ async function runPostgresMigrations(sql: NeonClient) {
       interval_days INTEGER NOT NULL DEFAULT 1,
       repetitions INTEGER NOT NULL DEFAULT 0,
       created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );
+    )`,
+    "CREATE INDEX IF NOT EXISTS sessions_user_id_idx ON sessions(user_id)",
+    "CREATE INDEX IF NOT EXISTS attempts_user_created_idx ON attempts(user_id, created_at DESC)",
+    "CREATE INDEX IF NOT EXISTS review_items_user_due_idx ON review_items(user_id, due_at)",
+  ];
 
-    CREATE INDEX IF NOT EXISTS sessions_user_id_idx ON sessions(user_id);
-    CREATE INDEX IF NOT EXISTS attempts_user_created_idx ON attempts(user_id, created_at DESC);
-    CREATE INDEX IF NOT EXISTS review_items_user_due_idx ON review_items(user_id, due_at);
-  `);
+  for (const statement of statements) {
+    await sql.query(statement);
+  }
 }
 
 function runSqliteMigrations(db: DatabaseSync) {
