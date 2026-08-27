@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { StatusBadge } from "@/components/product-system";
-import { fundamentalsSeries, fundamentalsSeriesUrl } from "@/lib/fundamentals-series";
+import { fundamentalsSeries, fundamentalsSeriesUrl, type FundamentalsEpisode } from "@/lib/fundamentals-series";
 import { TIER_LABEL, tierForReps } from "@/lib/mastery-tiers";
 import { allProblems } from "@/lib/product";
 
@@ -14,6 +14,37 @@ const TIER_TONE = {
   practiced: "info",
   mastered: "success"
 } as const;
+
+function episodeVideoUrl(ep: FundamentalsEpisode) {
+  return ep.bvid ? `https://www.bilibili.com/video/${ep.bvid}/` : fundamentalsSeriesUrl;
+}
+
+function ProblemRow({ problemId, reps, muted = false }: { problemId: string; reps: Record<string, number>; muted?: boolean }) {
+  const problem = problemsById.get(problemId);
+  if (!problem) return null;
+  const tier = tierForReps(reps[problemId] ?? 0);
+  return (
+    <div
+      className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-3 ${
+        muted ? "border-dashed border-black/12 bg-white/30" : "border-black/8 bg-white/60"
+      }`}
+    >
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium text-ink">{problem.title}</p>
+        <p className="text-xs text-black/50">{problem.difficulty}</p>
+      </div>
+      <div className="flex shrink-0 items-center gap-3">
+        <StatusBadge tone={TIER_TONE[tier]}>{TIER_LABEL[tier]}</StatusBadge>
+        <Link
+          href={`/practice?${DEFAULT_HREF_PARAMS}&problem=${problemId}`}
+          className="rounded-full bg-ink px-3 py-2 text-xs font-semibold text-white transition hover:opacity-85"
+        >
+          Practice →
+        </Link>
+      </div>
+    </div>
+  );
+}
 
 export function FundamentalsSeriesView({ reps }: { reps: Record<string, number> }) {
   const matchedProblemCount = fundamentalsSeries.reduce((sum, ep) => sum + ep.problemIds.length, 0);
@@ -71,7 +102,7 @@ export function FundamentalsSeriesView({ reps }: { reps: Record<string, number> 
                 <p className="text-sm text-black/60">{ep.titleEn}</p>
               </div>
               <a
-                href={fundamentalsSeriesUrl}
+                href={episodeVideoUrl(ep)}
                 target="_blank"
                 rel="noreferrer"
                 className="shrink-0 rounded-full border border-black/10 bg-mist px-3 py-2 text-xs font-medium text-black/72 transition hover:border-black/24"
@@ -84,31 +115,20 @@ export function FundamentalsSeriesView({ reps }: { reps: Record<string, number> 
 
             {ep.problemIds.length > 0 ? (
               <div className="mt-4 grid gap-2">
-                {ep.problemIds.map((problemId) => {
-                  const problem = problemsById.get(problemId);
-                  if (!problem) return null;
-                  const tier = tierForReps(reps[problemId] ?? 0);
-                  return (
-                    <div
-                      key={problemId}
-                      className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-black/8 bg-white/60 px-4 py-3"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-ink">{problem.title}</p>
-                        <p className="text-xs text-black/50">{problem.difficulty}</p>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-3">
-                        <StatusBadge tone={TIER_TONE[tier]}>{TIER_LABEL[tier]}</StatusBadge>
-                        <Link
-                          href={`/practice?${DEFAULT_HREF_PARAMS}&problem=${problemId}`}
-                          className="rounded-full bg-ink px-3 py-2 text-xs font-semibold text-white transition hover:opacity-85"
-                        >
-                          Practice →
-                        </Link>
-                      </div>
-                    </div>
-                  );
-                })}
+                {ep.problemIds.map((problemId) => (
+                  <ProblemRow key={problemId} problemId={problemId} reps={reps} />
+                ))}
+              </div>
+            ) : null}
+
+            {ep.relatedProblemIds && ep.relatedProblemIds.length > 0 ? (
+              <div className="mt-4 grid gap-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-black/40">
+                  Related practice (different problem, same technique)
+                </p>
+                {ep.relatedProblemIds.map((problemId) => (
+                  <ProblemRow key={problemId} problemId={problemId} reps={reps} muted />
+                ))}
               </div>
             ) : null}
           </article>

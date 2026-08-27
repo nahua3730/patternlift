@@ -10,6 +10,9 @@ export type FundamentalsEpisode = {
   problemIds: string[];
   note?: string;
   bvid?: string;
+  // Same technique family as the video, but not the exact problem it teaches -
+  // kept separate from problemIds so the UI can be honest about the difference.
+  relatedProblemIds?: string[];
 };
 
 export const fundamentalsSeriesUrl = "https://space.bilibili.com/206214/lists/842776?type=season";
@@ -174,7 +177,8 @@ export const fundamentalsSeries: FundamentalsEpisode[] = [
     titleCn: "区间 DP：最长回文子序列",
     titleEn: "Interval DP: Longest Palindromic Subsequence",
     problemIds: [],
-    note: "Longest Palindromic Subsequence isn't in the catalog - the catalog's Longest Palindromic Substring is a different problem, so this step just links the video.",
+    note: "Longest Palindromic Subsequence (the video's actual problem) isn't in the catalog yet - Longest Palindromic Substring below is a different problem in the same palindrome-DP family, for related practice.",
+    relatedProblemIds: ["official-longest-palindromic-substring"],
     bvid: "BV1Gs4y1E7EU"
   },
   {
@@ -189,7 +193,8 @@ export const fundamentalsSeries: FundamentalsEpisode[] = [
     titleCn: "树形 DP：打家劫舍 III",
     titleEn: "Tree DP: House Robber III",
     problemIds: [],
-    note: "Not in the catalog yet - watch the explainer and solve it directly on LeetCode.",
+    note: "House Robber III (the video's actual problem, tree DP) isn't in the catalog yet - House Robber below is the same include/exclude recurrence on an array instead of a tree, for related practice.",
+    relatedProblemIds: ["house-robber"],
     bvid: "BV1vu4y1f7dn"
   },
   {
@@ -197,7 +202,8 @@ export const fundamentalsSeries: FundamentalsEpisode[] = [
     titleCn: "树形 DP：监控二叉树",
     titleEn: "Tree DP: Binary Tree Cameras",
     problemIds: [],
-    note: "Not in the catalog yet - watch the explainer and solve it directly on LeetCode.",
+    note: "Binary Tree Cameras (the video's actual problem) isn't in the catalog yet - Diameter of a Binary Tree below uses the same tree-DP shape (each node returns state to its parent), for related practice.",
+    relatedProblemIds: ["official-diameter-of-binary-tree"],
     bvid: "BV1oF411U7qL"
   },
   {
