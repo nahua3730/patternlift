@@ -47,6 +47,7 @@ export async function POST(request: Request) {
         titleCn: episode.titleCn,
         titleEn: episode.titleEn,
         problemTitles,
+        technicalBrief: episode.technicalBrief,
         userMessage: body.userMessage,
         conversationHistory: body.conversationHistory ?? []
       }),
