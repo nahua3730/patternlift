@@ -69,7 +69,8 @@ export async function GET() {
       rationale: plan.rationale,
       totalWeeks: plan.totalWeeks,
       dailyMinutes: plan.dailyMinutes,
-      totalDays: plan.days.length
+      totalDays: plan.days.length,
+      coachStyle: plan.coachStyle ?? "guided"
     },
     today: {
       dayNumber: day.dayNumber,

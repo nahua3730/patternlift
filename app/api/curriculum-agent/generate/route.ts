@@ -12,6 +12,8 @@ import {
 import {
   buildCurriculumPlanSchema,
   buildFallbackWeeklyPlan,
+  coachStyleForExperience,
+  ensureFullPatternCoverage,
   expandWeeklyPlanToDays,
   formatInterviewDate,
   resolveDeadlineWeeks,
@@ -93,7 +95,12 @@ export async function POST(request: Request) {
     toolTrace.push("fallback:missing_openai_api_key");
   }
 
-  const plan: CurriculumPlan = expandWeeklyPlanToDays(weeklyPlan, DEFAULT_TRACK);
+  const coveredWeekly = ensureFullPatternCoverage(weeklyPlan);
+  const plan: CurriculumPlan = expandWeeklyPlanToDays(
+    coveredWeekly,
+    DEFAULT_TRACK,
+    coachStyleForExperience(answers.experienceLevel)
+  );
 
   await dbExecute(
     `
@@ -119,6 +126,7 @@ async function runCurriculumAgent(answers: OnboardingAnswers, totalWeeks: number
       `FIXED CONSTRAINTS, not your decision: totalWeeks MUST be exactly ${totalWeeks} and dailyMinutes MUST be exactly ${answers.dailyMinutes} — these are already determined by the learner's own answers. Your only job is deciding which patterns each of the ${totalWeeks} weeks focuses on and the pacing (dominantStudyMode, includesReviewDay) within that fixed structure.`,
       "Call get_roadmap_overview before deciding pattern order, so pacing reflects real problem availability.",
       `Learner: experience level "${answers.experienceLevel}", ${answers.interviewDate ? `interview on ${formatInterviewDate(answers.interviewDate)}` : answers.deadlineWeeks ? `interview in about ${answers.deadlineWeeks} weeks` : "no fixed deadline"}. You may reference that date naturally in the rationale.`,
+      `Coverage requirement: across all ${totalWeeks} weeks combined, every one of these ${patternOptions.length} patterns must appear in at least one week's focusPatternIds — ${patternOptions.map((pattern) => pattern.id).join(", ")}. Spread them out; use 2-3 focusPatternIds per week if that many weeks aren't available to cover them one at a time.`,
       "New learners should start every week with learn mode. Rusty learners should front-load recognize mode. Comfortable learners should lean on practice and review sooner.",
       "Order patterns easier-to-harder: hashing and two-pointers before dynamic-programming and greedy.",
       "Keep the rationale concrete and under 40 words. Never claim evidence the tool did not return."

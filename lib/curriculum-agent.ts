@@ -7,6 +7,11 @@ import {
 
 export type ExperienceLevel = "new" | "rusty" | "comfortable";
 export type StudyMode = "learn" | "recognize" | "practice" | "review";
+export type CoachStyle = "beginner" | "guided" | "optional";
+
+export function coachStyleForExperience(experienceLevel: ExperienceLevel): CoachStyle {
+  return experienceLevel === "new" ? "beginner" : experienceLevel === "rusty" ? "guided" : "optional";
+}
 
 export type OnboardingAnswers = {
   experienceLevel: ExperienceLevel;
@@ -42,6 +47,7 @@ export type CurriculumPlan = {
   rationale: string;
   totalWeeks: number;
   dailyMinutes: number;
+  coachStyle: CoachStyle;
   days: CurriculumDay[];
 };
 
@@ -70,7 +76,7 @@ export function buildCurriculumPlanSchema(totalWeeks: number, dailyMinutes: numb
             focusPatternIds: {
               type: "array",
               minItems: 1,
-              maxItems: 2,
+              maxItems: 3,
               items: { type: "string", enum: patternOptions.map((pattern) => pattern.id) }
             },
             dominantStudyMode: { type: "string", enum: ["learn", "recognize", "practice"] },
@@ -134,14 +140,18 @@ export function buildFallbackWeeklyPlan(answers: OnboardingAnswers): CurriculumW
   const dominantStudyMode: CurriculumWeeklyPlan["weeks"][number]["dominantStudyMode"] =
     answers.experienceLevel === "new" ? "learn" : answers.experienceLevel === "rusty" ? "recognize" : "practice";
 
+  // Size patterns-per-week so every pattern gets covered at least once by the
+  // end of the plan (short plans go wider per week; long plans can go deeper).
+  const patternsPerWeek = Math.min(3, Math.max(1, Math.ceil(order.length / totalWeeks)));
+
   const weeks: CurriculumWeeklyPlan["weeks"] = [];
   let cursor = 0;
   for (let weekNumber = 1; weekNumber <= totalWeeks; weekNumber += 1) {
-    const isLastWeek = weekNumber === totalWeeks;
-    const focusPatternIds = isLastWeek
-      ? [order[cursor % order.length]]
-      : [order[cursor % order.length], order[(cursor + 1) % order.length]];
-    cursor += focusPatternIds.length;
+    const focusPatternIds = Array.from(
+      { length: patternsPerWeek },
+      (_, offset) => order[(cursor + offset) % order.length]
+    );
+    cursor += patternsPerWeek;
     weeks.push({
       weekNumber,
       focusPatternIds,
@@ -185,7 +195,7 @@ export function validateCurriculumWeeklyPlan(
       const focusPatternIds = Array.isArray(week.focusPatternIds)
         ? week.focusPatternIds
             .filter((id): id is string => patternOptions.some((pattern) => pattern.id === id))
-            .slice(0, 2)
+            .slice(0, 3)
         : [];
       if (focusPatternIds.length === 0) return null;
       const dominantStudyMode = (["learn", "recognize", "practice"] as const).includes(
@@ -214,6 +224,27 @@ export function validateCurriculumWeeklyPlan(
   };
 }
 
+export function ensureFullPatternCoverage(plan: CurriculumWeeklyPlan): CurriculumWeeklyPlan {
+  const allIds = patternOptions.map((pattern) => pattern.id);
+  const covered = new Set(plan.weeks.flatMap((week) => week.focusPatternIds));
+  const missing = allIds.filter((id) => !covered.has(id));
+  if (missing.length === 0) return plan;
+
+  const weeks = plan.weeks.map((week) => ({ ...week, focusPatternIds: [...week.focusPatternIds] }));
+  let weekIndex = 0;
+  for (const patternId of missing) {
+    let attempts = 0;
+    while (weeks[weekIndex % weeks.length].focusPatternIds.length >= 3 && attempts < weeks.length) {
+      weekIndex += 1;
+      attempts += 1;
+    }
+    weeks[weekIndex % weeks.length].focusPatternIds.push(patternId);
+    weekIndex += 1;
+  }
+
+  return { ...plan, weeks };
+}
+
 function difficultyRank(difficulty: string) {
   return difficulty === "Easy" ? 0 : difficulty === "Medium" ? 1 : difficulty === "Hard" ? 2 : 3;
 }
@@ -237,10 +268,23 @@ function pickProblem(patternId: string, track: RoadmapTrack, used: Set<string>) 
   return chosen;
 }
 
-export function expandWeeklyPlanToDays(weeklyPlan: CurriculumWeeklyPlan, track: RoadmapTrack): CurriculumPlan {
+// Rough per-problem time budget (coding + coaching), used only to size how
+// many problems a day gets — not a scheduling promise.
+const MINUTES_PER_PROBLEM = 25;
+const MAX_PROBLEMS_PER_DAY = 5;
+
+export function expandWeeklyPlanToDays(
+  weeklyPlan: CurriculumWeeklyPlan,
+  track: RoadmapTrack,
+  coachStyle: CoachStyle
+): CurriculumPlan {
   const used = new Set<string>();
   const days: CurriculumDay[] = [];
   let dayNumber = 0;
+  const problemsPerDay = Math.min(
+    MAX_PROBLEMS_PER_DAY,
+    Math.max(1, Math.round(weeklyPlan.dailyMinutes / MINUTES_PER_PROBLEM))
+  );
 
   for (const week of weeklyPlan.weeks) {
     for (let slot = 0; slot < 7; slot += 1) {
@@ -261,14 +305,14 @@ export function expandWeeklyPlanToDays(weeklyPlan: CurriculumWeeklyPlan, track: 
         continue;
       }
 
-      const problem = pickProblem(patternId, track, used);
+      const problemIds = Array.from({ length: problemsPerDay }, () => pickProblem(patternId, track, used).id);
       days.push({
         dayNumber,
         weekNumber: week.weekNumber,
         patternId,
-        patternLabel: pattern?.label ?? problem.category,
+        patternLabel: pattern?.label ?? "Pattern practice",
         studyMode,
-        problemIds: [problem.id]
+        problemIds
       });
     }
   }
@@ -278,6 +322,7 @@ export function expandWeeklyPlanToDays(weeklyPlan: CurriculumWeeklyPlan, track: 
     rationale: weeklyPlan.rationale,
     totalWeeks: weeklyPlan.totalWeeks,
     dailyMinutes: weeklyPlan.dailyMinutes,
+    coachStyle,
     days
   };
 }

@@ -152,7 +152,21 @@ export function OnboardingFlow({ hasExistingPlan = false }: { hasExistingPlan?: 
   }
 
   if (step === "reveal" && result) {
-    const week1 = result.plan.days.filter((day) => day.weekNumber === 1);
+    const weekNumbers = Array.from(new Set(result.plan.days.map((day) => day.weekNumber))).sort(
+      (left, right) => left - right
+    );
+    const weekSummaries = weekNumbers.map((weekNumber) => {
+      const days = result.plan.days.filter((day) => day.weekNumber === weekNumber);
+      const patterns = Array.from(new Set(days.map((day) => day.patternLabel).filter((label) => label !== "Mixed review")));
+      const modeCounts = days.reduce<Record<string, number>>((counts, day) => {
+        counts[day.studyMode] = (counts[day.studyMode] ?? 0) + 1;
+        return counts;
+      }, {});
+      return { weekNumber, patterns, modeCounts };
+    });
+    const patternsCovered = Array.from(
+      new Set(result.plan.days.map((day) => day.patternLabel).filter((label) => label !== "Mixed review"))
+    );
     return (
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
         <section
@@ -199,18 +213,43 @@ export function OnboardingFlow({ hasExistingPlan = false }: { hasExistingPlan?: 
         </section>
 
         <section className="rounded-[18px] border border-slate-200 bg-white p-6">
-          <div className="mb-3 text-sm font-bold text-slate-900">Week 1</div>
+          <div className="mb-1 text-sm font-bold text-slate-900">Full plan, week by week</div>
+          <p className="mb-4 text-xs text-slate-500">
+            {patternsCovered.length} patterns covered across {result.plan.totalWeeks} weeks.
+          </p>
           <div className="flex flex-col divide-y divide-slate-100">
-            {week1.map((day) => (
-              <div key={day.dayNumber} className="flex items-center gap-3 py-3">
+            {weekSummaries.map((week) => (
+              <div key={week.weekNumber} className="flex items-start gap-3 py-3">
                 <span className="flex h-7 w-7 flex-none items-center justify-center rounded-lg bg-indigo-50 text-xs font-bold text-indigo-500">
-                  {day.dayNumber}
+                  {week.weekNumber}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <span className="text-sm font-semibold text-slate-900">{day.patternLabel}</span>
-                  <span className="ml-2 text-xs font-semibold text-indigo-500">{STUDY_MODE_LABEL[day.studyMode]}</span>
+                  <div className="text-sm font-semibold text-slate-900">{week.patterns.join(", ")}</div>
+                  <div className="mt-0.5 text-xs text-slate-500">
+                    {(["learn", "recognize", "practice", "review"] as const)
+                      .filter((mode) => week.modeCounts[mode])
+                      .map((mode) => `${week.modeCounts[mode]} ${STUDY_MODE_LABEL[mode]}`)
+                      .join(" · ")}
+                  </div>
                 </div>
               </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="rounded-[18px] border border-slate-200 bg-white p-6">
+          <div className="mb-3 text-sm font-bold text-slate-900">Patterns this plan covers</div>
+          <div className="flex flex-wrap gap-1.5">
+            {patternsCovered.map((label) => (
+              <span
+                key={label}
+                className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700"
+              >
+                <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 10l4 4 8-9" />
+                </svg>
+                {label}
+              </span>
             ))}
           </div>
         </section>

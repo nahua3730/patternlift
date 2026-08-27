@@ -11,6 +11,7 @@ type TodayResponse = {
     totalWeeks: number;
     dailyMinutes: number;
     totalDays: number;
+    coachStyle: "beginner" | "guided" | "optional";
   };
   today: {
     dayNumber: number;
@@ -37,8 +38,8 @@ const STUDY_MODE_LABEL: Record<TodayResponse["today"]["studyMode"], string> = {
   review: "Mixed review"
 };
 
-function hrefFor(problemId: string) {
-  return `/practice?mode=practice&coach=guided&problem=${problemId}`;
+function hrefFor(problemId: string, coachStyle: string) {
+  return `/practice?mode=practice&coach=${coachStyle}&problem=${problemId}`;
 }
 
 function lastFourteenDays() {
@@ -126,7 +127,7 @@ export function TodayDashboard() {
             </p>
             {data.today.problems[0] ? (
               <Link
-                href={hrefFor(data.today.problems[0].id)}
+                href={hrefFor(data.today.problems[0].id, data.plan.coachStyle)}
                 className="mt-5 inline-flex items-center gap-2.5 rounded-xl px-5 py-3 text-sm font-bold text-slate-900 shadow-[0_14px_34px_rgba(34,211,238,.16)]"
                 style={{ background: "linear-gradient(135deg,#a5b4fc,#67e8f9)" }}
               >
@@ -158,7 +159,7 @@ export function TodayDashboard() {
           ) : (
             <ProductList>
               {data.today.problems.map((problem) => (
-                <Link key={problem.id} href={hrefFor(problem.id)} className="product-row-link">
+                <Link key={problem.id} href={hrefFor(problem.id, data.plan.coachStyle)} className="product-row-link">
                   <ProductRow
                     leading={
                       <span className="problem-row-index" style={{ background: "#eef2ff", borderColor: "#c7d2fe", color: "#4f46e5" }}>
