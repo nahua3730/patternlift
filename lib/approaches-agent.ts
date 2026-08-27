@@ -51,6 +51,20 @@ function extractBigO(value: string): string | null {
   return match ? match[0] : null;
 }
 
+// A cheap parse-only check (never executes the code) to catch the model
+// occasionally emitting malformed JavaScript (stray braces, unterminated
+// strings, etc). Only meaningful for problems without a real test harness -
+// verifiable problems already get a much stronger functional check later.
+function hasValidSyntax(code: string): boolean {
+  try {
+    // eslint-disable-next-line no-new-func
+    new Function(code);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function validateProblemApproaches(value: unknown, functionName: string): ApproachTier[] | null {
   if (!value || typeof value !== "object") return null;
   const candidate = value as { approaches?: unknown };
@@ -68,6 +82,7 @@ export function validateProblemApproaches(value: unknown, functionName: string):
       if (!name || !idea || !code) return null;
       if (!code.includes(functionName)) return null;
       if (!timeComplexity || !spaceComplexity) return null;
+      if (!hasValidSyntax(code)) return null;
       return { name, idea, timeComplexity, spaceComplexity, code, verified: false };
     })
     .filter((tier): tier is ApproachTier => Boolean(tier))
