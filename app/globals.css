@@ -618,10 +618,29 @@ select {
   z-index: 30;
   width: 15.5rem;
   flex-direction: column;
-  border-right: 1px solid rgba(148, 163, 184, 0.12);
-  background: #0b1020;
+  overflow: hidden;
+  border-right: 1px solid rgba(15, 23, 42, 0.06);
+  background:
+    radial-gradient(circle at 15% 0%, rgba(99, 102, 241, 0.1), transparent 60%),
+    radial-gradient(circle at 100% 100%, rgba(34, 211, 238, 0.09), transparent 55%),
+    rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  box-shadow: 12px 0 32px -18px rgba(15, 23, 42, 0.12);
   padding: 1.5rem 1.25rem 1.25rem;
   transition: width 220ms ease, padding 220ms ease;
+}
+
+.product-rail::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.55), transparent 42%);
+}
+
+.product-rail > * {
+  position: relative;
 }
 
 .product-rail-collapsed {
@@ -639,7 +658,7 @@ select {
   width: 1.9rem;
   flex: 0 0 auto;
   place-items: center;
-  border: 1px solid rgba(148, 163, 184, 0.13);
+  border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 8px;
   color: #64748b;
   font-size: 0.75rem;
@@ -647,8 +666,8 @@ select {
 }
 
 .rail-collapse-button:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: white;
+  background: rgba(99, 102, 241, 0.08);
+  color: #1e293b;
 }
 
 .product-rail-collapsed .rail-link {
@@ -666,14 +685,14 @@ select {
 }
 
 .brand-mark-rail {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: #151d34;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.16), rgba(34, 211, 238, 0.12));
   box-shadow: none;
 }
 
 .rail-section-label {
   padding-inline: 0.75rem;
-  color: #526078;
+  color: #94a3b8;
   font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.16em;
@@ -688,28 +707,28 @@ select {
   border: 1px solid transparent;
   border-radius: 10px;
   padding: 0 0.8rem;
-  color: #8f9bb1;
+  color: #64748b;
   font-size: 0.875rem;
   font-weight: 500;
   transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
 }
 
 .rail-link:hover {
-  background: rgba(255, 255, 255, 0.045);
-  color: #e2e8f0;
+  background: rgba(99, 102, 241, 0.07);
+  color: #1e293b;
 }
 
 .rail-link-active {
-  border-color: rgba(129, 140, 248, 0.18);
-  background: rgba(99, 102, 241, 0.12);
-  color: #f8fafc;
+  border-color: rgba(99, 102, 241, 0.22);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.14), rgba(34, 211, 238, 0.1));
+  color: #312e81;
 }
 
 .rail-account {
   display: flex;
   align-items: center;
   gap: 0.7rem;
-  border-top: 1px solid rgba(148, 163, 184, 0.12);
+  border-top: 1px solid rgba(15, 23, 42, 0.07);
   padding: 1rem 0.25rem 0;
 }
 
@@ -719,10 +738,10 @@ select {
   width: 2.1rem;
   flex: 0 0 auto;
   place-items: center;
-  border: 1px solid rgba(129, 140, 248, 0.22);
+  border: 1px solid rgba(99, 102, 241, 0.24);
   border-radius: 10px;
-  background: rgba(99, 102, 241, 0.14);
-  color: #c7d2fe;
+  background: rgba(99, 102, 241, 0.12);
+  color: #4338ca;
   font-size: 0.75rem;
   font-weight: 700;
 }
@@ -738,8 +757,8 @@ select {
 }
 
 .rail-logout:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: white;
+  background: rgba(99, 102, 241, 0.08);
+  color: #1e293b;
 }
 
 .product-topbar {

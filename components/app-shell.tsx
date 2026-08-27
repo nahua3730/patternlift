@@ -152,7 +152,7 @@ function RailLink({ item, pathname }: { item: (typeof navigation)[number]; pathn
     <Link href={item.href} className={`rail-link ${active ? "rail-link-active" : ""}`}>
       <NavGlyph icon={item.icon} />
       <span className="rail-link-label">{item.label}</span>
-      {active ? <span className="ml-auto h-1.5 w-1.5 rounded-full bg-cyan-300" /> : null}
+      {active ? <span className="ml-auto h-1.5 w-1.5 rounded-full bg-indigo-500" /> : null}
     </Link>
   );
 }
@@ -162,7 +162,7 @@ function Brand({ dark, compact = false }: { dark: boolean; compact?: boolean }) 
     <Link href="/" className="flex items-center gap-3">
       <span className={`brand-mark ${dark ? "brand-mark-rail" : ""}`} aria-hidden="true"><span /><span /><span /></span>
       <span className={compact ? "hidden" : ""}>
-        <span className={`block text-sm font-semibold tracking-[-0.02em] ${dark ? "text-white" : "text-slate-900"}`}>PatternLift</span>
+        <span className="block text-sm font-semibold tracking-[-0.02em] text-slate-900">PatternLift</span>
         <span className="block text-[11px] text-slate-500">Adaptive mastery</span>
       </span>
     </Link>
