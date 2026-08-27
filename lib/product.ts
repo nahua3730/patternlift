@@ -1168,6 +1168,125 @@ const categoryDefaults: Record<string, {
 
 const existingProblemIdByTitle = new Map(sampleProblems.map((problem) => [normalizeRoadmapTitle(problem.title), problem.id]));
 
+// Per-problem pattern overrides for the auto-generated roadmap problems, replacing
+// the coarse per-category default with a judgment made from the problem's real
+// statement (see lib/problem-statement-service.ts) - categoryDefaults alone tags
+// every problem in a NeetCode category the same way regardless of what it actually
+// requires (e.g. every "Advanced Graphs" problem defaulted to "heap" even though
+// most are plain BFS/DFS traversal or greedy MST problems). Generated via a one-off
+// LLM classification pass over the real statement of each problem, spot-checked
+// by hand against known answers before being pasted in here.
+const problemPatternOverrides: Record<
+  string,
+  { targetPatternId: (typeof patternOptions)[number]["id"]; contrastPatternId: (typeof patternOptions)[number]["id"] }
+> = {
+  "official-alien-dictionary": { targetPatternId: "bfs", contrastPatternId: "dfs" },
+  "official-balanced-binary-tree": { targetPatternId: "dfs", contrastPatternId: "bfs" },
+  "official-best-time-to-buy-and-sell-stock-with-cooldown": { targetPatternId: "dynamic-programming", contrastPatternId: "greedy" },
+  "official-binary-tree-maximum-path-sum": { targetPatternId: "dfs", contrastPatternId: "dynamic-programming" },
+  "official-binary-tree-right-side-view": { targetPatternId: "bfs", contrastPatternId: "dfs" },
+  "official-burst-balloons": { targetPatternId: "dynamic-programming", contrastPatternId: "greedy" },
+  "official-cheapest-flights-within-k-stops": { targetPatternId: "bfs", contrastPatternId: "dynamic-programming" },
+  "official-climbing-stairs": { targetPatternId: "dynamic-programming", contrastPatternId: "greedy" },
+  "official-clone-graph": { targetPatternId: "dfs", contrastPatternId: "bfs" },
+  "official-coin-change-ii": { targetPatternId: "dynamic-programming", contrastPatternId: "greedy" },
+  "official-combination-sum-ii": { targetPatternId: "dfs", contrastPatternId: "dynamic-programming" },
+  "official-construct-binary-tree-from-preorder-and-inorder-traversal": { targetPatternId: "dfs", contrastPatternId: "hashing" },
+  "official-copy-list-with-random-pointer": { targetPatternId: "hashing", contrastPatternId: "dfs" },
+  "official-count-good-nodes-in-binary-tree": { targetPatternId: "dfs", contrastPatternId: "bfs" },
+  "official-course-schedule-ii": { targetPatternId: "bfs", contrastPatternId: "dfs" },
+  "official-decode-ways": { targetPatternId: "dynamic-programming", contrastPatternId: "dfs" },
+  "official-design-add-and-search-words-data-structure": { targetPatternId: "dfs", contrastPatternId: "hashing" },
+  "official-design-twitter": { targetPatternId: "heap", contrastPatternId: "hashing" },
+  "official-detect-squares": { targetPatternId: "hashing", contrastPatternId: "two-pointers" },
+  "official-diameter-of-binary-tree": { targetPatternId: "dfs", contrastPatternId: "bfs" },
+  "official-distinct-subsequences": { targetPatternId: "dynamic-programming", contrastPatternId: "dfs" },
+  "official-edit-distance": { targetPatternId: "dynamic-programming", contrastPatternId: "greedy" },
+  "official-encode-and-decode-strings": { targetPatternId: "hashing", contrastPatternId: "dynamic-programming" },
+  "official-evaluate-reverse-polish-notation": { targetPatternId: "stack", contrastPatternId: "dynamic-programming" },
+  "official-find-median-from-data-stream": { targetPatternId: "heap", contrastPatternId: "hashing" },
+  "official-find-minimum-in-rotated-sorted-array": { targetPatternId: "binary-search", contrastPatternId: "two-pointers" },
+  "official-find-the-duplicate-number": { targetPatternId: "two-pointers", contrastPatternId: "hashing" },
+  "official-gas-station": { targetPatternId: "greedy", contrastPatternId: "two-pointers" },
+  "official-generate-parentheses": { targetPatternId: "dfs", contrastPatternId: "dynamic-programming" },
+  "official-graph-valid-tree": { targetPatternId: "dfs", contrastPatternId: "bfs" },
+  "official-group-anagrams": { targetPatternId: "hashing", contrastPatternId: "two-pointers" },
+  "official-hand-of-straights": { targetPatternId: "greedy", contrastPatternId: "hashing" },
+  "official-happy-number": { targetPatternId: "hashing", contrastPatternId: "dfs" },
+  "official-house-robber-ii": { targetPatternId: "dynamic-programming", contrastPatternId: "greedy" },
+  "official-implement-trie-prefix-tree": { targetPatternId: "hashing", contrastPatternId: "dfs" },
+  "official-interleaving-string": { targetPatternId: "dynamic-programming", contrastPatternId: "dfs" },
+  "official-invert-binary-tree": { targetPatternId: "dfs", contrastPatternId: "bfs" },
+  "official-jump-game-ii": { targetPatternId: "greedy", contrastPatternId: "dynamic-programming" },
+  "official-kth-largest-element-in-a-stream": { targetPatternId: "heap", contrastPatternId: "hashing" },
+  "official-kth-largest-element-in-an-array": { targetPatternId: "heap", contrastPatternId: "binary-search" },
+  "official-kth-smallest-element-in-a-bst": { targetPatternId: "dfs", contrastPatternId: "binary-search" },
+  "official-largest-rectangle-in-histogram": { targetPatternId: "stack", contrastPatternId: "dynamic-programming" },
+  "official-last-stone-weight": { targetPatternId: "heap", contrastPatternId: "greedy" },
+  "official-letter-combinations-of-a-phone-number": { targetPatternId: "dfs", contrastPatternId: "dynamic-programming" },
+  "official-longest-increasing-path-in-a-matrix": { targetPatternId: "dfs", contrastPatternId: "dynamic-programming" },
+  "official-longest-increasing-subsequence": { targetPatternId: "dynamic-programming", contrastPatternId: "greedy" },
+  "official-longest-palindromic-substring": { targetPatternId: "two-pointers", contrastPatternId: "dynamic-programming" },
+  "official-longest-repeating-character-replacement": { targetPatternId: "sliding-window", contrastPatternId: "hashing" },
+  "official-lowest-common-ancestor-of-a-binary-search-tree": { targetPatternId: "dfs", contrastPatternId: "binary-search" },
+  "official-lru-cache": { targetPatternId: "hashing", contrastPatternId: "stack" },
+  "official-max-area-of-island": { targetPatternId: "dfs", contrastPatternId: "bfs" },
+  "official-maximum-product-subarray": { targetPatternId: "dynamic-programming", contrastPatternId: "sliding-window" },
+  "official-maximum-subarray": { targetPatternId: "dynamic-programming", contrastPatternId: "greedy" },
+  "official-median-of-two-sorted-arrays": { targetPatternId: "binary-search", contrastPatternId: "two-pointers" },
+  "official-meeting-rooms": { targetPatternId: "intervals", contrastPatternId: "greedy" },
+  "official-meeting-rooms-ii": { targetPatternId: "heap", contrastPatternId: "intervals" },
+  "official-merge-k-sorted-lists": { targetPatternId: "heap", contrastPatternId: "two-pointers" },
+  "official-min-cost-climbing-stairs": { targetPatternId: "dynamic-programming", contrastPatternId: "greedy" },
+  "official-min-cost-to-connect-all-points": { targetPatternId: "greedy", contrastPatternId: "dynamic-programming" },
+  "official-min-stack": { targetPatternId: "stack", contrastPatternId: "hashing" },
+  "official-minimum-interval-to-include-each-query": { targetPatternId: "heap", contrastPatternId: "intervals" },
+  "official-missing-number": { targetPatternId: "hashing", contrastPatternId: "binary-search" },
+  "official-multiply-strings": { targetPatternId: "dynamic-programming", contrastPatternId: "hashing" },
+  "official-n-queens": { targetPatternId: "dfs", contrastPatternId: "dynamic-programming" },
+  "official-number-of-1-bits": { targetPatternId: "hashing", contrastPatternId: "binary-search" },
+  "official-number-of-connected-components-in-an-undirected-graph": { targetPatternId: "dfs", contrastPatternId: "bfs" },
+  "official-pacific-atlantic-water-flow": { targetPatternId: "bfs", contrastPatternId: "dfs" },
+  "official-palindrome-partitioning": { targetPatternId: "dfs", contrastPatternId: "dynamic-programming" },
+  "official-palindromic-substrings": { targetPatternId: "two-pointers", contrastPatternId: "dynamic-programming" },
+  "official-partition-labels": { targetPatternId: "greedy", contrastPatternId: "hashing" },
+  "official-permutation-in-string": { targetPatternId: "sliding-window", contrastPatternId: "hashing" },
+  "official-permutations": { targetPatternId: "dfs", contrastPatternId: "dynamic-programming" },
+  "official-plus-one": { targetPatternId: "two-pointers", contrastPatternId: "dynamic-programming" },
+  "official-pow-x-n": { targetPatternId: "binary-search", contrastPatternId: "dynamic-programming" },
+  "official-product-of-array-except-self": { targetPatternId: "dynamic-programming", contrastPatternId: "hashing" },
+  "official-reconstruct-itinerary": { targetPatternId: "dfs", contrastPatternId: "greedy" },
+  "official-redundant-connection": { targetPatternId: "hashing", contrastPatternId: "dfs" },
+  "official-regular-expression-matching": { targetPatternId: "dynamic-programming", contrastPatternId: "dfs" },
+  "official-reorder-list": { targetPatternId: "two-pointers", contrastPatternId: "stack" },
+  "official-reverse-bits": { targetPatternId: "hashing", contrastPatternId: "greedy" },
+  "official-reverse-integer": { targetPatternId: "two-pointers", contrastPatternId: "stack" },
+  "official-reverse-nodes-in-k-group": { targetPatternId: "two-pointers", contrastPatternId: "stack" },
+  "official-rotate-image": { targetPatternId: "two-pointers", contrastPatternId: "stack" },
+  "official-search-in-rotated-sorted-array": { targetPatternId: "binary-search", contrastPatternId: "two-pointers" },
+  "official-serialize-and-deserialize-binary-tree": { targetPatternId: "dfs", contrastPatternId: "bfs" },
+  "official-set-matrix-zeroes": { targetPatternId: "hashing", contrastPatternId: "two-pointers" },
+  "official-single-number": { targetPatternId: "hashing", contrastPatternId: "greedy" },
+  "official-sliding-window-maximum": { targetPatternId: "sliding-window", contrastPatternId: "heap" },
+  "official-spiral-matrix": { targetPatternId: "two-pointers", contrastPatternId: "dfs" },
+  "official-subsets-ii": { targetPatternId: "dfs", contrastPatternId: "hashing" },
+  "official-subtree-of-another-tree": { targetPatternId: "dfs", contrastPatternId: "bfs" },
+  "official-sum-of-two-integers": { targetPatternId: "hashing", contrastPatternId: "dynamic-programming" },
+  "official-surrounded-regions": { targetPatternId: "dfs", contrastPatternId: "bfs" },
+  "official-swim-in-rising-water": { targetPatternId: "heap", contrastPatternId: "bfs" },
+  "official-target-sum": { targetPatternId: "dynamic-programming", contrastPatternId: "dfs" },
+  "official-time-based-key-value-store": { targetPatternId: "binary-search", contrastPatternId: "hashing" },
+  "official-trapping-rain-water": { targetPatternId: "two-pointers", contrastPatternId: "stack" },
+  "official-two-sum-ii-input-array-is-sorted": { targetPatternId: "two-pointers", contrastPatternId: "hashing" },
+  "official-valid-parenthesis-string": { targetPatternId: "stack", contrastPatternId: "greedy" },
+  "official-valid-sudoku": { targetPatternId: "hashing", contrastPatternId: "dfs" },
+  "official-validate-binary-search-tree": { targetPatternId: "dfs", contrastPatternId: "bfs" },
+  "official-walls-and-gates": { targetPatternId: "bfs", contrastPatternId: "dfs" },
+  "official-word-break": { targetPatternId: "dynamic-programming", contrastPatternId: "dfs" },
+  "official-word-ladder": { targetPatternId: "bfs", contrastPatternId: "dfs" },
+  "official-word-search-ii": { targetPatternId: "dfs", contrastPatternId: "hashing" }
+};
+
 const generatedRoadmapProblems: AppProblem[] = officialRoadmapCatalog
   .map((entry) => {
     const existingId = existingProblemIdByTitle.get(normalizeRoadmapTitle(entry.title));
@@ -1177,18 +1296,20 @@ const generatedRoadmapProblems: AppProblem[] = officialRoadmapCatalog
     const tracksLabel = entry.tracks.includes("blind75")
       ? (entry.tracks.length === 2 ? "Blind 75 and NeetCode 150" : "Blind 75")
       : "NeetCode 150";
+    const problemId = "official-" + slugifyRoadmapTitle(entry.title);
+    const override = problemPatternOverrides[problemId];
 
     return {
-      id: "official-" + slugifyRoadmapTitle(entry.title),
+      id: problemId,
       category: category as ProblemCategory,
       title: entry.title,
       difficulty: entry.difficulty,
       prompt: entry.title + " is part of the official " + tracksLabel + " roadmap in " + category + ". Use the editor and custom test panel below to solve it here, and open the official links if you want the original full wording while we keep adding richer problem-specific harnesses.",
-      targetPatternId: defaults.targetPatternId,
+      targetPatternId: override?.targetPatternId ?? defaults.targetPatternId,
       recommendedClues: defaults.recommendedClues,
       recommendedFirstStep: defaults.recommendedFirstStep,
       reviewQuestion: defaults.reviewQuestion,
-      contrastPatternId: defaults.contrastPatternId
+      contrastPatternId: override?.contrastPatternId ?? defaults.contrastPatternId
     };
   })
   .filter(Boolean) as AppProblem[];
