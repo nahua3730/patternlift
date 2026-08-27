@@ -9,6 +9,7 @@ export type FundamentalsEpisode = {
   titleEn: string;
   problemIds: string[];
   note?: string;
+  bvid?: string;
 };
 
 export const fundamentalsSeriesUrl = "https://space.bilibili.com/206214/lists/842776?type=season";
@@ -17,8 +18,9 @@ export const fundamentalsSeries: FundamentalsEpisode[] = [
   {
     episode: 1,
     titleCn: "两数之和 三数之和",
-    titleEn: "Two Sum, 3Sum",
-    problemIds: ["two-sum", "three-sum"]
+    titleEn: "Two Sum II, 3Sum",
+    problemIds: ["official-two-sum-ii-input-array-is-sorted", "three-sum"],
+    bvid: "BV1bP411c7oJ"
   },
   {
     episode: 2,
