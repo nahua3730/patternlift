@@ -10,10 +10,11 @@ import {
   type RoadmapTrack
 } from "@/lib/product";
 import {
+  buildCurriculumPlanSchema,
   buildFallbackWeeklyPlan,
-  curriculumPlanSchema,
   expandWeeklyPlanToDays,
   validateCurriculumWeeklyPlan,
+  weeksFromDeadline,
   type CurriculumPlan,
   type ExperienceLevel,
   type OnboardingAnswers
@@ -59,6 +60,7 @@ export async function POST(request: Request) {
     dailyMinutes: typeof body.dailyMinutes === "number" && body.dailyMinutes > 0 ? body.dailyMinutes : 45
   };
 
+  const totalWeeks = weeksFromDeadline(answers.deadlineWeeks);
   const fallbackWeekly = buildFallbackWeeklyPlan(answers);
   const runId = createId("study-plan");
   const toolTrace: string[] = [];
@@ -67,8 +69,8 @@ export async function POST(request: Request) {
 
   if (client) {
     try {
-      const generated = await runCurriculumAgent(answers, toolTrace);
-      const validated = validateCurriculumWeeklyPlan(generated);
+      const generated = await runCurriculumAgent(answers, totalWeeks, toolTrace);
+      const validated = validateCurriculumWeeklyPlan(generated, totalWeeks, answers.dailyMinutes);
       if (validated) {
         weeklyPlan = validated;
         source = "agent";
@@ -96,15 +98,18 @@ export async function POST(request: Request) {
   return NextResponse.json({ runId, source, plan, toolTrace });
 }
 
-async function runCurriculumAgent(answers: OnboardingAnswers, toolTrace: string[]) {
+async function runCurriculumAgent(answers: OnboardingAnswers, totalWeeks: number, toolTrace: string[]) {
   if (!client) throw new Error("OpenAI client unavailable");
+
+  const schema = buildCurriculumPlanSchema(totalWeeks, answers.dailyMinutes);
 
   let response = await client.responses.create({
     model,
     instructions: [
       "You are the PatternLift Curriculum Planner. Build a multi-week study plan structure (weeks and pattern focus only, not individual problems).",
-      "Call get_roadmap_overview before deciding pacing, so week count and pattern order reflect real problem availability.",
-      `Learner: experience level "${answers.experienceLevel}", ${answers.deadlineWeeks ? `interview in about ${answers.deadlineWeeks} weeks` : "no fixed deadline"}, about ${answers.dailyMinutes} minutes a day.`,
+      `FIXED CONSTRAINTS, not your decision: totalWeeks MUST be exactly ${totalWeeks} and dailyMinutes MUST be exactly ${answers.dailyMinutes} — these are already determined by the learner's own answers. Your only job is deciding which patterns each of the ${totalWeeks} weeks focuses on and the pacing (dominantStudyMode, includesReviewDay) within that fixed structure.`,
+      "Call get_roadmap_overview before deciding pattern order, so pacing reflects real problem availability.",
+      `Learner: experience level "${answers.experienceLevel}", ${answers.deadlineWeeks ? `interview in about ${answers.deadlineWeeks} weeks` : "no fixed deadline"}.`,
       "New learners should start every week with learn mode. Rusty learners should front-load recognize mode. Comfortable learners should lean on practice and review sooner.",
       "Order patterns easier-to-harder: hashing and two-pointers before dynamic-programming and greedy.",
       "Keep the rationale concrete and under 40 words. Never claim evidence the tool did not return."
@@ -119,7 +124,7 @@ async function runCurriculumAgent(answers: OnboardingAnswers, toolTrace: string[
         name: "curriculum_weekly_plan",
         description: "A validated weekly structure for the learner's study plan.",
         strict: true,
-        schema: curriculumPlanSchema
+        schema
       }
     },
     max_output_tokens: 900
@@ -155,7 +160,7 @@ async function runCurriculumAgent(answers: OnboardingAnswers, toolTrace: string[
           type: "json_schema",
           name: "curriculum_weekly_plan",
           strict: true,
-          schema: curriculumPlanSchema
+          schema
         }
       },
       max_output_tokens: 900

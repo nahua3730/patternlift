@@ -46,40 +46,42 @@ export type CurriculumPlan = {
 
 const DAY_TEMPLATE: StudyMode[] = ["learn", "learn", "recognize", "recognize", "practice", "practice", "review"];
 
-export const curriculumPlanSchema = {
-  type: "object",
-  additionalProperties: false,
-  required: ["headline", "rationale", "totalWeeks", "dailyMinutes", "weeks"],
-  properties: {
-    headline: { type: "string" },
-    rationale: { type: "string" },
-    totalWeeks: { type: "integer", minimum: 2, maximum: 8 },
-    dailyMinutes: { type: "integer", minimum: 20, maximum: 180 },
-    weeks: {
-      type: "array",
-      minItems: 2,
-      maxItems: 8,
-      items: {
-        type: "object",
-        additionalProperties: false,
-        required: ["weekNumber", "focusPatternIds", "dominantStudyMode", "includesReviewDay"],
-        properties: {
-          weekNumber: { type: "integer", minimum: 1, maximum: 8 },
-          focusPatternIds: {
-            type: "array",
-            minItems: 1,
-            maxItems: 2,
-            items: { type: "string", enum: patternOptions.map((pattern) => pattern.id) }
-          },
-          dominantStudyMode: { type: "string", enum: ["learn", "recognize", "practice"] },
-          includesReviewDay: { type: "boolean" }
+export function buildCurriculumPlanSchema(totalWeeks: number, dailyMinutes: number) {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["headline", "rationale", "totalWeeks", "dailyMinutes", "weeks"],
+    properties: {
+      headline: { type: "string" },
+      rationale: { type: "string" },
+      totalWeeks: { type: "integer", const: totalWeeks },
+      dailyMinutes: { type: "integer", const: dailyMinutes },
+      weeks: {
+        type: "array",
+        minItems: totalWeeks,
+        maxItems: totalWeeks,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["weekNumber", "focusPatternIds", "dominantStudyMode", "includesReviewDay"],
+          properties: {
+            weekNumber: { type: "integer", minimum: 1, maximum: totalWeeks },
+            focusPatternIds: {
+              type: "array",
+              minItems: 1,
+              maxItems: 2,
+              items: { type: "string", enum: patternOptions.map((pattern) => pattern.id) }
+            },
+            dominantStudyMode: { type: "string", enum: ["learn", "recognize", "practice"] },
+            includesReviewDay: { type: "boolean" }
+          }
         }
       }
     }
-  }
-} as const;
+  } as const;
+}
 
-function weeksFromDeadline(deadlineWeeks: number | null): number {
+export function weeksFromDeadline(deadlineWeeks: number | null): number {
   if (deadlineWeeks == null) return 6;
   return Math.min(8, Math.max(2, deadlineWeeks));
 }
@@ -143,12 +145,16 @@ export function buildFallbackWeeklyPlan(answers: OnboardingAnswers): CurriculumW
   };
 }
 
-export function validateCurriculumWeeklyPlan(value: unknown): CurriculumWeeklyPlan | null {
+export function validateCurriculumWeeklyPlan(
+  value: unknown,
+  expectedTotalWeeks: number,
+  expectedDailyMinutes: number
+): CurriculumWeeklyPlan | null {
   if (!value || typeof value !== "object") return null;
   const candidate = value as Partial<CurriculumWeeklyPlan>;
-  const totalWeeks = Math.min(8, Math.max(2, Math.round(Number(candidate.totalWeeks) || 0)));
+  const totalWeeks = Math.min(8, Math.max(2, Math.round(expectedTotalWeeks)));
   if (!totalWeeks) return null;
-  if (!Array.isArray(candidate.weeks) || candidate.weeks.length === 0) return null;
+  if (!Array.isArray(candidate.weeks) || candidate.weeks.length < totalWeeks) return null;
 
   const weeks = candidate.weeks
     .map((week, index) => {
@@ -180,7 +186,7 @@ export function validateCurriculumWeeklyPlan(value: unknown): CurriculumWeeklyPl
     headline: String(candidate.headline || "Your personalized study path."),
     rationale: String(candidate.rationale || "Sequenced from your onboarding answers."),
     totalWeeks: weeks.length,
-    dailyMinutes: Math.min(180, Math.max(20, Number(candidate.dailyMinutes) || 45)),
+    dailyMinutes: expectedDailyMinutes,
     weeks
   };
 }
