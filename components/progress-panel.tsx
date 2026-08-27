@@ -212,9 +212,10 @@ export function ProgressPanel({
           <div className="mt-5 space-y-3">
             {recentDistinct.length > 0 ? (
               recentDistinct.map((item) => (
-                <article
+                <Link
                   key={`${item.problemId}-${item.createdAt}`}
-                  className="rounded-[8px] border border-black/10 bg-white/86 p-4"
+                  href={`/practice?problem=${item.problemId}&mode=recognize&coach=guided`}
+                  className="block rounded-[8px] border border-black/10 bg-white/86 p-4 transition hover:border-black/20 hover:bg-white"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <h4 className="text-sm font-semibold text-ink">{item.problemTitle}</h4>
@@ -231,7 +232,7 @@ export function ProgressPanel({
                     </span>
                   </div>
                   <p className="mt-2 text-sm text-black/58">{item.actualPatternLabel ?? item.selectedPatternLabel}</p>
-                </article>
+                </Link>
               ))
             ) : (
               <div className="rounded-[8px] border border-dashed border-black/12 bg-white/60 p-5 text-sm leading-6 text-black/58">
