@@ -13,12 +13,16 @@ import {
   buildCurriculumPlanSchema,
   buildFallbackWeeklyPlan,
   expandWeeklyPlanToDays,
+  formatInterviewDate,
+  resolveDeadlineWeeks,
   validateCurriculumWeeklyPlan,
   weeksFromDeadline,
   type CurriculumPlan,
   type ExperienceLevel,
   type OnboardingAnswers
 } from "@/lib/curriculum-agent";
+
+const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 const model = process.env.OPENAI_CURRICULUM_MODEL?.trim() || "gpt-4.1-mini";
 const client = process.env.OPENAI_API_KEY
@@ -49,6 +53,7 @@ export async function POST(request: Request) {
   const body = (await request.json()) as {
     experienceLevel?: ExperienceLevel;
     deadlineWeeks?: number | null;
+    interviewDate?: string | null;
     dailyMinutes?: number;
   };
 
@@ -57,10 +62,14 @@ export async function POST(request: Request) {
       body.experienceLevel === "new" || body.experienceLevel === "comfortable" ? body.experienceLevel : "rusty",
     deadlineWeeks:
       typeof body.deadlineWeeks === "number" && body.deadlineWeeks > 0 ? body.deadlineWeeks : null,
+    interviewDate:
+      typeof body.interviewDate === "string" && ISO_DATE_PATTERN.test(body.interviewDate)
+        ? body.interviewDate
+        : null,
     dailyMinutes: typeof body.dailyMinutes === "number" && body.dailyMinutes > 0 ? body.dailyMinutes : 45
   };
 
-  const totalWeeks = weeksFromDeadline(answers.deadlineWeeks);
+  const totalWeeks = weeksFromDeadline(resolveDeadlineWeeks(answers));
   const fallbackWeekly = buildFallbackWeeklyPlan(answers);
   const runId = createId("study-plan");
   const toolTrace: string[] = [];
@@ -109,7 +118,7 @@ async function runCurriculumAgent(answers: OnboardingAnswers, totalWeeks: number
       "You are the PatternLift Curriculum Planner. Build a multi-week study plan structure (weeks and pattern focus only, not individual problems).",
       `FIXED CONSTRAINTS, not your decision: totalWeeks MUST be exactly ${totalWeeks} and dailyMinutes MUST be exactly ${answers.dailyMinutes} — these are already determined by the learner's own answers. Your only job is deciding which patterns each of the ${totalWeeks} weeks focuses on and the pacing (dominantStudyMode, includesReviewDay) within that fixed structure.`,
       "Call get_roadmap_overview before deciding pattern order, so pacing reflects real problem availability.",
-      `Learner: experience level "${answers.experienceLevel}", ${answers.deadlineWeeks ? `interview in about ${answers.deadlineWeeks} weeks` : "no fixed deadline"}.`,
+      `Learner: experience level "${answers.experienceLevel}", ${answers.interviewDate ? `interview on ${formatInterviewDate(answers.interviewDate)}` : answers.deadlineWeeks ? `interview in about ${answers.deadlineWeeks} weeks` : "no fixed deadline"}. You may reference that date naturally in the rationale.`,
       "New learners should start every week with learn mode. Rusty learners should front-load recognize mode. Comfortable learners should lean on practice and review sooner.",
       "Order patterns easier-to-harder: hashing and two-pointers before dynamic-programming and greedy.",
       "Keep the rationale concrete and under 40 words. Never claim evidence the tool did not return."

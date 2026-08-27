@@ -11,6 +11,7 @@ export type StudyMode = "learn" | "recognize" | "practice" | "review";
 export type OnboardingAnswers = {
   experienceLevel: ExperienceLevel;
   deadlineWeeks: number | null;
+  interviewDate: string | null;
   dailyMinutes: number;
 };
 
@@ -86,6 +87,27 @@ export function weeksFromDeadline(deadlineWeeks: number | null): number {
   return Math.min(8, Math.max(2, deadlineWeeks));
 }
 
+export function weeksUntilDate(interviewDate: string): number | null {
+  const target = new Date(`${interviewDate}T00:00:00`);
+  if (Number.isNaN(target.getTime())) return null;
+  const daysUntil = Math.ceil((target.getTime() - Date.now()) / 86_400_000);
+  return Math.max(1, Math.ceil(daysUntil / 7));
+}
+
+export function resolveDeadlineWeeks(answers: Pick<OnboardingAnswers, "deadlineWeeks" | "interviewDate">) {
+  if (answers.interviewDate) {
+    const fromDate = weeksUntilDate(answers.interviewDate);
+    if (fromDate != null) return fromDate;
+  }
+  return answers.deadlineWeeks;
+}
+
+export function formatInterviewDate(interviewDate: string) {
+  const date = new Date(`${interviewDate}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return interviewDate;
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
 const EASY_FIRST_PATTERN_ORDER = [
   "hashing",
   "two-pointers",
@@ -107,7 +129,7 @@ function orderedPatternIds() {
 }
 
 export function buildFallbackWeeklyPlan(answers: OnboardingAnswers): CurriculumWeeklyPlan {
-  const totalWeeks = weeksFromDeadline(answers.deadlineWeeks);
+  const totalWeeks = weeksFromDeadline(resolveDeadlineWeeks(answers));
   const order = orderedPatternIds();
   const dominantStudyMode: CurriculumWeeklyPlan["weeks"][number]["dominantStudyMode"] =
     answers.experienceLevel === "new" ? "learn" : answers.experienceLevel === "rusty" ? "recognize" : "practice";
@@ -129,8 +151,9 @@ export function buildFallbackWeeklyPlan(answers: OnboardingAnswers): CurriculumW
   }
 
   return {
-    headline:
-      answers.deadlineWeeks == null
+    headline: answers.interviewDate
+      ? `Your path to ${formatInterviewDate(answers.interviewDate)}.`
+      : answers.deadlineWeeks == null
         ? `A ${totalWeeks}-week path built around pattern recognition.`
         : `Your ${totalWeeks}-week path to interview-ready.`,
     rationale:

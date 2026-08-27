@@ -53,6 +53,9 @@ export function OnboardingFlow({ hasExistingPlan = false }: { hasExistingPlan?: 
   ]);
   const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel | null>(null);
   const [deadlineWeeks, setDeadlineWeeks] = useState<number | null | undefined>(undefined);
+  const [interviewDate, setInterviewDate] = useState<string | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [pickedDate, setPickedDate] = useState("");
   const [result, setResult] = useState<GenerateResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [launching, setLaunching] = useState(false);
@@ -74,7 +77,27 @@ export function OnboardingFlow({ hasExistingPlan = false }: { hasExistingPlan?: 
 
   function answerDeadline(value: number | null, label: string) {
     setDeadlineWeeks(value);
+    setInterviewDate(null);
     pushMessage({ id: `a-deadline-${label}`, speaker: "user", text: label });
+    pushMessage({
+      id: "q3",
+      speaker: "coach",
+      text: "Last one — how long can you realistically study each day?"
+    });
+    setStep("time");
+  }
+
+  function confirmInterviewDate() {
+    if (!pickedDate) return;
+    const label = new Date(`${pickedDate}T00:00:00`).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric"
+    });
+    setInterviewDate(pickedDate);
+    setDeadlineWeeks(null);
+    setShowDatePicker(false);
+    pushMessage({ id: `a-deadline-date`, speaker: "user", text: label });
     pushMessage({
       id: "q3",
       speaker: "coach",
@@ -95,6 +118,7 @@ export function OnboardingFlow({ hasExistingPlan = false }: { hasExistingPlan?: 
         body: JSON.stringify({
           experienceLevel,
           deadlineWeeks: deadlineWeeks ?? null,
+          interviewDate,
           dailyMinutes: value
         })
       });
@@ -244,18 +268,47 @@ export function OnboardingFlow({ hasExistingPlan = false }: { hasExistingPlan?: 
         ) : null}
 
         {step === "deadline" ? (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {DEADLINE_OPTIONS.map((option) => (
+          <>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {DEADLINE_OPTIONS.map((option) => (
+                <button
+                  key={option.label}
+                  type="button"
+                  onClick={() => answerDeadline(option.value, option.label)}
+                  className="uiverse-chip px-4 py-2.5 text-sm font-semibold text-slate-700"
+                >
+                  {option.label}
+                </button>
+              ))}
               <button
-                key={option.label}
                 type="button"
-                onClick={() => answerDeadline(option.value, option.label)}
-                className="uiverse-chip px-4 py-2.5 text-sm font-semibold text-slate-700"
+                onClick={() => setShowDatePicker((current) => !current)}
+                className={`uiverse-chip px-4 py-2.5 text-sm font-semibold ${showDatePicker ? "uiverse-chip-active" : "text-slate-700"}`}
               >
-                {option.label}
+                Pick an exact date
               </button>
-            ))}
-          </div>
+            </div>
+
+            {showDatePicker ? (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <input
+                  type="date"
+                  value={pickedDate}
+                  min={new Date().toISOString().slice(0, 10)}
+                  onChange={(event) => setPickedDate(event.target.value)}
+                  className="uiverse-field px-3.5 py-2.5 text-sm text-ink"
+                />
+                <button
+                  type="button"
+                  onClick={confirmInterviewDate}
+                  disabled={!pickedDate}
+                  className="uiverse-button px-4 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Confirm date
+                </button>
+              </div>
+            ) : null}
+          </>
         ) : null}
 
         {step === "time" ? (
