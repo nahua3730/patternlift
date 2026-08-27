@@ -26,60 +26,68 @@ export const fundamentalsSeries: FundamentalsEpisode[] = [
     episode: 2,
     titleCn: "盛最多水的容器 接雨水",
     titleEn: "Container With Most Water, Trapping Rain Water",
-    problemIds: ["container-most-water", "official-trapping-rain-water"]
+    problemIds: ["container-most-water", "official-trapping-rain-water"],
+    bvid: "BV1Qg411q7ia"
   },
   {
     episode: 3,
     titleCn: "滑动窗口",
     titleEn: "Sliding Window",
-    problemIds: ["longest-substring-no-repeat"]
+    problemIds: ["longest-substring-no-repeat"],
+    bvid: "BV1hd4y1r7Gq"
   },
   {
     episode: 4,
     titleCn: "二分查找 红蓝染色法",
     titleEn: "Binary Search",
-    problemIds: ["binary-search"]
+    problemIds: ["binary-search"],
+    note: "The video's main worked example is Find First and Last Position of Element in Sorted Array (LC 34), not in the catalog yet - this step links the same red-blue-coloring technique's basic case instead.",
+    bvid: "BV1AP41137w7"
   },
   {
     episode: 5,
     titleCn: "数组峰值 搜索旋转排序数组",
     titleEn: "Search in Rotated Sorted Array",
-    problemIds: ["official-search-in-rotated-sorted-array"],
-    note: "Find Peak Element isn't in the catalog yet - this step only covers Search in Rotated Sorted Array."
+    problemIds: ["official-search-in-rotated-sorted-array", "official-find-minimum-in-rotated-sorted-array"],
+    note: "Find Peak Element (LC 162) isn't in the catalog yet.",
+    bvid: "BV1QK411d76w"
   },
   {
     episode: 6,
     titleCn: "反转链表",
     titleEn: "Reverse Linked List",
-    problemIds: ["reverse-linked-list"]
+    problemIds: ["reverse-linked-list", "official-reverse-nodes-in-k-group"],
+    bvid: "BV1sd4y1x7KN"
   },
   {
     episode: 7,
     titleCn: "环形链表 II",
     titleEn: "Linked List Cycle",
-    problemIds: ["linked-list-cycle"],
-    note: "The catalog has the yes/no cycle-detection version; the video covers finding the cycle's entry node - same core idea."
+    problemIds: ["linked-list-cycle", "official-reorder-list"],
+    note: "The video's main focus (LC 142, finding the cycle's entry node) isn't in the catalog yet - the catalog has the yes/no cycle-detection version (LC 141) instead.",
+    bvid: "BV1KG4y1G7cu"
   },
   {
     episode: 8,
     titleCn: "删除链表重复节点",
-    titleEn: "Remove Duplicates from Sorted List",
-    problemIds: [],
-    note: "Not in the catalog yet - watch the explainer and solve it directly on LeetCode."
+    titleEn: "Remove Nth Node From End of List",
+    problemIds: ["remove-nth-from-end"],
+    note: "The video's main focus (deleting duplicates, LC 82/83) isn't in the catalog yet - the catalog has one of its other worked examples (LC 19) instead.",
+    bvid: "BV1VP4y1Q71e"
   },
   {
     episode: 9,
     titleCn: "看到递归就晕？带你理解递归的本质",
     titleEn: "Understanding Recursion",
-    problemIds: [],
-    note: "A concept lesson with no single matching problem - it pays off on the recursion-heavy episodes ahead."
+    problemIds: ["max-depth-tree"],
+    bvid: "BV1UD4y1Y769"
   },
   {
     episode: 10,
     titleCn: "如何灵活运用递归？",
     titleEn: "Applying Recursion",
-    problemIds: [],
-    note: "Concept lesson, same as episode 9 - no single matching problem."
+    problemIds: ["same-tree", "official-balanced-binary-tree", "official-binary-tree-right-side-view"],
+    bvid: "BV18M411z7bb"
   },
   {
     episode: 11,
