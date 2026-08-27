@@ -1,7 +1,10 @@
+"use client";
+
 import Link from "next/link";
 import { StatusBadge } from "@/components/product-system";
 import { fundamentalsSeries, fundamentalsSeriesUrl, type FundamentalsEpisode } from "@/lib/fundamentals-series";
 import { TIER_LABEL, tierForReps } from "@/lib/mastery-tiers";
+import { openSideBySideWindow } from "@/lib/popup-window";
 import { allProblems } from "@/lib/product";
 
 const DEFAULT_HREF_PARAMS = "mode=practice&coach=guided";
@@ -79,14 +82,13 @@ export function FundamentalsSeriesView({ reps }: { reps: Record<string, number> 
             points at the matching problem already in our catalog (when one exists), plus a link back to the
             original video so you can watch the explanation on Bilibili.
           </p>
-          <a
-            href={fundamentalsSeriesUrl}
-            target="_blank"
-            rel="noreferrer"
+          <button
+            type="button"
+            onClick={() => openSideBySideWindow(fundamentalsSeriesUrl, "bilibili-playlist")}
             className="mt-4 inline-flex rounded-full border border-black/10 bg-mist px-4 py-2 text-sm font-medium text-black/72 transition hover:border-black/24"
           >
             Open the playlist on Bilibili ↗
-          </a>
+          </button>
         </div>
       </section>
 
@@ -102,14 +104,13 @@ export function FundamentalsSeriesView({ reps }: { reps: Record<string, number> 
                 <p className="text-sm text-black/60">{ep.titleEn}</p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                <a
-                  href={episodeVideoUrl(ep)}
-                  target="_blank"
-                  rel="noreferrer"
+                <button
+                  type="button"
+                  onClick={() => openSideBySideWindow(episodeVideoUrl(ep), `bilibili-ep-${ep.episode}`)}
                   className="rounded-full border border-black/10 bg-mist px-3 py-2 text-xs font-medium text-black/72 transition hover:border-black/24"
                 >
                   Open on Bilibili ↗
-                </a>
+                </button>
                 <Link
                   href={`/fundamentals/${ep.episode}`}
                   className="rounded-full bg-ink px-3 py-2 text-xs font-semibold text-white transition hover:opacity-85"

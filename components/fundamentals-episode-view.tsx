@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ProblemRow, episodeVideoUrl } from "@/components/fundamentals-series";
 import { fundamentalsSeries, type FundamentalsEpisode } from "@/lib/fundamentals-series";
+import { openSideBySideWindow } from "@/lib/popup-window";
 import { mimeTypeToExtension, pickRecordingMimeType } from "@/lib/voice-recording";
 
 type ChatMessage = {
@@ -254,21 +255,28 @@ export function FundamentalsEpisodeView({
             ) : (
               <div className="flex h-full items-center justify-center p-6 text-center text-sm text-white/70">
                 No embedded video for this step yet -{" "}
-                <a href={episodeVideoUrl(episode)} target="_blank" rel="noreferrer" className="ml-1 underline">
+                <button
+                  type="button"
+                  onClick={() => openSideBySideWindow(episodeVideoUrl(episode), `bilibili-ep-${episode.episode}`)}
+                  className="ml-1 underline"
+                >
                   open it on Bilibili ↗
-                </a>
+                </button>
               </div>
             )}
           </div>
           {episode.bvid ? (
             <p className="px-4 py-2 text-xs text-black/50">
-              Playing here so the coach stays beside it. Bilibili caps embedded, logged-out playback quality on
-              their end (outside our control) - if you&apos;d rather have full quality and don&apos;t need the
-              coach right now,{" "}
-              <a href={episodeVideoUrl(episode)} target="_blank" rel="noreferrer" className="underline">
-                open it on Bilibili instead ↗
-              </a>
-              .
+              Bilibili caps embedded, logged-out playback quality on their end (outside our control). For full
+              quality,{" "}
+              <button
+                type="button"
+                onClick={() => openSideBySideWindow(episodeVideoUrl(episode), `bilibili-ep-${episode.episode}`)}
+                className="underline"
+              >
+                open it on Bilibili in its own window ↗
+              </button>{" "}
+              and drag it beside this one - the coach here stays open, no tab switching.
             </p>
           ) : null}
         </div>
