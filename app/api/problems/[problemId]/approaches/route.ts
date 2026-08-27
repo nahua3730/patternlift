@@ -11,6 +11,7 @@ import {
   validateProblemApproaches,
   type ApproachTier
 } from "@/lib/approaches-agent";
+import { getOrCreateProblemStatement } from "@/lib/problem-statement-service";
 
 const model = process.env.OPENAI_APPROACHES_MODEL?.trim() || "gpt-4.1-mini";
 const client = process.env.OPENAI_API_KEY
@@ -56,18 +57,40 @@ export async function GET(request: Request, { params }: { params: { problemId: s
   const functionName = codeConfig.functionName;
   const schema = buildApproachesSchema(functionName);
 
+  // For auto-generated problems, problem.prompt is just a generic roadmap
+  // placeholder - use the real statement (same one the Problem tab shows) so
+  // the model is generating code against the actual problem, not a guess from
+  // the title alone. Falls back to problem.prompt if statement generation fails.
+  const statementResult = await getOrCreateProblemStatement(problem);
+  const problemContext = statementResult.ok
+    ? [
+        statementResult.statement.summary,
+        statementResult.statement.examples.length > 0
+          ? statementResult.statement.examples
+              .map((example) => `Example: input ${example.input} -> output ${example.output}`)
+              .join("\n")
+          : null,
+        statementResult.statement.constraints.length > 0
+          ? `Constraints: ${statementResult.statement.constraints.join("; ")}`
+          : null
+      ]
+        .filter(Boolean)
+        .join("\n\n")
+    : problem.prompt;
+
   try {
     const response = await client.responses.create({
       model,
       instructions: [
         "You are a technical interview coach writing worked solutions for a coding problem.",
         "Give 2 to 3 approach tiers in increasing sophistication - typically Brute Force, then Optimized, and optionally a further-optimized tier if a meaningfully better one exists.",
-        `For each tier: name it clearly, describe the core strategy in 1-2 sentences, state its time and space complexity in strict Big-O notation such as O(n), O(n log n), or O(1), and write COMPLETE, CORRECT, runnable JavaScript defining a function named exactly "${functionName}" that implements that specific tier's approach.`,
+        `For each tier: name it clearly, describe the core strategy in 1-2 sentences, and write COMPLETE, CORRECT, runnable JavaScript defining a function named exactly "${functionName}" that implements that specific tier's approach.`,
+        "timeComplexity and spaceComplexity must be ONLY the bare Big-O notation and nothing else - exactly \"O(n)\", \"O(n log n)\", \"O(1)\", etc, with no explanation, no variable definitions, and no trailing words appended.",
         "The code must be self-contained (no imports, no external libraries), must actually return the answer (not console.log it), and must be directly callable with the problem's inputs as positional arguments.",
         "Complexity and code correctness matter more than anything else here - this is used to help someone study for real technical interviews.",
         "Keep each tier's code reasonably concise but complete - do not omit logic or leave placeholders."
       ].join(" "),
-      input: `Problem: ${problem.title}\n\n${problem.prompt}`,
+      input: `Problem: ${problem.title}\n\n${problemContext}`,
       text: {
         verbosity: "medium",
         format: {
@@ -78,10 +101,25 @@ export async function GET(request: Request, { params }: { params: { problemId: s
           schema
         }
       },
-      max_output_tokens: 1400
+      max_output_tokens: 2400
     });
 
-    const parsed = response.output_text ? (JSON.parse(response.output_text) as unknown) : null;
+    if (response.status === "incomplete") {
+      return NextResponse.json(
+        { error: "The generated approaches were too long to finish - try again." },
+        { status: 500 }
+      );
+    }
+
+    let parsed: unknown = null;
+    try {
+      parsed = response.output_text ? JSON.parse(response.output_text) : null;
+    } catch {
+      return NextResponse.json(
+        { error: "The generated approaches were cut off before finishing - try again." },
+        { status: 500 }
+      );
+    }
     const approaches = validateProblemApproaches(parsed, functionName);
     if (!approaches) {
       return NextResponse.json({ error: "Unable to generate approaches for this problem." }, { status: 500 });

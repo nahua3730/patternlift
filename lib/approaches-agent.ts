@@ -41,7 +41,15 @@ export function buildApproachesSchema(functionName: string) {
   } as const;
 }
 
-const BIG_O_PATTERN = /^O\([^)]+\)$/;
+const BIG_O_PATTERN = /O\([^)]+\)/;
+
+// The model doesn't always keep complexity to a bare "O(n)" - it sometimes
+// appends an explanation ("O(n) where n is..."). Extract just the Big-O
+// notation rather than rejecting the whole tier over formatting.
+function extractBigO(value: string): string | null {
+  const match = value.match(BIG_O_PATTERN);
+  return match ? match[0] : null;
+}
 
 export function validateProblemApproaches(value: unknown, functionName: string): ApproachTier[] | null {
   if (!value || typeof value !== "object") return null;
@@ -54,12 +62,12 @@ export function validateProblemApproaches(value: unknown, functionName: string):
       const tier = entry as Partial<ApproachTier>;
       const name = String(tier.name || "").trim();
       const idea = String(tier.idea || "").trim();
-      const timeComplexity = String(tier.timeComplexity || "").trim();
-      const spaceComplexity = String(tier.spaceComplexity || "").trim();
+      const timeComplexity = extractBigO(String(tier.timeComplexity || ""));
+      const spaceComplexity = extractBigO(String(tier.spaceComplexity || ""));
       const code = String(tier.code || "").trim();
       if (!name || !idea || !code) return null;
       if (!code.includes(functionName)) return null;
-      if (!BIG_O_PATTERN.test(timeComplexity) || !BIG_O_PATTERN.test(spaceComplexity)) return null;
+      if (!timeComplexity || !spaceComplexity) return null;
       return { name, idea, timeComplexity, spaceComplexity, code, verified: false };
     })
     .filter((tier): tier is ApproachTier => Boolean(tier))
