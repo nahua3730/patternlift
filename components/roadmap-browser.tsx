@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { usePatternLiftState } from "@/components/patternlift-state";
+import { ProgressRing } from "@/components/progress-ring";
 import {
   ProductEmptyState,
   ProductSurface,
@@ -61,6 +62,25 @@ export function RoadmapBrowser({ initialReps }: { initialReps: Record<string, nu
 
   const totalProblems = groups.reduce((sum, group) => sum + group.problems.length, 0);
 
+  const ringSegments = useMemo(() => {
+    const buckets: Record<string, { done: number; total: number }> = {};
+    for (const problem of allProblems) {
+      const meta = getOfficialProblemRoadmapMeta(problem.id);
+      if (!meta?.tracks.includes(track)) continue;
+      const key = ["Easy", "Medium", "Hard"].includes(problem.difficulty) ? problem.difficulty : "Other";
+      const bucket = buckets[key] ?? { done: 0, total: 0 };
+      bucket.total += 1;
+      if ((reps[problem.id] ?? 0) > 0) bucket.done += 1;
+      buckets[key] = bucket;
+    }
+    return [
+      { label: "Easy", color: "#059669", ...(buckets.Easy ?? { done: 0, total: 0 }) },
+      { label: "Medium", color: "#f59e0b", ...(buckets.Medium ?? { done: 0, total: 0 }) },
+      { label: "Hard", color: "#e11d48", ...(buckets.Hard ?? { done: 0, total: 0 }) },
+      { label: "Other", color: "#94a3b8", ...(buckets.Other ?? { done: 0, total: 0 }) }
+    ].filter((segment) => segment.total > 0);
+  }, [track, reps]);
+
   function hrefFor(problemId: string) {
     return `/practice?${DEFAULT_HREF_PARAMS}&problem=${problemId}`;
   }
@@ -117,18 +137,34 @@ export function RoadmapBrowser({ initialReps }: { initialReps: Record<string, nu
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
       <section className="uiverse-panel px-6 py-7 md:px-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-coral">Browse by pattern</p>
-        <h2 className="mt-3 text-3xl font-semibold tracking-tight text-ink">
-          Grouped by pattern, not problem number.
-        </h2>
-        <p className="mt-4 max-w-3xl text-base leading-7 text-black/68">
-          Knowing which bucket a problem lives in is half the interview. {totalProblems} problems ·{" "}
-          {completedProblemIds.size} practiced.
-        </p>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-black/56">
-          Each node below is one problem — it lights up more as you repeat it: one rep, two reps, three or
-          more counts as mastered.
-        </p>
+        <div className="flex flex-col-reverse items-start gap-6 md:flex-row md:items-center md:justify-between">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-coral">Browse by pattern</p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-ink">
+              Grouped by pattern, not problem number.
+            </h2>
+            <p className="mt-4 max-w-3xl text-base leading-7 text-black/68">
+              Knowing which bucket a problem lives in is half the interview. {totalProblems} problems ·{" "}
+              {completedProblemIds.size} practiced.
+            </p>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-black/56">
+              Each node below is one problem — it lights up more as you repeat it: one rep, two reps, three or
+              more counts as mastered.
+            </p>
+          </div>
+
+          <div className="flex flex-none items-center gap-4">
+            <ProgressRing segments={ringSegments} />
+            <div className="flex flex-col gap-1.5">
+              {ringSegments.map((segment) => (
+                <div key={segment.label} className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                  <span className="h-2 w-2 rounded-full" style={{ background: segment.color }} />
+                  {segment.label} · {segment.done}/{segment.total}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </section>
 
       <ProductSurface className="overflow-hidden">
