@@ -1725,6 +1725,14 @@ select {
 .ide-context-badges { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .8rem; }
 .ide-context-badges span { border: 1px solid #dbe3ee; border-radius: 999px; background: white; padding: .3rem .55rem; color: #64748b; font-size: .62rem; font-weight: 650; }
 .ide-problem-copy { margin-top: 1rem; white-space: pre-wrap; color: #475569; font-size: .82rem; line-height: 1.75; }
+.ide-problem-examples { display: flex; flex-direction: column; gap: .6rem; margin-top: 1.1rem; }
+.ide-problem-example { border: 1px solid #dde4ee; border-radius: 10px; background: #f8fafc; padding: .7rem .8rem; font-size: .74rem; line-height: 1.6; }
+.ide-problem-example > div { display: flex; flex-wrap: wrap; gap: .5rem; align-items: baseline; }
+.ide-problem-example strong { min-width: 3.6rem; color: #64748b; font-size: .62rem; font-weight: 750; text-transform: uppercase; letter-spacing: .04em; }
+.ide-problem-example code { border-radius: 6px; background: #eef2ff; padding: .15rem .45rem; color: #3730a3; font-family: ui-monospace,SFMono-Regular,Menlo,monospace; font-size: .72rem; }
+.ide-problem-example p { margin-top: .4rem; color: #64748b; font-size: .72rem; line-height: 1.55; }
+.ide-problem-constraints { margin-top: 1.1rem; }
+.ide-problem-constraints ul { margin-top: .5rem; padding-left: 1.1rem; color: #475569; font-size: .76rem; line-height: 1.7; list-style: disc; }
 .ide-tests-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: .75rem; }
 .ide-tests-heading > button { border: 1px solid #dbe3ee; border-radius: 8px; background: white; padding: .45rem .6rem; color: #475569; font-size: .65rem; font-weight: 750; }
 .ide-test-list { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .4rem; margin-top: 1rem; }

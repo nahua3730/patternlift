@@ -63,6 +63,12 @@ type ApproachTier = {
   verified: boolean;
 };
 
+type ProblemExample = {
+  input: string;
+  output: string;
+  explanation: string;
+};
+
 type SpeechRecognitionResultLike = {
   isFinal: boolean;
   0: { transcript: string };
@@ -238,6 +244,10 @@ export function PracticeWorkspace({
   const [approaches, setApproaches] = useState<ApproachTier[] | null>(null);
   const [approachesError, setApproachesError] = useState<string | null>(null);
   const [approachesLoading, setApproachesLoading] = useState(false);
+  const [problemExamples, setProblemExamples] = useState<ProblemExample[]>([]);
+  const [problemConstraints, setProblemConstraints] = useState<string[]>([]);
+  const [problemStatementLoading, setProblemStatementLoading] = useState(false);
+  const [problemStatementError, setProblemStatementError] = useState<string | null>(null);
   const [isRunningCode, setIsRunningCode] = useState(false);
   const [testCases, setTestCases] = useState<EditableExample[]>([]);
   const [selectedTestCaseId, setSelectedTestCaseId] = useState<string | null>(null);
@@ -310,6 +320,38 @@ export function PracticeWorkspace({
       setApproachesLoading(false);
     }
   }
+
+  const loadProblemStatement = useCallback(async (problemId: string, problemIsNative: boolean) => {
+    if (problemIsNative) return;
+    setProblemStatementLoading(true);
+    setProblemStatementError(null);
+    try {
+      const response = await fetch(`/api/problems/${problemId}/statement`);
+      const payload = (await response.json()) as {
+        statement?: { summary: string; examples: ProblemExample[]; constraints: string[] };
+        error?: string;
+      };
+      if (!response.ok || !payload.statement) {
+        throw new Error(payload.error || "Unable to load the problem statement right now.");
+      }
+      setProblemText(payload.statement.summary);
+      setProblemExamples(payload.statement.examples);
+      setProblemConstraints(payload.statement.constraints);
+    } catch (error) {
+      setProblemStatementError(
+        error instanceof Error ? error.message : "Unable to load the problem statement right now."
+      );
+    } finally {
+      setProblemStatementLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    setProblemExamples([]);
+    setProblemConstraints([]);
+    setProblemStatementError(null);
+    void loadProblemStatement(activeProblem.id, hasNativeCodeConfig);
+  }, [activeProblem.id, hasNativeCodeConfig, loadProblemStatement]);
 
   const activeInlineCoachHint = inlineCoachHints[inlineCoachHints.length - 1] ?? null;
 
@@ -1777,7 +1819,35 @@ export function PracticeWorkspace({
                 <p className="ide-context-kicker">Problem statement</p>
                 <h3>{activeProblem.title}</h3>
                 <div className="ide-context-badges"><span>{correctPattern.label}</span>{contrastPattern ? <span>vs {contrastPattern.label}</span> : null}</div>
-                <p className="ide-problem-copy">{problemText}</p>
+                {problemStatementLoading ? (
+                  <p className="ide-problem-copy">Loading the real problem statement…</p>
+                ) : problemStatementError ? (
+                  <div className="ide-approaches-locked">
+                    <p>{problemStatementError}</p>
+                    <button type="button" onClick={() => void loadProblemStatement(activeProblem.id, hasNativeCodeConfig)}>Try again</button>
+                  </div>
+                ) : (
+                  <>
+                    <p className="ide-problem-copy">{problemText}</p>
+                    {problemExamples.length > 0 ? (
+                      <div className="ide-problem-examples">
+                        {problemExamples.map((example, index) => (
+                          <div key={index} className="ide-problem-example">
+                            <div><strong>Input</strong><code>{example.input}</code></div>
+                            <div><strong>Output</strong><code>{example.output}</code></div>
+                            {example.explanation ? <p>{example.explanation}</p> : null}
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                    {problemConstraints.length > 0 ? (
+                      <div className="ide-problem-constraints">
+                        <p className="ide-context-kicker">Constraints</p>
+                        <ul>{problemConstraints.map((constraint, index) => <li key={index}>{constraint}</li>)}</ul>
+                      </div>
+                    ) : null}
+                  </>
+                )}
               </section>
             ) : activeContextPanel === "tests" ? (
               <section className="ide-context-content ide-tests-panel">
