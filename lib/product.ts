@@ -302,9 +302,9 @@ export const sampleProblems: AppProblem[] = [
       "Given an array of positive integers and a target, find the length of the shortest contiguous subarray whose sum is at least target.",
     targetPatternId: "sliding-window",
     recommendedClues: [
-      "contiguous subarray",
-      "longest or shortest range",
-      "need to shrink after expanding"
+      "contiguous array or substring",
+      "longest or shortest segment under a rule",
+      "valid range that grows and shrinks"
     ],
     recommendedFirstStep: "Track left and right pointers",
     reviewQuestion:
@@ -320,9 +320,9 @@ export const sampleProblems: AppProblem[] = [
       "Given a string, return the length of the longest substring that contains no repeated characters.",
     targetPatternId: "sliding-window",
     recommendedClues: [
-      "contiguous subarray",
-      "longest or shortest range",
-      "need to shrink after expanding"
+      "contiguous array or substring",
+      "longest or shortest segment under a rule",
+      "valid range that grows and shrinks"
     ],
     recommendedFirstStep: "Maintain a running sum or frequency state",
     reviewQuestion:
@@ -338,9 +338,9 @@ export const sampleProblems: AppProblem[] = [
       "Given two strings s and t, return the smallest substring of s that contains every character from t with the right frequency.",
     targetPatternId: "sliding-window",
     recommendedClues: [
-      "contiguous subarray",
-      "longest or shortest range",
-      "need to shrink after expanding"
+      "contiguous array or substring",
+      "longest or shortest segment under a rule",
+      "valid range that grows and shrinks"
     ],
     recommendedFirstStep: "Maintain a running sum or frequency state",
     reviewQuestion:
@@ -439,7 +439,7 @@ export const sampleProblems: AppProblem[] = [
     prompt:
       "Given a sorted array of distinct integers and a target value, return the target index or -1 if it is missing.",
     targetPatternId: "binary-search",
-    recommendedClues: ["sorted input", "sorted or monotonic search space"],
+    recommendedClues: ["sorted input or monotonic answer space", "discard half the possibilities each step"],
     recommendedFirstStep: "Set a left/right search interval and test the midpoint",
     reviewQuestion:
       "What lets you discard exactly half of the remaining search interval each step?",
@@ -453,7 +453,7 @@ export const sampleProblems: AppProblem[] = [
     prompt:
       "Given a matrix where rows are sorted and each row starts after the previous row ends, determine whether a target exists.",
     targetPatternId: "binary-search",
-    recommendedClues: ["sorted input", "sorted or monotonic search space"],
+    recommendedClues: ["sorted input or monotonic answer space", "discard half the possibilities each step"],
     recommendedFirstStep: "Set a left/right search interval and test the midpoint",
     reviewQuestion:
       "Why can the whole matrix be treated like one sorted search space?",
@@ -467,7 +467,7 @@ export const sampleProblems: AppProblem[] = [
     prompt:
       "Given piles of bananas and a deadline in hours, return the minimum eating speed that allows all bananas to be eaten in time.",
     targetPatternId: "binary-search",
-    recommendedClues: ["sorted or monotonic search space", "minimum feasible / maximum feasible"],
+    recommendedClues: ["sorted input or monotonic answer space", "minimum feasible or maximum feasible threshold"],
     recommendedFirstStep: "Set a left/right search interval and test the midpoint",
     reviewQuestion:
       "What makes the answer space monotonic even though the array is not sorted for direct search?",
@@ -481,7 +481,7 @@ export const sampleProblems: AppProblem[] = [
     prompt:
       "Given the number of courses and prerequisite pairs, determine whether it is possible to finish every course.",
     targetPatternId: "bfs",
-    recommendedClues: ["level-order traversal", "repeated best choice"],
+    recommendedClues: ["level order exploration", "expand all neighbors before going deeper"],
     recommendedFirstStep: "Use a queue for level order expansion",
     reviewQuestion:
       "What does it mean for a course to become available only after its incoming requirements drop to zero?",
@@ -495,7 +495,7 @@ export const sampleProblems: AppProblem[] = [
     prompt:
       "You start at the combination 0000. Given deadends and a target combination, return the minimum number of turns needed to reach the target, or -1 if it is impossible.",
     targetPatternId: "bfs",
-    recommendedClues: ["level-order traversal"],
+    recommendedClues: ["level order exploration"],
     recommendedFirstStep: "Use a queue for level order expansion",
     reviewQuestion:
       "Why does breadth-first search give the fewest turns before a deeper search would?",
@@ -523,7 +523,7 @@ export const sampleProblems: AppProblem[] = [
     prompt:
       "You are given two non-empty linked lists representing two non-negative integers. The digits are stored in reverse order, and each node contains a single digit. Add the two numbers and return the sum as a linked list.",
     targetPatternId: "two-pointers",
-    recommendedClues: ["pair or complement relationship"],
+    recommendedClues: ["pair or triplet relationship"],
     recommendedFirstStep: "Track left and right pointers",
     reviewQuestion:
       "What state has to travel with your pointers from one node pair to the next so the sum stays correct?",
@@ -593,7 +593,7 @@ export const sampleProblems: AppProblem[] = [
     prompt:
       "Given the root of a binary tree, return the values of the nodes level by level from left to right.",
     targetPatternId: "bfs",
-    recommendedClues: ["level-order traversal"],
+    recommendedClues: ["level order exploration"],
     recommendedFirstStep: "Use a queue for level order expansion",
     reviewQuestion:
       "What part of the prompt makes breadth-first search a better fit than depth-first search here?",
@@ -607,7 +607,7 @@ export const sampleProblems: AppProblem[] = [
     prompt:
       "Given the root of a binary tree, return the maximum depth from the root to any leaf.",
     targetPatternId: "dfs",
-    recommendedClues: ["level-order traversal"],
+    recommendedClues: ["explore one branch fully"],
     recommendedFirstStep: "Go deeper recursively before trying alternatives",
     reviewQuestion:
       "What should one recursive call return so the parent can compute the deeper subtree?",
@@ -621,7 +621,7 @@ export const sampleProblems: AppProblem[] = [
     prompt:
       "Given two binary trees, determine whether they are structurally identical and contain the same values in corresponding nodes.",
     targetPatternId: "dfs",
-    recommendedClues: ["level-order traversal"],
+    recommendedClues: ["explore one branch fully"],
     recommendedFirstStep: "Go deeper recursively before trying alternatives",
     reviewQuestion:
       "Why is comparing both subtrees recursively cleaner than building full traversal arrays first?",
@@ -635,7 +635,7 @@ export const sampleProblems: AppProblem[] = [
     prompt:
       "Given an integer array and an integer k, return the k most frequent elements.",
     targetPatternId: "heap",
-    recommendedClues: ["top k ranking", "repeated best choice"],
+    recommendedClues: ["top k items", "repeatedly need current smallest or largest"],
     recommendedFirstStep: "Push candidates into a heap",
     reviewQuestion:
       "Why is a heap a more natural first move than sorting the full array each time?",
@@ -649,7 +649,7 @@ export const sampleProblems: AppProblem[] = [
     prompt:
       "Given points on a 2D plane and an integer k, return the k points closest to the origin.",
     targetPatternId: "heap",
-    recommendedClues: ["top k ranking", "repeated best choice"],
+    recommendedClues: ["top k items", "repeatedly need current smallest or largest"],
     recommendedFirstStep: "Push candidates into a heap",
     reviewQuestion:
       "Why does the problem only care about the best k candidates instead of a full global ordering?",
@@ -663,7 +663,7 @@ export const sampleProblems: AppProblem[] = [
     prompt:
       "Given tasks and a cooldown, compute the minimum time needed to finish all tasks while respecting the cooldown between identical tasks.",
     targetPatternId: "heap",
-    recommendedClues: ["top k ranking", "repeated best choice"],
+    recommendedClues: ["top k items", "repeatedly need current smallest or largest"],
     recommendedFirstStep: "Push candidates into a heap",
     reviewQuestion:
       "Why do repeated best-available choices matter more than solving this as plain dynamic programming first?",
@@ -677,7 +677,7 @@ export const sampleProblems: AppProblem[] = [
     prompt:
       "Given an array of unique integers, return every possible subset.",
     targetPatternId: "dfs",
-    recommendedClues: ["overlapping subproblems"],
+    recommendedClues: ["backtracking or subtree reasoning"],
     recommendedFirstStep: "Go deeper recursively before trying alternatives",
     reviewQuestion:
       "What are the two choices available for each element as you build a subset?",
@@ -691,7 +691,7 @@ export const sampleProblems: AppProblem[] = [
     prompt:
       "Given distinct candidate numbers and a target, return all unique combinations where numbers can be reused and sum to the target.",
     targetPatternId: "dfs",
-    recommendedClues: ["overlapping subproblems"],
+    recommendedClues: ["backtracking or subtree reasoning"],
     recommendedFirstStep: "Go deeper recursively before trying alternatives",
     reviewQuestion:
       "What path state changes when you include a number again in the current combination?",
@@ -705,7 +705,7 @@ export const sampleProblems: AppProblem[] = [
     prompt:
       "Given a board of characters and a word, determine whether the word can be formed by sequentially adjacent cells without reusing a cell.",
     targetPatternId: "dfs",
-    recommendedClues: ["overlapping subproblems"],
+    recommendedClues: ["backtracking or subtree reasoning"],
     recommendedFirstStep: "Go deeper recursively before trying alternatives",
     reviewQuestion:
       "What needs to be marked and then restored while you explore neighboring cells?",
@@ -719,7 +719,7 @@ export const sampleProblems: AppProblem[] = [
     prompt:
       "Given travel times as directed edges, the number of nodes n, and a starting node k, return how long it takes for all nodes to receive the signal, or -1 if some node is unreachable.",
     targetPatternId: "heap",
-    recommendedClues: ["top k ranking", "repeated best choice"],
+    recommendedClues: ["top k items", "repeatedly need current smallest or largest"],
     recommendedFirstStep: "Push candidates into a heap",
     reviewQuestion:
       "Why does always expanding the currently fastest reachable node preserve the shortest known time?",
@@ -733,7 +733,7 @@ export const sampleProblems: AppProblem[] = [
     prompt:
       "Given a grid of land and water, count how many disconnected islands exist.",
     targetPatternId: "dfs",
-    recommendedClues: ["level-order traversal"],
+    recommendedClues: ["explore one branch fully"],
     recommendedFirstStep: "Go deeper recursively before trying alternatives",
     reviewQuestion:
       "Why is flood-filling one connected component at a time enough to count islands?",
@@ -747,7 +747,7 @@ export const sampleProblems: AppProblem[] = [
     prompt:
       "Given a grid of fresh and rotten oranges, return the minimum minutes until all reachable fresh oranges become rotten.",
     targetPatternId: "bfs",
-    recommendedClues: ["level-order traversal"],
+    recommendedClues: ["level order exploration"],
     recommendedFirstStep: "Use a queue for level order expansion",
     reviewQuestion:
       "Why does one BFS layer naturally correspond to one minute in the spread process?",
@@ -845,7 +845,7 @@ export const sampleProblems: AppProblem[] = [
     prompt:
       "Given jump lengths at each index, determine whether the last index is reachable.",
     targetPatternId: "greedy",
-    recommendedClues: ["commit best local choice"],
+    recommendedClues: ["commit to the best local move"],
     recommendedFirstStep: "Sort or scan for the best safe local choice",
     reviewQuestion:
       "What running invariant tells you the farthest reachable position so far?",
@@ -859,7 +859,7 @@ export const sampleProblems: AppProblem[] = [
     prompt:
       "Given an array where prices[i] is the price of a stock on day i, return the maximum profit you can achieve from one buy and one sell.",
     targetPatternId: "greedy",
-    recommendedClues: ["commit best local choice"],
+    recommendedClues: ["commit to the best local move"],
     recommendedFirstStep: "Sort or scan for the best safe local choice",
     reviewQuestion:
       "What single running fact about the best buying opportunity so far lets each later day evaluate profit instantly?",
@@ -901,7 +901,7 @@ export const sampleProblems: AppProblem[] = [
     prompt:
       "Given intervals, return the minimum number you need to remove so the rest are non-overlapping.",
     targetPatternId: "intervals",
-    recommendedClues: ["overlapping ranges", "commit best local choice"],
+    recommendedClues: ["overlapping ranges", "start and end boundaries matter"],
     recommendedFirstStep: "Sort intervals, then compare and merge boundaries",
     reviewQuestion:
       "Why is keeping the interval with the earlier ending boundary the safer local choice during an overlap?",
@@ -915,7 +915,7 @@ export const sampleProblems: AppProblem[] = [
     prompt:
       "Given triplets and a target triplet, determine whether repeated merges can produce the exact target values.",
     targetPatternId: "greedy",
-    recommendedClues: ["commit best local choice"],
+    recommendedClues: ["commit to the best local move"],
     recommendedFirstStep: "Sort or scan for the best safe local choice",
     reviewQuestion:
       "Why can invalid triplets be ignored immediately without losing a possible solution?",
@@ -1048,14 +1048,14 @@ const categoryDefaults: Record<string, {
   "Two Pointers": {
     targetPatternId: "two-pointers",
     contrastPatternId: "sliding-window",
-    recommendedClues: ["sorted input", "pair or complement relationship"],
+    recommendedClues: ["sorted input", "pair or triplet relationship"],
     recommendedFirstStep: "Track left and right pointers",
     reviewQuestion: "What direct comparison tells you which pointer should move next?"
   },
   "Sliding Window": {
     targetPatternId: "sliding-window",
     contrastPatternId: "two-pointers",
-    recommendedClues: ["contiguous subarray", "need to shrink after expanding"],
+    recommendedClues: ["contiguous array or substring", "valid range that grows and shrinks"],
     recommendedFirstStep: "Maintain a running sum or frequency state",
     reviewQuestion: "What needs to stay true inside the current window before you shrink it?"
   },
@@ -1069,14 +1069,14 @@ const categoryDefaults: Record<string, {
   "Binary Search": {
     targetPatternId: "binary-search",
     contrastPatternId: "two-pointers",
-    recommendedClues: ["sorted or monotonic search space", "minimum feasible / maximum feasible"],
+    recommendedClues: ["sorted input or monotonic answer space", "minimum feasible or maximum feasible threshold"],
     recommendedFirstStep: "Set a left/right search interval and test the midpoint",
     reviewQuestion: "What monotonic property lets you safely discard half the search space?"
   },
   "Linked List": {
     targetPatternId: "two-pointers",
     contrastPatternId: "dfs",
-    recommendedClues: ["pair or complement relationship"],
+    recommendedClues: ["pair or triplet relationship"],
     recommendedFirstStep: "Track left and right pointers",
     reviewQuestion: "What pointer relationship or invariant matters most before you start rewiring nodes?"
   },
@@ -1090,7 +1090,7 @@ const categoryDefaults: Record<string, {
   "Heap / Priority Queue": {
     targetPatternId: "heap",
     contrastPatternId: "greedy",
-    recommendedClues: ["top k ranking", "repeated best choice"],
+    recommendedClues: ["top k items", "repeatedly need current smallest or largest"],
     recommendedFirstStep: "Push candidates into a heap",
     reviewQuestion: "Why do you need the current best candidate again and again instead of only once?"
   },
@@ -1104,14 +1104,14 @@ const categoryDefaults: Record<string, {
   Graphs: {
     targetPatternId: "bfs",
     contrastPatternId: "dfs",
-    recommendedClues: ["level-order traversal"],
+    recommendedClues: ["level order exploration"],
     recommendedFirstStep: "Use a queue for level order expansion",
     reviewQuestion: "Does the problem care more about minimum steps, reachability, or exploring every branch?"
   },
   "Advanced Graphs": {
     targetPatternId: "heap",
     contrastPatternId: "bfs",
-    recommendedClues: ["top k ranking", "repeated best choice"],
+    recommendedClues: ["top k items", "repeatedly need current smallest or largest"],
     recommendedFirstStep: "Push candidates into a heap",
     reviewQuestion: "What weighted or prioritized state makes a plain queue too weak here?"
   },
@@ -1139,7 +1139,7 @@ const categoryDefaults: Record<string, {
   Greedy: {
     targetPatternId: "greedy",
     contrastPatternId: "dynamic-programming",
-    recommendedClues: ["commit best local choice"],
+    recommendedClues: ["commit to the best local move"],
     recommendedFirstStep: "Sort or scan for the best safe local choice",
     reviewQuestion: "Why is the local decision safe before you know the entire future?"
   },
@@ -1153,7 +1153,7 @@ const categoryDefaults: Record<string, {
   "Math & Geometry": {
     targetPatternId: "greedy",
     contrastPatternId: "hashing",
-    recommendedClues: ["commit best local choice"],
+    recommendedClues: ["commit to the best local move"],
     recommendedFirstStep: "Sort or scan for the best safe local choice",
     reviewQuestion: "What core mathematical relationship or invariant should you name before coding?"
   },
