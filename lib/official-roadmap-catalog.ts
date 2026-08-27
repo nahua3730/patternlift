@@ -1,5 +1,6 @@
 export type OfficialRoadmapEntry = {
   title: string;
+  difficulty: "Easy" | "Medium" | "Hard";
   leetcodeUrl: string | null;
   tracks: Array<"blind75" | "neetcode150">;
   categories: { blind75?: string; neetcode150?: string };
@@ -9,6 +10,7 @@ export type OfficialRoadmapEntry = {
 export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   {
     "title": "3Sum",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/3sum/",
     "tracks": [
       "blind75",
@@ -25,6 +27,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Add Two Numbers",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/add-two-numbers/",
     "tracks": [
       "neetcode150"
@@ -38,6 +41,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Alien Dictionary",
+    "difficulty": "Hard",
     "leetcodeUrl": "https://leetcode.com/problems/alien-dictionary/",
     "tracks": [
       "blind75",
@@ -54,6 +58,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Balanced Binary Tree",
+    "difficulty": "Easy",
     "leetcodeUrl": "https://leetcode.com/problems/balanced-binary-tree/",
     "tracks": [
       "neetcode150"
@@ -67,6 +72,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Best Time to Buy And Sell Stock",
+    "difficulty": "Easy",
     "leetcodeUrl": "https://leetcode.com/problems/best-time-to-buy-and-sell-stock/",
     "tracks": [
       "blind75",
@@ -83,6 +89,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Best Time to Buy And Sell Stock With Cooldown",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/best-time-to-buy-and-sell-stock-with-cooldown/",
     "tracks": [
       "neetcode150"
@@ -96,6 +103,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Binary Search",
+    "difficulty": "Easy",
     "leetcodeUrl": "https://leetcode.com/problems/binary-search/",
     "tracks": [
       "neetcode150"
@@ -109,6 +117,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Binary Tree Level Order Traversal",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/binary-tree-level-order-traversal/",
     "tracks": [
       "blind75",
@@ -125,6 +134,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Binary Tree Maximum Path Sum",
+    "difficulty": "Hard",
     "leetcodeUrl": "https://leetcode.com/problems/binary-tree-maximum-path-sum/",
     "tracks": [
       "blind75",
@@ -141,6 +151,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Binary Tree Right Side View",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/binary-tree-right-side-view/",
     "tracks": [
       "neetcode150"
@@ -154,6 +165,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Burst Balloons",
+    "difficulty": "Hard",
     "leetcodeUrl": "https://leetcode.com/problems/burst-balloons/",
     "tracks": [
       "neetcode150"
@@ -167,6 +179,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Car Fleet",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/car-fleet/",
     "tracks": [
       "neetcode150"
@@ -180,6 +193,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Cheapest Flights Within K Stops",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/cheapest-flights-within-k-stops/",
     "tracks": [
       "neetcode150"
@@ -193,6 +207,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Climbing Stairs",
+    "difficulty": "Easy",
     "leetcodeUrl": "https://leetcode.com/problems/climbing-stairs/",
     "tracks": [
       "blind75",
@@ -209,6 +224,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Clone Graph",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/clone-graph/",
     "tracks": [
       "blind75",
@@ -225,6 +241,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Coin Change",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/coin-change/",
     "tracks": [
       "blind75",
@@ -241,6 +258,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Coin Change II",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/coin-change-ii/",
     "tracks": [
       "neetcode150"
@@ -254,6 +272,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Combination Sum",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/combination-sum/",
     "tracks": [
       "blind75",
@@ -270,6 +289,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Combination Sum II",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/combination-sum-ii/",
     "tracks": [
       "neetcode150"
@@ -283,6 +303,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Construct Binary Tree From Preorder And Inorder Traversal",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/construct-binary-tree-from-preorder-and-inorder-traversal/",
     "tracks": [
       "blind75",
@@ -299,6 +320,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Container With Most Water",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/container-with-most-water/",
     "tracks": [
       "blind75",
@@ -315,6 +337,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Contains Duplicate",
+    "difficulty": "Easy",
     "leetcodeUrl": "https://leetcode.com/problems/contains-duplicate/",
     "tracks": [
       "blind75",
@@ -331,6 +354,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Copy List With Random Pointer",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/copy-list-with-random-pointer/",
     "tracks": [
       "neetcode150"
@@ -344,6 +368,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Count Good Nodes In Binary Tree",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/count-good-nodes-in-binary-tree/",
     "tracks": [
       "neetcode150"
@@ -357,6 +382,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Counting Bits",
+    "difficulty": "Easy",
     "leetcodeUrl": "https://leetcode.com/problems/counting-bits/",
     "tracks": [
       "blind75",
@@ -373,6 +399,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Course Schedule",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/course-schedule/",
     "tracks": [
       "blind75",
@@ -389,6 +416,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Course Schedule II",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/course-schedule-ii/",
     "tracks": [
       "neetcode150"
@@ -402,6 +430,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Daily Temperatures",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/daily-temperatures/",
     "tracks": [
       "neetcode150"
@@ -415,6 +444,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Decode Ways",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/decode-ways/",
     "tracks": [
       "blind75",
@@ -431,6 +461,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Design Add And Search Words Data Structure",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/design-add-and-search-words-data-structure/",
     "tracks": [
       "blind75",
@@ -447,6 +478,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Design Twitter",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/design-twitter/",
     "tracks": [
       "neetcode150"
@@ -460,6 +492,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Detect Squares",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/detect-squares/",
     "tracks": [
       "neetcode150"
@@ -473,6 +506,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Diameter of Binary Tree",
+    "difficulty": "Easy",
     "leetcodeUrl": "https://leetcode.com/problems/diameter-of-binary-tree/",
     "tracks": [
       "neetcode150"
@@ -486,6 +520,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Distinct Subsequences",
+    "difficulty": "Hard",
     "leetcodeUrl": "https://leetcode.com/problems/distinct-subsequences/",
     "tracks": [
       "neetcode150"
@@ -499,6 +534,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Edit Distance",
+    "difficulty": "Hard",
     "leetcodeUrl": "https://leetcode.com/problems/edit-distance/",
     "tracks": [
       "neetcode150"
@@ -512,6 +548,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Encode and Decode Strings",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/encode-and-decode-strings/",
     "tracks": [
       "blind75",
@@ -528,6 +565,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Evaluate Reverse Polish Notation",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/evaluate-reverse-polish-notation/",
     "tracks": [
       "neetcode150"
@@ -541,6 +579,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Find Median From Data Stream",
+    "difficulty": "Hard",
     "leetcodeUrl": "https://leetcode.com/problems/find-median-from-data-stream/",
     "tracks": [
       "blind75",
@@ -557,6 +596,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Find Minimum In Rotated Sorted Array",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/find-minimum-in-rotated-sorted-array/",
     "tracks": [
       "blind75",
@@ -573,6 +613,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Find The Duplicate Number",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/find-the-duplicate-number/",
     "tracks": [
       "neetcode150"
@@ -586,6 +627,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Gas Station",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/gas-station/",
     "tracks": [
       "neetcode150"
@@ -599,6 +641,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Generate Parentheses",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/generate-parentheses/",
     "tracks": [
       "neetcode150"
@@ -612,6 +655,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Graph Valid Tree",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/graph-valid-tree/",
     "tracks": [
       "blind75",
@@ -628,6 +672,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Group Anagrams",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/group-anagrams/",
     "tracks": [
       "blind75",
@@ -644,6 +689,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Hand of Straights",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/hand-of-straights/",
     "tracks": [
       "neetcode150"
@@ -657,6 +703,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Happy Number",
+    "difficulty": "Easy",
     "leetcodeUrl": "https://leetcode.com/problems/happy-number/",
     "tracks": [
       "neetcode150"
@@ -670,6 +717,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "House Robber",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/house-robber/",
     "tracks": [
       "blind75",
@@ -686,6 +734,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "House Robber II",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/house-robber-ii/",
     "tracks": [
       "blind75",
@@ -702,6 +751,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Implement Trie Prefix Tree",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/implement-trie-prefix-tree/",
     "tracks": [
       "blind75",
@@ -718,6 +768,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Insert Interval",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/insert-interval/",
     "tracks": [
       "blind75",
@@ -734,6 +785,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Interleaving String",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/interleaving-string/",
     "tracks": [
       "neetcode150"
@@ -747,6 +799,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Invert Binary Tree",
+    "difficulty": "Easy",
     "leetcodeUrl": "https://leetcode.com/problems/invert-binary-tree/",
     "tracks": [
       "blind75",
@@ -763,6 +816,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Jump Game",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/jump-game/",
     "tracks": [
       "blind75",
@@ -779,6 +833,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Jump Game II",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/jump-game-ii/",
     "tracks": [
       "neetcode150"
@@ -792,6 +847,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "K Closest Points to Origin",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/k-closest-points-to-origin/",
     "tracks": [
       "neetcode150"
@@ -805,6 +861,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Koko Eating Bananas",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/koko-eating-bananas/",
     "tracks": [
       "neetcode150"
@@ -818,6 +875,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Kth Largest Element In a Stream",
+    "difficulty": "Easy",
     "leetcodeUrl": "https://leetcode.com/problems/kth-largest-element-in-a-stream/",
     "tracks": [
       "neetcode150"
@@ -831,6 +889,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Kth Largest Element In An Array",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/kth-largest-element-in-an-array/",
     "tracks": [
       "neetcode150"
@@ -844,6 +903,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Kth Smallest Element In a Bst",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/kth-smallest-element-in-a-bst/",
     "tracks": [
       "blind75",
@@ -860,6 +920,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Largest Rectangle In Histogram",
+    "difficulty": "Hard",
     "leetcodeUrl": "https://leetcode.com/problems/largest-rectangle-in-histogram/",
     "tracks": [
       "neetcode150"
@@ -873,6 +934,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Last Stone Weight",
+    "difficulty": "Easy",
     "leetcodeUrl": "https://leetcode.com/problems/last-stone-weight/",
     "tracks": [
       "neetcode150"
@@ -886,6 +948,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Letter Combinations of a Phone Number",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/letter-combinations-of-a-phone-number/",
     "tracks": [
       "neetcode150"
@@ -899,6 +962,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Linked List Cycle",
+    "difficulty": "Easy",
     "leetcodeUrl": "https://leetcode.com/problems/linked-list-cycle/",
     "tracks": [
       "blind75",
@@ -915,6 +979,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Longest Common Subsequence",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/longest-common-subsequence/",
     "tracks": [
       "blind75",
@@ -931,6 +996,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Longest Consecutive Sequence",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/longest-consecutive-sequence/",
     "tracks": [
       "blind75",
@@ -947,6 +1013,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Longest Increasing Path In a Matrix",
+    "difficulty": "Hard",
     "leetcodeUrl": "https://leetcode.com/problems/longest-increasing-path-in-a-matrix/",
     "tracks": [
       "neetcode150"
@@ -960,6 +1027,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Longest Increasing Subsequence",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/longest-increasing-subsequence/",
     "tracks": [
       "blind75",
@@ -976,6 +1044,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Longest Palindromic Substring",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/longest-palindromic-substring/",
     "tracks": [
       "blind75",
@@ -992,6 +1061,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Longest Repeating Character Replacement",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/longest-repeating-character-replacement/",
     "tracks": [
       "blind75",
@@ -1008,6 +1078,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Longest Substring Without Repeating Characters",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/longest-substring-without-repeating-characters/",
     "tracks": [
       "blind75",
@@ -1024,6 +1095,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Lowest Common Ancestor of a Binary Search Tree",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-search-tree/",
     "tracks": [
       "blind75",
@@ -1040,6 +1112,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "LRU Cache",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/lru-cache/",
     "tracks": [
       "neetcode150"
@@ -1053,6 +1126,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Max Area of Island",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/max-area-of-island/",
     "tracks": [
       "neetcode150"
@@ -1066,6 +1140,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Maximum Depth of Binary Tree",
+    "difficulty": "Easy",
     "leetcodeUrl": "https://leetcode.com/problems/maximum-depth-of-binary-tree/",
     "tracks": [
       "blind75",
@@ -1082,6 +1157,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Maximum Product Subarray",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/maximum-product-subarray/",
     "tracks": [
       "blind75",
@@ -1098,6 +1174,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Maximum Subarray",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/maximum-subarray/",
     "tracks": [
       "blind75",
@@ -1114,6 +1191,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Median of Two Sorted Arrays",
+    "difficulty": "Hard",
     "leetcodeUrl": "https://leetcode.com/problems/median-of-two-sorted-arrays/",
     "tracks": [
       "neetcode150"
@@ -1127,6 +1205,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Meeting Rooms",
+    "difficulty": "Easy",
     "leetcodeUrl": "https://leetcode.com/problems/meeting-rooms/",
     "tracks": [
       "blind75",
@@ -1143,6 +1222,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Meeting Rooms II",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/meeting-rooms-ii/",
     "tracks": [
       "blind75",
@@ -1159,6 +1239,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Merge Intervals",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/merge-intervals/",
     "tracks": [
       "blind75",
@@ -1175,6 +1256,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Merge K Sorted Lists",
+    "difficulty": "Hard",
     "leetcodeUrl": "https://leetcode.com/problems/merge-k-sorted-lists/",
     "tracks": [
       "blind75",
@@ -1191,6 +1273,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Merge Triplets to Form Target Triplet",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/merge-triplets-to-form-target-triplet/",
     "tracks": [
       "neetcode150"
@@ -1204,6 +1287,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Merge Two Sorted Lists",
+    "difficulty": "Easy",
     "leetcodeUrl": "https://leetcode.com/problems/merge-two-sorted-lists/",
     "tracks": [
       "blind75",
@@ -1220,6 +1304,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Min Cost Climbing Stairs",
+    "difficulty": "Easy",
     "leetcodeUrl": "https://leetcode.com/problems/min-cost-climbing-stairs/",
     "tracks": [
       "neetcode150"
@@ -1233,6 +1318,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Min Cost to Connect All Points",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/min-cost-to-connect-all-points/",
     "tracks": [
       "neetcode150"
@@ -1246,6 +1332,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Min Stack",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/min-stack/",
     "tracks": [
       "neetcode150"
@@ -1259,6 +1346,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Minimum Interval to Include Each Query",
+    "difficulty": "Hard",
     "leetcodeUrl": "https://leetcode.com/problems/minimum-interval-to-include-each-query/",
     "tracks": [
       "neetcode150"
@@ -1272,6 +1360,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Minimum Window Substring",
+    "difficulty": "Hard",
     "leetcodeUrl": "https://leetcode.com/problems/minimum-window-substring/",
     "tracks": [
       "blind75",
@@ -1288,6 +1377,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Missing Number",
+    "difficulty": "Easy",
     "leetcodeUrl": "https://leetcode.com/problems/missing-number/",
     "tracks": [
       "blind75",
@@ -1304,6 +1394,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Multiply Strings",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/multiply-strings/",
     "tracks": [
       "neetcode150"
@@ -1317,6 +1408,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "N Queens",
+    "difficulty": "Hard",
     "leetcodeUrl": "https://leetcode.com/problems/n-queens/",
     "tracks": [
       "neetcode150"
@@ -1330,6 +1422,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Network Delay Time",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/network-delay-time/",
     "tracks": [
       "neetcode150"
@@ -1343,6 +1436,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Non Overlapping Intervals",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/non-overlapping-intervals/",
     "tracks": [
       "blind75",
@@ -1359,6 +1453,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Number of 1 Bits",
+    "difficulty": "Easy",
     "leetcodeUrl": "https://leetcode.com/problems/number-of-1-bits/",
     "tracks": [
       "blind75",
@@ -1375,6 +1470,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Number of Connected Components In An Undirected Graph",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/number-of-connected-components-in-an-undirected-graph/",
     "tracks": [
       "blind75",
@@ -1391,6 +1487,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Number of Islands",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/number-of-islands/",
     "tracks": [
       "blind75",
@@ -1407,6 +1504,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Pacific Atlantic Water Flow",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/pacific-atlantic-water-flow/",
     "tracks": [
       "blind75",
@@ -1423,6 +1521,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Palindrome Partitioning",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/palindrome-partitioning/",
     "tracks": [
       "neetcode150"
@@ -1436,6 +1535,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Palindromic Substrings",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/palindromic-substrings/",
     "tracks": [
       "blind75",
@@ -1452,6 +1552,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Partition Equal Subset Sum",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/partition-equal-subset-sum/",
     "tracks": [
       "neetcode150"
@@ -1465,6 +1566,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Partition Labels",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/partition-labels/",
     "tracks": [
       "neetcode150"
@@ -1478,6 +1580,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Permutation In String",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/permutation-in-string/",
     "tracks": [
       "neetcode150"
@@ -1491,6 +1594,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Permutations",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/permutations/",
     "tracks": [
       "neetcode150"
@@ -1504,6 +1608,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Plus One",
+    "difficulty": "Easy",
     "leetcodeUrl": "https://leetcode.com/problems/plus-one/",
     "tracks": [
       "neetcode150"
@@ -1517,6 +1622,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Pow(x, n)",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/powx-n/",
     "tracks": [
       "neetcode150"
@@ -1530,6 +1636,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Product of Array Except Self",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/product-of-array-except-self/",
     "tracks": [
       "blind75",
@@ -1546,6 +1653,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Reconstruct Itinerary",
+    "difficulty": "Hard",
     "leetcodeUrl": "https://leetcode.com/problems/reconstruct-itinerary/",
     "tracks": [
       "neetcode150"
@@ -1559,6 +1667,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Redundant Connection",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/redundant-connection/",
     "tracks": [
       "neetcode150"
@@ -1572,6 +1681,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Regular Expression Matching",
+    "difficulty": "Hard",
     "leetcodeUrl": "https://leetcode.com/problems/regular-expression-matching/",
     "tracks": [
       "neetcode150"
@@ -1585,6 +1695,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Remove Nth Node From End of List",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/remove-nth-node-from-end-of-list/",
     "tracks": [
       "blind75",
@@ -1601,6 +1712,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Reorder List",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/reorder-list/",
     "tracks": [
       "blind75",
@@ -1617,6 +1729,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Reverse Bits",
+    "difficulty": "Easy",
     "leetcodeUrl": "https://leetcode.com/problems/reverse-bits/",
     "tracks": [
       "blind75",
@@ -1633,6 +1746,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Reverse Integer",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/reverse-integer/",
     "tracks": [
       "neetcode150"
@@ -1646,6 +1760,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Reverse Linked List",
+    "difficulty": "Easy",
     "leetcodeUrl": "https://leetcode.com/problems/reverse-linked-list/",
     "tracks": [
       "blind75",
@@ -1662,6 +1777,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Reverse Nodes In K Group",
+    "difficulty": "Hard",
     "leetcodeUrl": "https://leetcode.com/problems/reverse-nodes-in-k-group/",
     "tracks": [
       "neetcode150"
@@ -1675,6 +1791,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Rotate Image",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/rotate-image/",
     "tracks": [
       "blind75",
@@ -1691,6 +1808,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Rotting Oranges",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/rotting-oranges/",
     "tracks": [
       "neetcode150"
@@ -1704,6 +1822,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Same Tree",
+    "difficulty": "Easy",
     "leetcodeUrl": "https://leetcode.com/problems/same-tree/",
     "tracks": [
       "blind75",
@@ -1720,6 +1839,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Search a 2D Matrix",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/search-a-2d-matrix/",
     "tracks": [
       "neetcode150"
@@ -1733,6 +1853,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Search In Rotated Sorted Array",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/search-in-rotated-sorted-array/",
     "tracks": [
       "blind75",
@@ -1749,6 +1870,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Serialize And Deserialize Binary Tree",
+    "difficulty": "Hard",
     "leetcodeUrl": "https://leetcode.com/problems/serialize-and-deserialize-binary-tree/",
     "tracks": [
       "blind75",
@@ -1765,6 +1887,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Set Matrix Zeroes",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/set-matrix-zeroes/",
     "tracks": [
       "blind75",
@@ -1781,6 +1904,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Single Number",
+    "difficulty": "Easy",
     "leetcodeUrl": "https://leetcode.com/problems/single-number/",
     "tracks": [
       "neetcode150"
@@ -1794,6 +1918,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Sliding Window Maximum",
+    "difficulty": "Hard",
     "leetcodeUrl": "https://leetcode.com/problems/sliding-window-maximum/",
     "tracks": [
       "neetcode150"
@@ -1807,6 +1932,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Spiral Matrix",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/spiral-matrix/",
     "tracks": [
       "blind75",
@@ -1823,6 +1949,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Subsets",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/subsets/",
     "tracks": [
       "neetcode150"
@@ -1836,6 +1963,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Subsets II",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/subsets-ii/",
     "tracks": [
       "neetcode150"
@@ -1849,6 +1977,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Subtree of Another Tree",
+    "difficulty": "Easy",
     "leetcodeUrl": "https://leetcode.com/problems/subtree-of-another-tree/",
     "tracks": [
       "blind75",
@@ -1865,6 +1994,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Sum of Two Integers",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/sum-of-two-integers/",
     "tracks": [
       "blind75",
@@ -1881,6 +2011,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Surrounded Regions",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/surrounded-regions/",
     "tracks": [
       "neetcode150"
@@ -1894,6 +2025,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Swim In Rising Water",
+    "difficulty": "Hard",
     "leetcodeUrl": "https://leetcode.com/problems/swim-in-rising-water/",
     "tracks": [
       "neetcode150"
@@ -1907,6 +2039,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Target Sum",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/target-sum/",
     "tracks": [
       "neetcode150"
@@ -1920,6 +2053,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Task Scheduler",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/task-scheduler/",
     "tracks": [
       "neetcode150"
@@ -1933,6 +2067,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Time Based Key Value Store",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/time-based-key-value-store/",
     "tracks": [
       "neetcode150"
@@ -1946,6 +2081,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Top K Frequent Elements",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/top-k-frequent-elements/",
     "tracks": [
       "blind75",
@@ -1962,6 +2098,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Trapping Rain Water",
+    "difficulty": "Hard",
     "leetcodeUrl": "https://leetcode.com/problems/trapping-rain-water/",
     "tracks": [
       "neetcode150"
@@ -1975,6 +2112,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Two Sum",
+    "difficulty": "Easy",
     "leetcodeUrl": "https://leetcode.com/problems/two-sum/",
     "tracks": [
       "blind75",
@@ -1991,6 +2129,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Two Sum II Input Array Is Sorted",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/two-sum-ii-input-array-is-sorted/",
     "tracks": [
       "neetcode150"
@@ -2004,6 +2143,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Unique Paths",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/unique-paths/",
     "tracks": [
       "blind75",
@@ -2020,6 +2160,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Valid Anagram",
+    "difficulty": "Easy",
     "leetcodeUrl": "https://leetcode.com/problems/valid-anagram/",
     "tracks": [
       "blind75",
@@ -2036,6 +2177,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Valid Palindrome",
+    "difficulty": "Easy",
     "leetcodeUrl": "https://leetcode.com/problems/valid-palindrome/",
     "tracks": [
       "blind75",
@@ -2052,6 +2194,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Valid Parentheses",
+    "difficulty": "Easy",
     "leetcodeUrl": "https://leetcode.com/problems/valid-parentheses/",
     "tracks": [
       "blind75",
@@ -2068,6 +2211,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Valid Parenthesis String",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/valid-parenthesis-string/",
     "tracks": [
       "neetcode150"
@@ -2081,6 +2225,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Valid Sudoku",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/valid-sudoku/",
     "tracks": [
       "neetcode150"
@@ -2094,6 +2239,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Validate Binary Search Tree",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/validate-binary-search-tree/",
     "tracks": [
       "blind75",
@@ -2110,6 +2256,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Walls And Gates",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/walls-and-gates/",
     "tracks": [
       "neetcode150"
@@ -2123,6 +2270,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Word Break",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/word-break/",
     "tracks": [
       "blind75",
@@ -2139,6 +2287,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Word Ladder",
+    "difficulty": "Hard",
     "leetcodeUrl": "https://leetcode.com/problems/word-ladder/",
     "tracks": [
       "neetcode150"
@@ -2152,6 +2301,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Word Search",
+    "difficulty": "Medium",
     "leetcodeUrl": "https://leetcode.com/problems/word-search/",
     "tracks": [
       "blind75",
@@ -2168,6 +2318,7 @@ export const officialRoadmapCatalog: OfficialRoadmapEntry[] = [
   },
   {
     "title": "Word Search II",
+    "difficulty": "Hard",
     "leetcodeUrl": "https://leetcode.com/problems/word-search-ii/",
     "tracks": [
       "blind75",

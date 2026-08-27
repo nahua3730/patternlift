@@ -1182,7 +1182,7 @@ const generatedRoadmapProblems: AppProblem[] = officialRoadmapCatalog
       id: "official-" + slugifyRoadmapTitle(entry.title),
       category: category as ProblemCategory,
       title: entry.title,
-      difficulty: "Official",
+      difficulty: entry.difficulty,
       prompt: entry.title + " is part of the official " + tracksLabel + " roadmap in " + category + ". Use the editor and custom test panel below to solve it here, and open the official links if you want the original full wording while we keep adding richer problem-specific harnesses.",
       targetPatternId: defaults.targetPatternId,
       recommendedClues: defaults.recommendedClues,
