@@ -103,6 +103,12 @@ export function TodayDashboard() {
             "radial-gradient(circle at 10% 15%, rgba(99,102,241,.28), transparent 28rem), linear-gradient(140deg, #0b1020, #111a31 65%, #0c1728)"
         }}
       >
+        <Link
+          href="/onboarding"
+          className="absolute right-6 top-6 text-xs font-semibold text-slate-400 transition hover:text-white"
+        >
+          Rebuild plan
+        </Link>
         <div className="flex flex-wrap items-end justify-between gap-8">
           <div className="max-w-xl">
             <div className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.17em] text-indigo-300">

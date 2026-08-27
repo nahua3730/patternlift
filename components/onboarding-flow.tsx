@@ -36,10 +36,19 @@ const STUDY_MODE_LABEL: Record<string, string> = {
   review: "Mixed review"
 };
 
-export function OnboardingFlow() {
+export function OnboardingFlow({ hasExistingPlan = false }: { hasExistingPlan?: boolean }) {
   const router = useRouter();
   const [step, setStep] = useState<Step>("experience");
   const [messages, setMessages] = useState<Message[]>([
+    ...(hasExistingPlan
+      ? [
+          {
+            id: "q0",
+            speaker: "coach" as const,
+            text: "You've already got a plan running — let's rebuild it. Same three quick questions, and your new plan replaces it once you start Day 1."
+          }
+        ]
+      : []),
     { id: "q1", speaker: "coach", text: "Have you solved LeetCode-style problems before, even a few?" }
   ]);
   const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel | null>(null);
