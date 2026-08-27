@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ProductList, ProductRow, StatusBadge } from "@/components/product-system";
+import { tierForReps } from "@/lib/mastery-tiers";
 
 type TodayResponse = {
   plan: {
@@ -18,7 +19,7 @@ type TodayResponse = {
     weekNumber: number;
     patternLabel: string;
     studyMode: "learn" | "recognize" | "practice" | "review";
-    problems: { id: string; title: string; difficulty: string }[];
+    problems: { id: string; title: string; difficulty: string; reps: number }[];
   };
   dueReviews: {
     id: string;
@@ -168,6 +169,7 @@ export function TodayDashboard() {
                     }
                     title={
                       <span className="flex flex-wrap items-center gap-2">
+                        <span className={`tier-dot tier-dot-${tierForReps(problem.reps)}`} title={`${problem.reps} rep${problem.reps === 1 ? "" : "s"}`} />
                         <span>{problem.title}</span>
                         <StatusBadge tone="info">{data.today.patternLabel}</StatusBadge>
                         <StatusBadge

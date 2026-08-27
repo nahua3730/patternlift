@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { dbAll, dbOne } from "@/lib/db";
 import { allProblems } from "@/lib/product";
+import { getRepCounts } from "@/lib/rep-counts";
 import { computeStreak } from "@/lib/streak";
 import type { CurriculumPlan } from "@/lib/curriculum-agent";
 
@@ -33,10 +34,17 @@ export async function GET() {
   const dayIndex = Math.min(daysSinceStart, plan.days.length - 1);
   const day = plan.days[dayIndex];
 
+  const reps = await getRepCounts(user.id);
+
   const problems = day.problemIds
     .map((problemId) => allProblems.find((problem) => problem.id === problemId))
     .filter((problem): problem is (typeof allProblems)[number] => Boolean(problem))
-    .map((problem) => ({ id: problem.id, title: problem.title, difficulty: problem.difficulty }));
+    .map((problem) => ({
+      id: problem.id,
+      title: problem.title,
+      difficulty: problem.difficulty,
+      reps: reps[problem.id] ?? 0
+    }));
 
   const dueReviews = await dbAll<{
     id: string;
