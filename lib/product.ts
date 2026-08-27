@@ -1287,6 +1287,40 @@ const problemPatternOverrides: Record<
   "official-word-search-ii": { targetPatternId: "dfs", contrastPatternId: "hashing" }
 };
 
+// categoryDefaults.recommendedFirstStep/reviewQuestion use their own fixed
+// per-pattern vocabulary (matched by inferFirstStepFromReply's candidate list
+// in practice-workspace.tsx), but categoryDefaults.recommendedClues is
+// independently-written free text that often does NOT literally appear in
+// that same pattern's patternOptions.clues (e.g. Graphs' "level-order
+// traversal" vs bfs's actual clue "level order exploration"). Since
+// inferCluesFromReply only ever infers clues from patternOptions[*].clues,
+// any recommendedClues value that isn't an exact member of the matching
+// pattern's own clues list can never be matched - silently zeroing out up to
+// 30 of the 100 explanation-score points regardless of what a learner says.
+// This affects every generated problem, not just the ones overridden above,
+// so recommendedClues is always derived straight from the pattern's own
+// clues (guaranteed to exist verbatim in patternOptions.clues by
+// construction) rather than trusting categoryDefaults' paraphrase.
+const patternOptionsById = new Map(patternOptions.map((pattern) => [pattern.id, pattern]));
+
+// One representative categoryDefaults entry per pattern id, for
+// recommendedFirstStep/reviewQuestion - used to keep those in sync with
+// problemPatternOverrides above, so an overridden problem's first-step/
+// review question comes from the SAME pattern as its corrected tag, not the
+// stale category default.
+const patternDefaultsById = new Map<
+  (typeof patternOptions)[number]["id"],
+  { recommendedFirstStep: string; reviewQuestion: string }
+>();
+for (const value of Object.values(categoryDefaults)) {
+  if (!patternDefaultsById.has(value.targetPatternId)) {
+    patternDefaultsById.set(value.targetPatternId, {
+      recommendedFirstStep: value.recommendedFirstStep,
+      reviewQuestion: value.reviewQuestion
+    });
+  }
+}
+
 const generatedRoadmapProblems: AppProblem[] = officialRoadmapCatalog
   .map((entry) => {
     const existingId = existingProblemIdByTitle.get(normalizeRoadmapTitle(entry.title));
@@ -1298,6 +1332,9 @@ const generatedRoadmapProblems: AppProblem[] = officialRoadmapCatalog
       : "NeetCode 150";
     const problemId = "official-" + slugifyRoadmapTitle(entry.title);
     const override = problemPatternOverrides[problemId];
+    const targetPatternId = override?.targetPatternId ?? defaults.targetPatternId;
+    const patternDefaults = override ? patternDefaultsById.get(targetPatternId) : undefined;
+    const recommendedClues = patternOptionsById.get(targetPatternId)?.clues.slice(0, 2) ?? defaults.recommendedClues;
 
     return {
       id: problemId,
@@ -1305,10 +1342,10 @@ const generatedRoadmapProblems: AppProblem[] = officialRoadmapCatalog
       title: entry.title,
       difficulty: entry.difficulty,
       prompt: entry.title + " is part of the official " + tracksLabel + " roadmap in " + category + ". Use the editor and custom test panel below to solve it here, and open the official links if you want the original full wording while we keep adding richer problem-specific harnesses.",
-      targetPatternId: override?.targetPatternId ?? defaults.targetPatternId,
-      recommendedClues: defaults.recommendedClues,
-      recommendedFirstStep: defaults.recommendedFirstStep,
-      reviewQuestion: defaults.reviewQuestion,
+      targetPatternId,
+      recommendedClues,
+      recommendedFirstStep: patternDefaults?.recommendedFirstStep ?? defaults.recommendedFirstStep,
+      reviewQuestion: patternDefaults?.reviewQuestion ?? defaults.reviewQuestion,
       contrastPatternId: override?.contrastPatternId ?? defaults.contrastPatternId
     };
   })
