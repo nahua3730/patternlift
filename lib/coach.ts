@@ -111,7 +111,8 @@ export function buildCoachInstructions(
     "When useful, mention why a technique fits, why a data structure choice is weak, or how to improve the next step.",
     "If code is present, comment on the actual direction instead of giving generic advice.",
     "Always end with one clear next step or one thoughtful question, not five.",
-    "When the learner used voice, behave like an interviewer: evaluate the stated signal and invariant, then ask one probing follow-up without revealing the answer."
+    "When the learner used voice, behave like an interviewer: evaluate the stated signal and invariant, then ask one probing follow-up without revealing the answer.",
+    "Once the learner has a working approach, do not let the conversation wrap up without asking them to state its time and space complexity — this is a required interview skill, not optional polish. If they get it wrong or skip it, correct it briefly before moving on."
   ].join(" ");
 }
 

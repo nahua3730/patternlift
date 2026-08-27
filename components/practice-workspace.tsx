@@ -51,7 +51,14 @@ type InlineCoachHint = {
   prompt?: string;
 };
 
-type WorkspaceContextPanel = "coach" | "problem" | "tests";
+type WorkspaceContextPanel = "coach" | "problem" | "tests" | "approaches";
+
+type ApproachTier = {
+  name: string;
+  idea: string;
+  timeComplexity: string;
+  spaceComplexity: string;
+};
 
 type SpeechRecognitionResultLike = {
   isFinal: boolean;
@@ -225,6 +232,9 @@ export function PracticeWorkspace({
   });
   const [runResults, setRunResults] = useState<RunResult[] | null>(null);
   const [runnerError, setRunnerError] = useState<string | null>(null);
+  const [approaches, setApproaches] = useState<ApproachTier[] | null>(null);
+  const [approachesError, setApproachesError] = useState<string | null>(null);
+  const [approachesLoading, setApproachesLoading] = useState(false);
   const [isRunningCode, setIsRunningCode] = useState(false);
   const [testCases, setTestCases] = useState<EditableExample[]>([]);
   const [selectedTestCaseId, setSelectedTestCaseId] = useState<string | null>(null);
@@ -274,6 +284,26 @@ export function PracticeWorkspace({
     const passed = runResults.filter((result) => result.passed).length;
     return { passed, total: runResults.length };
   }, [runResults]);
+
+  const approachesUnlocked = hasLoggedAttempt || runResults !== null;
+
+  async function loadApproaches() {
+    if (approaches || approachesLoading) return;
+    setApproachesLoading(true);
+    setApproachesError(null);
+    try {
+      const response = await fetch(`/api/problems/${activeProblem.id}/approaches`);
+      const payload = (await response.json()) as { approaches?: ApproachTier[]; error?: string };
+      if (!response.ok || !payload.approaches) {
+        throw new Error(payload.error || "Unable to load approaches right now.");
+      }
+      setApproaches(payload.approaches);
+    } catch (error) {
+      setApproachesError(error instanceof Error ? error.message : "Unable to load approaches right now.");
+    } finally {
+      setApproachesLoading(false);
+    }
+  }
 
   const activeInlineCoachHint = inlineCoachHints[inlineCoachHints.length - 1] ?? null;
 
@@ -346,6 +376,9 @@ export function PracticeWorkspace({
     );
     setRunResults(null);
     setRunnerError(null);
+    setApproaches(null);
+    setApproachesError(null);
+    setApproachesLoading(false);
     const nextCases =
       activeCodeConfig?.examples.map((example, index) => ({
         id: `${activeProblem.id}-example-${index + 1}`,
@@ -1656,9 +1689,20 @@ export function PracticeWorkspace({
               {!isContextPanelCollapsed ? ([
                 ["coach", "Coach"],
                 ["problem", "Problem"],
-                ["tests", runSummary ? `Tests ${runSummary.passed}/${runSummary.total}` : "Tests"]
+                ["tests", runSummary ? `Tests ${runSummary.passed}/${runSummary.total}` : "Tests"],
+                ["approaches", "Approaches"]
               ] as const).map(([panel, label]) => (
-                <button key={panel} type="button" onClick={() => setActiveContextPanel(panel)} className={activeContextPanel === panel ? "ide-context-tab-active" : ""}>{label}</button>
+                <button
+                  key={panel}
+                  type="button"
+                  onClick={() => {
+                    setActiveContextPanel(panel);
+                    if (panel === "approaches" && approachesUnlocked) void loadApproaches();
+                  }}
+                  className={activeContextPanel === panel ? "ide-context-tab-active" : ""}
+                >
+                  {label}
+                </button>
               )) : null}
               <button
                 type="button"
@@ -1729,7 +1773,7 @@ export function PracticeWorkspace({
                 <div className="ide-context-badges"><span>{correctPattern.label}</span>{contrastPattern ? <span>vs {contrastPattern.label}</span> : null}</div>
                 <p className="ide-problem-copy">{problemText}</p>
               </section>
-            ) : (
+            ) : activeContextPanel === "tests" ? (
               <section className="ide-context-content ide-tests-panel">
                 <div className="ide-tests-heading">
                   <div><p className="ide-context-kicker">Test cases</p><h3>{runSummary ? `${runSummary.passed} of ${runSummary.total} passing` : "Check your solution"}</h3></div>
@@ -1750,6 +1794,42 @@ export function PracticeWorkspace({
                 ) : null}
                 {runnerError ? <p className="ide-test-error">{runnerError}</p> : null}
                 {runResults ? <div className="ide-test-results">{runResults.map((result) => <div key={result.label} className={result.passed ? "ide-test-result-pass" : "ide-test-result-fail"}><strong>{result.label}</strong><span>{result.actual} / {result.expected}</span></div>)}</div> : null}
+              </section>
+            ) : (
+              <section className="ide-context-content">
+                <p className="ide-context-kicker">Brute force → optimized</p>
+                <h3>Approaches</h3>
+                {!approachesUnlocked ? (
+                  <div className="ide-approaches-locked">
+                    <p>Try it yourself first — approaches unlock once you&apos;ve run your code or talked it through with the coach.</p>
+                  </div>
+                ) : approachesLoading ? (
+                  <div className="ide-approaches-locked">
+                    <span className="coach-thinking"><i /><i /><i /></span>
+                    <p>Working out the approach tiers…</p>
+                  </div>
+                ) : approachesError ? (
+                  <div className="ide-approaches-locked">
+                    <p>{approachesError}</p>
+                    <button type="button" onClick={() => void loadApproaches()}>Try again</button>
+                  </div>
+                ) : approaches ? (
+                  <div className="ide-approaches-list">
+                    {approaches.map((tier) => (
+                      <div key={tier.name} className="ide-approach-tier">
+                        <div className="ide-approach-tier-head">
+                          <strong>{tier.name}</strong>
+                          <span>{tier.timeComplexity} time · {tier.spaceComplexity} space</span>
+                        </div>
+                        <p>{tier.idea}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="ide-approaches-locked">
+                    <button type="button" onClick={() => void loadApproaches()}>Load approaches</button>
+                  </div>
+                )}
               </section>
             )}
           </aside>

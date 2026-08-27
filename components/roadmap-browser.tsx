@@ -237,7 +237,7 @@ export function RoadmapBrowser({ initialReps }: { initialReps: Record<string, nu
                             key={problem.id}
                             type="button"
                             onClick={() => openProblem(problem)}
-                            title={problem.title}
+                            data-tooltip={problem.title}
                             className={`roadmap-node roadmap-node-${tier}`}
                           >
                             {meta?.leetcodeNumber ?? problem.title.slice(0, 2).toUpperCase()}

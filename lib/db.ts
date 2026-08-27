@@ -160,6 +160,13 @@ async function runPostgresMigrations(sql: NeonClient) {
       problem_id TEXT NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
     )`,
+    `CREATE TABLE IF NOT EXISTS problem_approaches (
+      id TEXT PRIMARY KEY,
+      problem_id TEXT NOT NULL UNIQUE,
+      model TEXT NOT NULL,
+      approaches_json TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
     "CREATE INDEX IF NOT EXISTS sessions_user_id_idx ON sessions(user_id)",
     "CREATE INDEX IF NOT EXISTS attempts_user_created_idx ON attempts(user_id, created_at DESC)",
     "CREATE INDEX IF NOT EXISTS review_items_user_due_idx ON review_items(user_id, due_at)",
@@ -247,6 +254,13 @@ function runSqliteMigrations(db: DatabaseSync) {
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
         problem_id TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS problem_approaches (
+        id TEXT PRIMARY KEY,
+        problem_id TEXT NOT NULL UNIQUE,
+        model TEXT NOT NULL,
+        approaches_json TEXT NOT NULL,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
     `);

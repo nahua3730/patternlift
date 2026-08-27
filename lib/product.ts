@@ -1202,7 +1202,7 @@ export const officialProblemRoadmapMeta = Object.fromEntries(
     return [
       problemId,
       {
-        leetcodeNumber: manual?.leetcodeNumber,
+        leetcodeNumber: manual?.leetcodeNumber ?? entry.leetcodeNumber,
         tracks: entry.tracks,
         category: entry.categories.neetcode150 ?? entry.categories.blind75 ?? "Arrays & Hashing",
         leetcodeUrl: entry.leetcodeUrl,
