@@ -1168,6 +1168,28 @@ const categoryDefaults: Record<string, {
 
 const existingProblemIdByTitle = new Map(sampleProblems.map((problem) => [normalizeRoadmapTitle(problem.title), problem.id]));
 
+// Title matching alone misses a native problem whose title was reworded from
+// the official one (e.g. "Clone Graph (Adjacency View)" vs the catalog's
+// "Clone Graph") - that used to let a second, inferior auto-generated
+// "official-clone-graph" get created for the same LeetCode problem, AND left
+// the real hand-authored version untracked by officialProblemRoadmapMeta
+// (so solving it never counted toward roadmap/Blind75/NeetCode150 progress).
+// problemRoadmapMeta already records each native problem's real LeetCode
+// number for exactly this kind of cross-reference, so use it as a fallback
+// match.
+const existingProblemIdByLeetCodeNumber = new Map(
+  sampleProblems
+    .map((problem) => [problemRoadmapMeta[problem.id]?.leetcodeNumber, problem.id] as const)
+    .filter((entry): entry is [number, string] => typeof entry[0] === "number")
+);
+
+function resolveExistingProblemId(entry: { title: string; leetcodeNumber?: number }) {
+  return (
+    existingProblemIdByTitle.get(normalizeRoadmapTitle(entry.title)) ??
+    (entry.leetcodeNumber ? existingProblemIdByLeetCodeNumber.get(entry.leetcodeNumber) : undefined)
+  );
+}
+
 // Per-problem pattern overrides for the auto-generated roadmap problems, replacing
 // the coarse per-category default with a judgment made from the problem's real
 // statement (see lib/problem-statement-service.ts) - categoryDefaults alone tags
@@ -1323,7 +1345,7 @@ for (const value of Object.values(categoryDefaults)) {
 
 const generatedRoadmapProblems: AppProblem[] = officialRoadmapCatalog
   .map((entry) => {
-    const existingId = existingProblemIdByTitle.get(normalizeRoadmapTitle(entry.title));
+    const existingId = resolveExistingProblemId(entry);
     if (existingId) return null;
     const category = entry.categories.neetcode150 ?? entry.categories.blind75 ?? "Arrays & Hashing";
     const defaults = categoryDefaults[category] ?? categoryDefaults["Arrays & Hashing"];
@@ -1355,7 +1377,7 @@ export const allProblems: AppProblem[] = [...sampleProblems, ...generatedRoadmap
 
 export const officialProblemRoadmapMeta = Object.fromEntries(
   officialRoadmapCatalog.map((entry) => {
-    const problemId = existingProblemIdByTitle.get(normalizeRoadmapTitle(entry.title)) ?? ("official-" + slugifyRoadmapTitle(entry.title));
+    const problemId = resolveExistingProblemId(entry) ?? ("official-" + slugifyRoadmapTitle(entry.title));
     const manual = problemRoadmapMeta[problemId];
     return [
       problemId,
