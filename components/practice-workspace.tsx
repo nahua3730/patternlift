@@ -223,6 +223,7 @@ export function PracticeWorkspace({
   );
   const [voiceStream, setVoiceStream] = useState<MediaStream | null>(null);
   const [hasLoggedAttempt, setHasLoggedAttempt] = useState(false);
+  const [loggedOutcome, setLoggedOutcome] = useState<AttemptResult["outcome"] | null>(null);
   const [confidence, setConfidence] = useState<1 | 2 | 3>(2);
   const [nextInputMethod, setNextInputMethod] = useState<"text" | "voice">("text");
   const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>("python");
@@ -679,6 +680,7 @@ export function PracticeWorkspace({
         inputMethod
       });
       setHasLoggedAttempt(true);
+      setLoggedOutcome(outcome);
     }
 
     if (activeCoachStyle === "off") {
@@ -1495,6 +1497,17 @@ export function PracticeWorkspace({
                       </button>
                     ))}
                   </div>
+                </div>
+              ) : loggedOutcome ? (
+                <div className={`session-attempt-logged session-attempt-logged-${loggedOutcome}`}>
+                  <span className="session-attempt-logged-dot" aria-hidden="true" />
+                  <span>
+                    {loggedOutcome === "solid"
+                      ? "Logged as solid — you named the pattern clearly."
+                      : loggedOutcome === "partial"
+                        ? "Logged as partial — worth a review before it's fully solid."
+                        : "Logged as needs work — this pattern will come back around soon."}
+                  </span>
                 </div>
               ) : null}
               {recordingState === "recording" ? (

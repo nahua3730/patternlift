@@ -1816,6 +1816,15 @@ select {
 .session-send-button:disabled { cursor: not-allowed; background: #e2e8f0; color: #94a3b8; }
 .session-mic-button:active, .session-send-button:not(:disabled):active { transform: scale(.94); }
 
+.session-attempt-logged { display: flex; align-items: center; gap: .5rem; margin-bottom: .5rem; padding-bottom: .5rem; border-bottom: 1px solid rgba(0,0,0,.08); font-size: .72rem; font-weight: 550; }
+.session-attempt-logged-dot { height: .5rem; width: .5rem; flex: 0 0 auto; border-radius: 999px; }
+.session-attempt-logged-solid { color: #047857; }
+.session-attempt-logged-solid .session-attempt-logged-dot { background: #059669; }
+.session-attempt-logged-partial { color: #b45309; }
+.session-attempt-logged-partial .session-attempt-logged-dot { background: #d97706; }
+.session-attempt-logged-confused { color: #b91c1c; }
+.session-attempt-logged-confused .session-attempt-logged-dot { background: #dc2626; }
+
 .session-recording-row { display: flex; height: 3.1rem; align-items: center; gap: .65rem; }
 .session-recording-dot { display: grid; height: 2rem; width: 2rem; flex: 0 0 auto; place-items: center; border-radius: 999px; background: #fee2e2; color: #dc2626; }
 .session-recording-dot svg { height: .95rem; width: .95rem; }
