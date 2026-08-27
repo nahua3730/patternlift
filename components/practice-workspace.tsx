@@ -124,6 +124,8 @@ type PracticeWorkspaceProps = {
   coachStyle?: CoachStyle;
   selectedPatternIds?: string[];
   quickStart?: boolean;
+  guessPatternId?: string;
+  guessReason?: string;
 };
 
 type RunResult = {
@@ -200,7 +202,9 @@ export function PracticeWorkspace({
   mode = "recognize",
   coachStyle = "guided",
   selectedPatternIds = [],
-  quickStart = false
+  quickStart = false,
+  guessPatternId,
+  guessReason
 }: PracticeWorkspaceProps) {
   const [problemId, setProblemId] = useState<string>(initialProblemId ?? allProblems[0].id);
   const [problemText, setProblemText] = useState(allProblems[0].prompt);
@@ -608,8 +612,8 @@ export function PracticeWorkspace({
     setRunnerError(null);
   }
 
-  async function sendCoachMessage() {
-    const userText = coachDraft.trim();
+  async function sendCoachMessage(overrideText?: string) {
+    const userText = (overrideText ?? coachDraft).trim();
     if (!userText) return;
 
     const userMessage: ChatMessage = {
@@ -800,6 +804,20 @@ export function PracticeWorkspace({
       setActiveCoachTool(null);
     }
   }
+
+  const appliedGateGuessRef = useRef(false);
+  useEffect(() => {
+    if (appliedGateGuessRef.current || hasLoggedAttempt || !guessPatternId) return;
+    const guessedPattern = patternOptions.find((pattern) => pattern.id === guessPatternId);
+    if (!guessedPattern) return;
+    appliedGateGuessRef.current = true;
+    const text = `I think this is ${guessedPattern.label}.${guessReason ? ` ${guessReason}` : ""}`;
+    void sendCoachMessage(text);
+    // Runs once, right after the Roadmap Pattern Gate hands off a guess -
+    // deliberately excludes sendCoachMessage/hasLoggedAttempt from deps so
+    // it never re-fires as those change during the resulting exchange.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [guessPatternId, guessReason]);
 
   const sendInlineLineFeedback = useCallback(async (
     codeSnapshot: string,

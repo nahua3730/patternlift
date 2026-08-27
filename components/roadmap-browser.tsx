@@ -81,8 +81,13 @@ export function RoadmapBrowser({ initialReps }: { initialReps: Record<string, nu
     ].filter((segment) => segment.total > 0);
   }, [track, reps]);
 
-  function hrefFor(problemId: string) {
-    return `/practice?${DEFAULT_HREF_PARAMS}&problem=${problemId}`;
+  function hrefFor(problemId: string, guess?: { patternId: string; reason: string }) {
+    let href = `/practice?${DEFAULT_HREF_PARAMS}&problem=${problemId}`;
+    if (guess) {
+      href += `&guessPattern=${encodeURIComponent(guess.patternId)}`;
+      if (guess.reason.trim()) href += `&guessReason=${encodeURIComponent(guess.reason.trim())}`;
+    }
+    return href;
   }
 
   function openProblem(problem: AppProblem) {
@@ -99,7 +104,9 @@ export function RoadmapBrowser({ initialReps }: { initialReps: Record<string, nu
 
   function commitGate() {
     if (!detailProblem) return;
-    router.push(hrefFor(detailProblem.id));
+    const guess =
+      gateChoice && gateChoice !== "unsure" ? { patternId: gateChoice, reason: gateReason } : undefined;
+    router.push(hrefFor(detailProblem.id, guess));
   }
 
   async function markRep() {

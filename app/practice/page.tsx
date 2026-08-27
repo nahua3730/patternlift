@@ -11,6 +11,8 @@ export default async function PracticePage({
     coach?: "beginner" | "guided" | "optional" | "off";
     patterns?: string;
     quick?: string;
+    guessPattern?: string;
+    guessReason?: string;
   };
 }) {
   const params = new URLSearchParams();
@@ -19,6 +21,8 @@ export default async function PracticePage({
   if (searchParams?.coach) params.set("coach", searchParams.coach);
   if (searchParams?.patterns) params.set("patterns", searchParams.patterns);
   if (searchParams?.quick) params.set("quick", searchParams.quick);
+  if (searchParams?.guessPattern) params.set("guessPattern", searchParams.guessPattern);
+  if (searchParams?.guessReason) params.set("guessReason", searchParams.guessReason);
   await requireUser(`/practice${params.toString() ? `?${params.toString()}` : ""}`);
 
   if (!searchParams?.problem) {
@@ -39,6 +43,8 @@ export default async function PracticePage({
       coachStyle={searchParams?.coach}
       selectedPatternIds={searchParams?.patterns?.split(",").filter(Boolean) ?? []}
       quickStart={searchParams?.quick === "1"}
+      guessPatternId={searchParams?.guessPattern}
+      guessReason={searchParams?.guessReason}
     />
   );
 }
