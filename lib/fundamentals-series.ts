@@ -165,45 +165,53 @@ export const fundamentalsSeries: FundamentalsEpisode[] = [
     episode: 21,
     titleCn: "买卖股票的最佳时机",
     titleEn: "Best Time to Buy and Sell Stock",
-    problemIds: ["best-time-stock"]
+    problemIds: ["official-best-time-to-buy-and-sell-stock-with-cooldown", "best-time-stock"],
+    note: "The video's main worked examples are variants II, IV (LC 122, 188), not in the catalog yet - the catalog has the cooldown variant (LC 309, also course-taught) and the basic version (LC 121, the video's assigned homework).",
+    bvid: "BV1ho4y1W7QK"
   },
   {
     episode: 22,
     titleCn: "区间 DP：最长回文子序列",
     titleEn: "Interval DP: Longest Palindromic Subsequence",
     problemIds: [],
-    note: "Longest Palindromic Subsequence isn't in the catalog - the catalog's Longest Palindromic Substring is a different problem, so this step just links the video."
+    note: "Longest Palindromic Subsequence isn't in the catalog - the catalog's Longest Palindromic Substring is a different problem, so this step just links the video.",
+    bvid: "BV1Gs4y1E7EU"
   },
   {
     episode: 23,
     titleCn: "树形 DP：树的直径",
     titleEn: "Tree DP: Diameter of a Binary Tree",
-    problemIds: ["official-diameter-of-binary-tree"]
+    problemIds: ["official-diameter-of-binary-tree", "official-binary-tree-maximum-path-sum"],
+    bvid: "BV17o4y187h1"
   },
   {
     episode: 24,
     titleCn: "树形 DP：打家劫舍 III",
     titleEn: "Tree DP: House Robber III",
     problemIds: [],
-    note: "Not in the catalog yet - watch the explainer and solve it directly on LeetCode."
+    note: "Not in the catalog yet - watch the explainer and solve it directly on LeetCode.",
+    bvid: "BV1vu4y1f7dn"
   },
   {
     episode: 25,
     titleCn: "树形 DP：监控二叉树",
     titleEn: "Tree DP: Binary Tree Cameras",
     problemIds: [],
-    note: "Not in the catalog yet - watch the explainer and solve it directly on LeetCode."
+    note: "Not in the catalog yet - watch the explainer and solve it directly on LeetCode.",
+    bvid: "BV1oF411U7qL"
   },
   {
     episode: 26,
     titleCn: "单调栈",
     titleEn: "Monotonic Stack",
-    problemIds: ["daily-temperatures"]
+    problemIds: ["daily-temperatures"],
+    bvid: "BV1VN411J7S7"
   },
   {
     episode: 27,
     titleCn: "单调队列 滑动窗口最大值",
     titleEn: "Monotonic Queue: Sliding Window Maximum",
-    problemIds: ["official-sliding-window-maximum"]
+    problemIds: ["official-sliding-window-maximum"],
+    bvid: "BV1bM411X72E"
   }
 ];
