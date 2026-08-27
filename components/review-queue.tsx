@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { ProductList, ProductRow, StatusBadge } from "@/components/product-system";
 
 type ReviewItem = {
@@ -201,6 +202,22 @@ export function ReviewQueue({ items, history }: ReviewQueueProps) {
 
     setReminderMessage(
       `Notifications are not on yet, so use this review window manually in ${option.label.toLowerCase()}.`
+    );
+  }
+
+  if (items.length === 0 && history.length === 0) {
+    return (
+      <section className="uiverse-panel p-10 text-center">
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-ember">Review plan</p>
+        <h2 className="mt-3 text-2xl font-semibold text-ink">Nothing to review yet.</h2>
+        <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-black/60">
+          Once you solve or attempt a problem, PatternLift schedules it for spaced recall and this
+          page fills in with a real review plan built from what you actually got wrong.
+        </p>
+        <Link href="/today" className="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-lake">
+          Go to today&apos;s plan <span aria-hidden="true">→</span>
+        </Link>
+      </section>
     );
   }
 
