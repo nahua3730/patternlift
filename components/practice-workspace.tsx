@@ -1907,6 +1907,11 @@ export function PracticeWorkspace({
                   </div>
                 ) : approaches ? (
                   <div className="ide-approaches-list">
+                    {selectedLanguage !== "javascript" ? (
+                      <p className="ide-approaches-lang-note">
+                        Code below is shown in JavaScript as a consistent reference — the idea is the same, translate it into {editorLanguages.find((language) => language.id === selectedLanguage)?.label ?? selectedLanguage}.
+                      </p>
+                    ) : null}
                     {approaches.map((tier) => (
                       <div key={tier.name} className="ide-approach-tier">
                         <div className="ide-approach-tier-head">
