@@ -71,6 +71,7 @@ export async function POST(request: Request) {
       INSERT INTO review_items (
         id,
         user_id,
+        problem_id,
         problem_title,
         target_pattern_label,
         contrast_pattern_label,
@@ -79,11 +80,12 @@ export async function POST(request: Request) {
         due_at,
         interval_days,
         repetitions
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
   , [
     createId("review"),
     user.id,
+    reviewItem.problemId ?? null,
     reviewItem.problemTitle,
     reviewItem.targetPatternLabel,
     reviewItem.contrastPatternLabel,

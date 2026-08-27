@@ -35,6 +35,7 @@ export function buildReviewItem(result: AttemptResult): ReviewItem {
   const schedule = getReviewSchedule(result.outcome);
   return {
     id: `review-${Date.now()}`,
+    problemId: result.problemId,
     problemTitle: result.problemTitle,
     targetPatternLabel: result.correctPatternLabel,
     contrastPatternLabel: result.contrastPatternLabel,

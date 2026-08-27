@@ -39,6 +39,7 @@ export async function GET() {
 
   const reviewItems = await dbAll<{
     id: string;
+    problem_id: string | null;
     problem_title: string;
     target_pattern_label: string;
     contrast_pattern_label: string;
@@ -49,7 +50,7 @@ export async function GET() {
     repetitions: number;
   }>(
       `
-        SELECT id, problem_title, target_pattern_label, contrast_pattern_label, review_question,
+        SELECT id, problem_id, problem_title, target_pattern_label, contrast_pattern_label, review_question,
           urgency, due_at, interval_days, repetitions
         FROM review_items
         WHERE user_id = ?
@@ -82,6 +83,7 @@ export async function GET() {
 
   const reviewQueue = reviewItems.map((item) => ({
     id: item.id,
+    problemId: item.problem_id ?? undefined,
     problemTitle: item.problem_title,
     targetPatternLabel: item.target_pattern_label,
     contrastPatternLabel: item.contrast_pattern_label,

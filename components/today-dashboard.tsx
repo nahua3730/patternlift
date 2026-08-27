@@ -23,6 +23,7 @@ type TodayResponse = {
   };
   dueReviews: {
     id: string;
+    problemId?: string;
     problemTitle: string;
     patternLabel: string;
     reviewQuestion: string;
@@ -187,23 +188,36 @@ export function TodayDashboard() {
                   />
                 </Link>
               ))}
-              {data.dueReviews.map((review) => (
-                <div key={review.id} className="product-row">
-                  <div className="product-row-leading">
-                    <span className="problem-row-index" style={{ background: "#f0f9ff", borderColor: "#bae6fd", color: "#0284c7" }}>
-                      ⟳
-                    </span>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-900">
-                      <span>{review.problemTitle}</span>
-                      <StatusBadge tone="info">{review.patternLabel}</StatusBadge>
-                      <StatusBadge tone="neutral">Review · due</StatusBadge>
+              {data.dueReviews.map((review) => {
+                const row = (
+                  <div className="product-row">
+                    <div className="product-row-leading">
+                      <span className="problem-row-index" style={{ background: "#f0f9ff", borderColor: "#bae6fd", color: "#0284c7" }}>
+                        ⟳
+                      </span>
                     </div>
-                    <div className="mt-1 line-clamp-1 text-sm text-slate-500">{review.reviewQuestion}</div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-900">
+                        <span>{review.problemTitle}</span>
+                        <StatusBadge tone="info">{review.patternLabel}</StatusBadge>
+                        <StatusBadge tone="neutral">Review · due</StatusBadge>
+                      </div>
+                      <div className="mt-1 line-clamp-1 text-sm text-slate-500">{review.reviewQuestion}</div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+                return review.problemId ? (
+                  <Link
+                    key={review.id}
+                    href={`/practice?mode=recognize&coach=guided&problem=${review.problemId}`}
+                    className="product-row-link"
+                  >
+                    {row}
+                  </Link>
+                ) : (
+                  <div key={review.id}>{row}</div>
+                );
+              })}
             </ProductList>
           )}
         </div>

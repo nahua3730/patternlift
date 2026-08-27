@@ -6,6 +6,7 @@ import { ProductList, ProductRow, StatusBadge } from "@/components/product-syste
 
 type ReviewItem = {
   id: string;
+  problemId?: string;
   problemTitle: string;
   targetPatternLabel: string;
   contrastPatternLabel: string;
@@ -435,15 +436,23 @@ export function ReviewQueue({ items, history }: ReviewQueueProps) {
           <span className="text-sm text-black/54">Intervals expand after strong recall</span>
         </div>
         <ProductList className="mt-4">
-          {scheduledItems.map((item) => (
-            <ProductRow
-              key={item.id}
-              leading={<span className="review-row-mark">↻</span>}
-              title={<span className="flex flex-wrap items-center gap-2">{item.problemTitle}<StatusBadge tone={item.urgency === "high" ? "attention" : "info"}>{item.urgency}</StatusBadge></span>}
-              description={<><span className="font-medium text-slate-700">{item.targetPatternLabel} vs. {item.contrastPatternLabel}</span><span className="mt-1 block">{item.reviewQuestion}</span></>}
-              meta={<span className="space-y-1 text-right"><span className="block font-semibold text-slate-700">{formatDueDate(item.dueAt)}</span><span className="block">{item.intervalDays ? `${item.intervalDays}-day interval` : "First recall"}</span></span>}
-            />
-          ))}
+          {scheduledItems.map((item) => {
+            const row = (
+              <ProductRow
+                leading={<span className="review-row-mark">↻</span>}
+                title={<span className="flex flex-wrap items-center gap-2">{item.problemTitle}<StatusBadge tone={item.urgency === "high" ? "attention" : "info"}>{item.urgency}</StatusBadge></span>}
+                description={<><span className="font-medium text-slate-700">{item.targetPatternLabel} vs. {item.contrastPatternLabel}</span><span className="mt-1 block">{item.reviewQuestion}</span></>}
+                meta={<span className="space-y-1 text-right"><span className="block font-semibold text-slate-700">{formatDueDate(item.dueAt)}</span><span className="block">{item.intervalDays ? `${item.intervalDays}-day interval` : "First recall"}</span></span>}
+              />
+            );
+            return item.problemId ? (
+              <Link key={item.id} href={`/practice?mode=recognize&coach=guided&problem=${item.problemId}`} className="product-row-link">
+                {row}
+              </Link>
+            ) : (
+              <div key={item.id}>{row}</div>
+            );
+          })}
         </ProductList>
       </div>
     </section>

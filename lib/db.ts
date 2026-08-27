@@ -114,6 +114,7 @@ async function runPostgresMigrations(sql: NeonClient) {
     `CREATE TABLE IF NOT EXISTS review_items (
       id TEXT PRIMARY KEY,
       user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+      problem_id TEXT,
       problem_title TEXT NOT NULL,
       target_pattern_label TEXT NOT NULL,
       contrast_pattern_label TEXT NOT NULL,
@@ -181,6 +182,10 @@ async function runPostgresMigrations(sql: NeonClient) {
     "CREATE INDEX IF NOT EXISTS study_plan_runs_user_created_idx ON study_plan_runs(user_id, created_at DESC)",
     "CREATE INDEX IF NOT EXISTS daily_checkins_user_date_idx ON daily_checkins(user_id, checkin_date DESC)",
     "CREATE INDEX IF NOT EXISTS problem_marks_user_problem_idx ON problem_marks(user_id, problem_id)",
+    // review_items predates the problem_id column - CREATE TABLE IF NOT EXISTS
+    // above is a no-op against an already-existing table, so the column needs
+    // its own idempotent ADD for deployments where the table already exists.
+    "ALTER TABLE review_items ADD COLUMN IF NOT EXISTS problem_id TEXT",
   ];
 
   for (const statement of statements) {
@@ -287,6 +292,7 @@ function runSqliteMigrations(db: DatabaseSync) {
     ensureSqliteColumn(db, "attempts", "confused_with", "TEXT");
     ensureSqliteColumn(db, "attempts", "input_method", "TEXT NOT NULL DEFAULT 'text'");
     ensureSqliteColumn(db, "review_items", "user_id", "TEXT");
+    ensureSqliteColumn(db, "review_items", "problem_id", "TEXT");
     ensureSqliteColumn(db, "review_items", "due_at", "TEXT");
     ensureSqliteColumn(db, "review_items", "interval_days", "INTEGER NOT NULL DEFAULT 1");
     ensureSqliteColumn(db, "review_items", "repetitions", "INTEGER NOT NULL DEFAULT 0");

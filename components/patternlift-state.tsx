@@ -32,6 +32,7 @@ export type HistoryItem = {
 
 export type ReviewItem = {
   id: string;
+  problemId?: string;
   problemTitle: string;
   targetPatternLabel: string;
   contrastPatternLabel: string;

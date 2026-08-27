@@ -48,6 +48,7 @@ export async function GET() {
 
   const dueReviews = await dbAll<{
     id: string;
+    problem_id: string | null;
     problem_title: string;
     target_pattern_label: string;
     review_question: string;
@@ -55,7 +56,7 @@ export async function GET() {
     due_at: string;
   }>(
     `
-      SELECT id, problem_title, target_pattern_label, review_question, urgency, due_at
+      SELECT id, problem_id, problem_title, target_pattern_label, review_question, urgency, due_at
       FROM review_items
       WHERE user_id = ? AND due_at <= ?
       ORDER BY due_at ASC
@@ -89,6 +90,7 @@ export async function GET() {
     },
     dueReviews: dueReviews.map((row) => ({
       id: row.id,
+      problemId: row.problem_id ?? undefined,
       problemTitle: row.problem_title,
       patternLabel: row.target_pattern_label,
       reviewQuestion: row.review_question,
