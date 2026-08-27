@@ -1341,6 +1341,27 @@ export function PracticeWorkspace({
     return `/learn?${params.toString()}`;
   }, [activeCoachStyle, mode, selectedPatternIds]);
 
+  if (!allProblems.some((problem) => problem.id === problemId)) {
+    return (
+      <div className="uiverse-panel p-10 text-center">
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-ember">Problem workspace</p>
+        <h2 className="mt-3 text-2xl font-semibold text-ink">We couldn&apos;t find that problem.</h2>
+        <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-black/60">
+          The link you followed points to a problem id (&ldquo;{problemId}&rdquo;) that doesn&apos;t exist here. It may
+          have been renamed or removed.
+        </p>
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
+          <Link href="/practice/select?mode=learn&coach=guided" className="text-sm font-semibold text-lake">
+            Pick a problem →
+          </Link>
+          <Link href="/today" className="text-sm font-semibold text-lake">
+            Go to today&apos;s plan →
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="session-workspace flex min-h-[calc(100vh-1.5rem)] w-full flex-col gap-0">
       <section className="session-command-bar">

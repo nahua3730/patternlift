@@ -21,6 +21,7 @@ export function PracticePageView({
   const { addAttempt } = usePatternLiftState();
   return (
     <PracticeWorkspace
+      key={`${initialProblemId ?? "default"}-${mode ?? "learn"}-${coachStyle ?? "guided"}`}
       onComplete={addAttempt}
       initialProblemId={initialProblemId}
       mode={mode}
