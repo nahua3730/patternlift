@@ -10,6 +10,7 @@ import type {
   SupportedLanguage,
   ValueType
 } from "@/lib/problem-code";
+import { evaluateExpression, runJavaScriptCode } from "@/lib/run-javascript";
 import ts from "typescript";
 
 const execFileAsync = promisify(execFile);
@@ -61,7 +62,7 @@ export async function POST(request: Request) {
                     ? await runGo(body.code, body.functionName, body.signature, examples)
                     : body.language === "kotlin"
                       ? await runKotlin(body.code, body.functionName, body.signature, examples)
-                    : await runJavaScript(body.code, body.functionName, examples);
+                    : await runJavaScriptCode(body.code, body.functionName, examples);
 
     return NextResponse.json({ results: runResults });
   } catch (error) {
@@ -69,10 +70,6 @@ export async function POST(request: Request) {
       error instanceof Error ? error.message : "Unable to run the submitted code.";
     return NextResponse.json({ error: message }, { status: 400 });
   }
-}
-
-function evaluateExpression(expression: string) {
-  return new Function(`return ${expression};`)();
 }
 
 function signatureUsesType(
@@ -96,55 +93,6 @@ function insertAfterHeader(
   const last = matches[matches.length - 1];
   const insertAt = (last.index ?? 0) + last[0].length;
   return `${code.slice(0, insertAt)}\n${prelude}${code.slice(insertAt)}`;
-}
-
-async function runJavaScript(
-  code: string,
-  functionName: string,
-  examples: { label: string; args: unknown[]; expected: unknown }[]
-) {
-  const filePath = join(tmpdir(), `patternlift-${randomUUID()}.mjs`);
-  const payload = JSON.stringify({ functionName, examples });
-
-  const script = `${code}
-
-const payload = ${JSON.stringify(payload)};
-const parsed = JSON.parse(payload);
-const candidate = globalThis[parsed.functionName] ?? (typeof ${functionName} !== "undefined" ? ${functionName} : null);
-
-if (typeof candidate !== "function") {
-  throw new Error("I couldn't find a function named ${functionName}.");
-}
-
-const results = parsed.examples.map((example) => ({
-  label: example.label,
-  actual: candidate(...example.args),
-  expected: example.expected
-}));
-
-console.log(JSON.stringify(results));
-`;
-
-  await fs.writeFile(filePath, script, "utf8");
-
-  try {
-    const { stdout, stderr } = await execFileAsync("node", [filePath], {
-      timeout: 4000,
-      maxBuffer: 1024 * 1024
-    });
-
-    if (stderr) {
-      throw new Error(stderr.trim());
-    }
-
-    return JSON.parse(stdout.trim()) as {
-      label: string;
-      actual: unknown;
-      expected: unknown;
-    }[];
-  } finally {
-    await fs.rm(filePath, { force: true });
-  }
 }
 
 async function runPython(
@@ -220,7 +168,7 @@ async function runTypeScript(
     }
   }).outputText;
 
-  return runJavaScript(transpiled, functionName, examples);
+  return runJavaScriptCode(transpiled, functionName, examples);
 }
 
 async function runRuby(
