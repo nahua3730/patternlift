@@ -245,7 +245,7 @@ export function FundamentalsEpisodeView({
           <div className="relative aspect-video w-full bg-black">
             {episode.bvid ? (
               <iframe
-                src={`https://player.bilibili.com/player.html?bvid=${episode.bvid}&page=1&high_quality=1&quality=64&danmaku=0`}
+                src={`https://player.bilibili.com/player.html?bvid=${episode.bvid}&page=1&high_quality=1&quality=80&danmaku=0`}
                 allow="fullscreen; autoplay"
                 allowFullScreen
                 className="absolute inset-0 h-full w-full"
