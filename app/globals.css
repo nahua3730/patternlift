@@ -1690,7 +1690,8 @@ select {
 .session-more-popover a, .session-more-popover button { border-radius: 8px; padding: .65rem .7rem; color: #475569; font-size: .7rem; font-weight: 700; text-align: left; }
 .session-more-popover a:hover, .session-more-popover button:hover { background: #f1f5f9; color: #0f172a; }
 
-.session-editor-main { display: grid; height: 100%; min-height: 0; grid-template-columns: minmax(0,1fr) minmax(22rem,32%); grid-template-rows: minmax(0,1fr); overflow: hidden; background: #e9edf4; transition: grid-template-columns 200ms ease; }
+.session-editor-main { display: grid; height: 100%; min-height: 0; grid-template-columns: minmax(0,1fr) auto var(--coach-panel-width, min(22rem, 32%)); grid-template-rows: minmax(0,1fr); overflow: hidden; background: #e9edf4; }
+.session-editor-main:not(.session-editor-main-resizing) { transition: grid-template-columns 200ms ease; }
 .session-editor-main-has-guide { grid-template-rows: auto minmax(0,1fr); }
 .session-editor-main-context-collapsed { grid-template-columns: minmax(0,1fr) 3.25rem; }
 .quick-start-guide { grid-column: 1 / -1; }
@@ -1710,7 +1711,11 @@ select {
 .ide-editor-help { color: #64748b; font-size: .64rem; }
 .ide-editor-help strong { color: #a5b4fc; }
 
-.ide-context-rail { display: flex; min-height: 0; min-width: 0; flex-direction: column; overflow: hidden; border-left: 1px solid #d4dce8; background: #f8fafc; }
+.ide-context-rail { display: flex; min-height: 0; min-width: 0; flex-direction: column; overflow: hidden; background: #f8fafc; }
+
+.ide-resize-handle { position: relative; display: flex; width: 9px; flex: 0 0 auto; cursor: col-resize; align-items: stretch; justify-content: center; background: transparent; }
+.ide-resize-handle span { width: 1px; background: #d4dce8; transition: background 120ms ease, width 120ms ease; }
+.ide-resize-handle:hover span, .ide-resize-handle-active span { width: 3px; background: #6366f1; }
 .ide-context-tabs { display: flex; min-height: 3.2rem; flex: 0 0 auto; align-items: center; gap: .25rem; border-bottom: 1px solid #dce3ed; background: #fff; padding: .45rem .5rem; }
 .ide-context-tabs > button:not(.ide-context-collapse) { flex: 1; border-radius: 8px; padding: .55rem .45rem; color: #64748b; font-size: .68rem; font-weight: 750; }
 .ide-context-tabs > button:not(.ide-context-collapse):hover { background: #f1f5f9; color: #334155; }
@@ -1760,7 +1765,6 @@ select {
 .ide-approach-tier-head strong { color: #0f172a; font-size: .78rem; font-weight: 750; }
 .ide-approach-tier-head span { color: #4f46e5; font-family: ui-monospace,SFMono-Regular,Menlo,monospace; font-size: .64rem; font-weight: 700; }
 .ide-approach-tier p { margin-top: .4rem; color: #475569; font-size: .72rem; line-height: 1.55; }
-.ide-approaches-lang-note { margin-bottom: .85rem; border-radius: 9px; border: 1px solid #e2e8f0; background: #f8fafc; padding: .55rem .7rem; color: #64748b; font-size: .72rem; line-height: 1.5; }
 .ide-approach-verified { display: inline-flex; margin-top: .55rem; border-radius: 999px; background: #ecfdf5; padding: .2rem .55rem; color: #047857; font-size: .6rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
 .ide-approach-unverified { display: inline-flex; margin-top: .55rem; border-radius: 999px; background: #fffbeb; padding: .2rem .55rem; color: #b45309; font-size: .6rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
 .ide-approach-code { overflow-x: auto; margin-top: .55rem; border-radius: 9px; background: #0f172a; padding: .7rem .8rem; color: #e2e8f0; font-family: ui-monospace,SFMono-Regular,Menlo,monospace; font-size: .68rem; line-height: 1.55; white-space: pre; }
@@ -2216,6 +2220,7 @@ select {
   .session-workspace { height: auto; min-height: calc(100vh - 1.5rem); overflow: visible; }
   .session-editor-main,
   .session-editor-main-context-collapsed { grid-template-columns: minmax(0,1fr); grid-template-rows: minmax(26rem,1fr) 20rem; overflow-y: visible; }
+  .ide-resize-handle { display: none; }
   .quick-start-guide { grid-column: 1; }
   .ide-context-rail { min-height: 20rem; border-top: 1px solid #d4dce8; border-left: 0; }
   .ide-context-rail-collapsed { min-height: 3.25rem; }

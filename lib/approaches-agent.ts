@@ -11,7 +11,7 @@ export type ProblemApproaches = {
   approaches: ApproachTier[];
 };
 
-export function buildApproachesSchema(functionName: string) {
+export function buildApproachesSchema(functionName: string, languageLabel: string) {
   return {
     type: "object",
     additionalProperties: false,
@@ -32,7 +32,7 @@ export function buildApproachesSchema(functionName: string) {
             spaceComplexity: { type: "string" },
             code: {
               type: "string",
-              description: `Complete, runnable JavaScript defining a function named exactly "${functionName}".`
+              description: `Complete, runnable ${languageLabel} defining a function named exactly "${functionName}".`
             }
           }
         }
@@ -53,8 +53,12 @@ function extractBigO(value: string): string | null {
 
 // A cheap parse-only check (never executes the code) to catch the model
 // occasionally emitting malformed JavaScript (stray braces, unterminated
-// strings, etc). Only meaningful for problems without a real test harness -
-// verifiable problems already get a much stronger functional check later.
+// strings, etc). Only valid for actual JavaScript - running this against
+// Python, Java, etc would reject perfectly correct code, so it only applies
+// when the tier's code is JS. Non-JS languages that ARE functionally
+// verified (see the approaches route) get an equivalent safety net there;
+// languages without a runner in this deployment fall back to the existing
+// "unverified" labeling, same as before this check existed.
 function hasValidSyntax(code: string): boolean {
   try {
     // eslint-disable-next-line no-new-func
@@ -65,7 +69,11 @@ function hasValidSyntax(code: string): boolean {
   }
 }
 
-export function validateProblemApproaches(value: unknown, functionName: string): ApproachTier[] | null {
+export function validateProblemApproaches(
+  value: unknown,
+  functionName: string,
+  language: string
+): ApproachTier[] | null {
   if (!value || typeof value !== "object") return null;
   const candidate = value as { approaches?: unknown };
   if (!Array.isArray(candidate.approaches) || candidate.approaches.length < 2) return null;
@@ -82,7 +90,7 @@ export function validateProblemApproaches(value: unknown, functionName: string):
       if (!name || !idea || !code) return null;
       if (!code.includes(functionName)) return null;
       if (!timeComplexity || !spaceComplexity) return null;
-      if (!hasValidSyntax(code)) return null;
+      if (language === "javascript" && !hasValidSyntax(code)) return null;
       return { name, idea, timeComplexity, spaceComplexity, code, verified: false };
     })
     .filter((tier): tier is ApproachTier => Boolean(tier))

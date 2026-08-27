@@ -13,6 +13,20 @@ export type SupportedLanguage =
   | "go"
   | "kotlin";
 
+export const languageLabels: Record<SupportedLanguage, string> = {
+  javascript: "JavaScript",
+  typescript: "TypeScript",
+  python: "Python",
+  ruby: "Ruby",
+  c: "C",
+  csharp: "C#",
+  java: "Java",
+  cpp: "C++",
+  swift: "Swift",
+  go: "Go",
+  kotlin: "Kotlin"
+};
+
 export type ValueType =
   | "int"
   | "bool"

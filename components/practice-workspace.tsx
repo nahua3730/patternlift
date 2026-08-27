@@ -158,6 +158,10 @@ const editorLanguages: Array<{ id: SupportedLanguage; label: string }> = [
   { id: "kotlin", label: "Kotlin" }
 ];
 
+const COACH_PANEL_MIN_WIDTH = 320;
+const COACH_PANEL_MAX_WIDTH = 640;
+const COACH_PANEL_STORAGE_KEY = "patternlift-coach-panel-width";
+
 const coachStyles: Array<{ id: CoachStyle; label: string }> = [
   { id: "guided", label: "Adaptive" },
   { id: "beginner", label: "Step-by-step" },
@@ -218,6 +222,9 @@ export function PracticeWorkspace({
   const [showQuickStartGuide, setShowQuickStartGuide] = useState(quickStart);
   const [activeContextPanel, setActiveContextPanel] = useState<WorkspaceContextPanel>("coach");
   const [isContextPanelCollapsed, setIsContextPanelCollapsed] = useState(false);
+  const [coachPanelWidth, setCoachPanelWidth] = useState<number | null>(null);
+  const [isResizingCoachPanel, setIsResizingCoachPanel] = useState(false);
+  const splitContainerRef = useRef<HTMLElement | null>(null);
   const [editorVoiceState, setEditorVoiceState] = useState<"idle" | "listening" | "thinking">("idle");
   const [isBeginnerLineCoachLoading, setIsBeginnerLineCoachLoading] = useState(false);
   const [inlineCoachHints, setInlineCoachHints] = useState<InlineCoachHint[]>([]);
@@ -316,7 +323,9 @@ export function PracticeWorkspace({
     setApproachesLoading(true);
     setApproachesError(null);
     try {
-      const response = await fetch(`/api/problems/${activeProblem.id}/approaches`);
+      const response = await fetch(
+        `/api/problems/${activeProblem.id}/approaches?language=${encodeURIComponent(selectedLanguage)}`
+      );
       const payload = (await response.json()) as { approaches?: ApproachTier[]; error?: string };
       if (!response.ok || !payload.approaches) {
         throw new Error(payload.error || "Unable to load approaches right now.");
@@ -366,6 +375,57 @@ export function PracticeWorkspace({
     } finally {
       if (activeProblemIdRef.current === problemId) setProblemStatementLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(COACH_PANEL_STORAGE_KEY);
+      const parsed = stored ? Number(stored) : NaN;
+      if (Number.isFinite(parsed)) {
+        setCoachPanelWidth(Math.min(COACH_PANEL_MAX_WIDTH, Math.max(COACH_PANEL_MIN_WIDTH, parsed)));
+      }
+    } catch {
+      // Private browsing / blocked storage - just keep the default width.
+    }
+  }, []);
+
+  const startCoachPanelResize = useCallback((event: React.MouseEvent) => {
+    event.preventDefault();
+    const container = splitContainerRef.current;
+    if (!container) return;
+    setIsResizingCoachPanel(true);
+    const previousUserSelect = document.body.style.userSelect;
+    const previousCursor = document.body.style.cursor;
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "col-resize";
+
+    function handleMove(moveEvent: MouseEvent) {
+      const rect = container!.getBoundingClientRect();
+      const nextWidth = rect.right - moveEvent.clientX;
+      setCoachPanelWidth(Math.min(COACH_PANEL_MAX_WIDTH, Math.max(COACH_PANEL_MIN_WIDTH, nextWidth)));
+    }
+
+    function handleUp() {
+      document.removeEventListener("mousemove", handleMove);
+      document.removeEventListener("mouseup", handleUp);
+      document.body.style.userSelect = previousUserSelect;
+      document.body.style.cursor = previousCursor;
+      setIsResizingCoachPanel(false);
+      setCoachPanelWidth((current) => {
+        if (current != null) {
+          try {
+            window.localStorage.setItem(COACH_PANEL_STORAGE_KEY, String(current));
+          } catch {
+            // Nothing to persist to if storage is unavailable - width still
+            // applies for the rest of this session via component state.
+          }
+        }
+        return current;
+      });
+    }
+
+    document.addEventListener("mousemove", handleMove);
+    document.addEventListener("mouseup", handleUp);
   }, []);
 
   useEffect(() => {
@@ -853,7 +913,13 @@ export function PracticeWorkspace({
       problemPrompt: problemText,
       userResponse: isQuestion
         ? [`The learner asked this ${kind === "voice" ? "voice " : ""}question at code line ${lineNumber}: ${question}`, "Answer only that question using the current code context.", kind === "voice" ? "Use no more than 45 words. Give one clear answer and one immediate next move. Do not provide the full solution." : "Use no more than 24 words and do not provide the full solution."].join(" ")
-        : [`The learner just completed line ${lineNumber}: ${completedLine}`, "Give one inline coaching note: confirm the direction, identify one concrete issue, or ask one useful next-step question.", "Use no more than 24 words. Do not provide the full solution."].join(" "),
+        : [
+            `The learner just completed line ${lineNumber}: ${completedLine}`,
+            "Judge this line against the full file given below as Current code, not in isolation - does it fit correctly with what's already written above it, or does it conflict with an earlier decision (wrong variable, redundant check, a case already handled)?",
+            "If the code as a whole now reads as a complete, working solution - a return path covers the intended cases and there is no obvious next step left - say so plainly and briefly instead of manufacturing a next-step question just to have one.",
+            "Otherwise give one inline coaching note: confirm the direction, name one concrete issue, or ask one useful next-step question.",
+            "Use no more than 24 words and do not provide the full solution."
+          ].join(" "),
       conversationHistory: chatMessages.map((message) => ({
         speaker: message.speaker,
         text: message.body
@@ -1401,6 +1467,12 @@ export function PracticeWorkspace({
                 setRunnerError(null);
                 setInlineCoachHints([]);
                 lastInlineRequestRef.current = null;
+                // Approaches are generated in whichever language was active
+                // when they loaded - switching languages needs a fresh fetch,
+                // not the previous language's cached tiers.
+                setApproaches(null);
+                setApproachesError(null);
+                setApproachesLoading(false);
               }}
             >
               {editorLanguages.filter((language) => availableLanguages.includes(language.id)).map((language) => <option key={language.id} value={language.id}>{language.label}</option>)}
@@ -1588,7 +1660,15 @@ export function PracticeWorkspace({
           </div>
         </section>
 
-        <section className={`session-editor-main ${showQuickStartGuide ? "session-editor-main-has-guide" : ""} ${isContextPanelCollapsed ? "session-editor-main-context-collapsed" : ""}`}>
+        <section
+          ref={splitContainerRef}
+          className={`session-editor-main ${showQuickStartGuide ? "session-editor-main-has-guide" : ""} ${isContextPanelCollapsed ? "session-editor-main-context-collapsed" : ""} ${isResizingCoachPanel ? "session-editor-main-resizing" : ""}`}
+          style={
+            !isContextPanelCollapsed && coachPanelWidth != null
+              ? ({ "--coach-panel-width": `${coachPanelWidth}px` } as React.CSSProperties)
+              : undefined
+          }
+        >
           {showQuickStartGuide ? (
             <div className="quick-start-guide" role="status">
               <div className="quick-start-copy">
@@ -1841,6 +1921,17 @@ export function PracticeWorkspace({
               ) : null}
             </div>
           </div>
+          {!isContextPanelCollapsed ? (
+            <div
+              className={`ide-resize-handle ${isResizingCoachPanel ? "ide-resize-handle-active" : ""}`}
+              onMouseDown={startCoachPanelResize}
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize coach panel"
+            >
+              <span aria-hidden="true" />
+            </div>
+          ) : null}
           <aside className={`ide-context-rail ${isContextPanelCollapsed ? "ide-context-rail-collapsed" : ""}`}>
             <div className="ide-context-tabs">
               {!isContextPanelCollapsed ? ([
@@ -2000,11 +2091,6 @@ export function PracticeWorkspace({
                   </div>
                 ) : approaches ? (
                   <div className="ide-approaches-list">
-                    {selectedLanguage !== "javascript" ? (
-                      <p className="ide-approaches-lang-note">
-                        Code below is shown in JavaScript as a consistent reference — the idea is the same, translate it into {editorLanguages.find((language) => language.id === selectedLanguage)?.label ?? selectedLanguage}.
-                      </p>
-                    ) : null}
                     {approaches.map((tier) => (
                       <div key={tier.name} className="ide-approach-tier">
                         <div className="ide-approach-tier-head">

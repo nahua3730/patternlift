@@ -5,13 +5,13 @@ import { join } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { NextResponse } from "next/server";
-import type {
-  CompareMode,
-  SupportedLanguage,
-  ValueType
+import {
+  languageLabels,
+  type CompareMode,
+  type SupportedLanguage,
+  type ValueType
 } from "@/lib/problem-code";
-import { evaluateExpression, runJavaScriptCode } from "@/lib/run-javascript";
-import ts from "typescript";
+import { evaluateExpression, runJavaScriptCode, runPython, runTypeScript } from "@/lib/run-javascript";
 
 const execFileAsync = promisify(execFile);
 
@@ -76,20 +76,6 @@ export async function POST(request: Request) {
   }
 }
 
-const languageLabels: Record<SupportedLanguage, string> = {
-  javascript: "JavaScript",
-  typescript: "TypeScript",
-  python: "Python",
-  ruby: "Ruby",
-  c: "C",
-  csharp: "C#",
-  java: "Java",
-  cpp: "C++",
-  swift: "Swift",
-  go: "Go",
-  kotlin: "Kotlin"
-};
-
 function signatureUsesType(
   signature: RunCodeRequest["signature"],
   type: ValueType
@@ -111,82 +97,6 @@ function insertAfterHeader(
   const last = matches[matches.length - 1];
   const insertAt = (last.index ?? 0) + last[0].length;
   return `${code.slice(0, insertAt)}\n${prelude}${code.slice(insertAt)}`;
-}
-
-async function runPython(
-  code: string,
-  functionName: string,
-  examples: { label: string; args: unknown[]; expected: unknown }[]
-) {
-  const filePath = join(tmpdir(), `patternlift-${randomUUID()}.py`);
-  const payload = JSON.stringify({ functionName, examples });
-
-  const script = `${code}
-
-import json
-
-payload = json.loads(${JSON.stringify(payload)})
-candidate = globals().get(payload["functionName"])
-
-if not callable(candidate):
-    raise Exception("I couldn't find a function named ${functionName}.")
-
-def to_jsonable(value):
-    if isinstance(value, tuple):
-        return [to_jsonable(item) for item in value]
-    if isinstance(value, list):
-        return [to_jsonable(item) for item in value]
-    if isinstance(value, dict):
-        return {key: to_jsonable(val) for key, val in value.items()}
-    return value
-
-results = []
-for example in payload["examples"]:
-    actual = candidate(*example["args"])
-    results.append({
-        "label": example["label"],
-        "actual": to_jsonable(actual),
-        "expected": example["expected"],
-    })
-
-print(json.dumps(results))
-`;
-
-  await fs.writeFile(filePath, script, "utf8");
-
-  try {
-    const { stdout, stderr } = await execFileAsync("python3", [filePath], {
-      timeout: 4000,
-      maxBuffer: 1024 * 1024
-    });
-
-    if (stderr) {
-      throw new Error(stderr.trim());
-    }
-
-    return JSON.parse(stdout.trim()) as {
-      label: string;
-      actual: unknown;
-      expected: unknown;
-    }[];
-  } finally {
-    await fs.rm(filePath, { force: true });
-  }
-}
-
-async function runTypeScript(
-  code: string,
-  functionName: string,
-  examples: { label: string; args: unknown[]; expected: unknown }[]
-) {
-  const transpiled = ts.transpileModule(code, {
-    compilerOptions: {
-      target: ts.ScriptTarget.ES2020,
-      module: ts.ModuleKind.ES2020
-    }
-  }).outputText;
-
-  return runJavaScriptCode(transpiled, functionName, examples);
 }
 
 async function runRuby(
