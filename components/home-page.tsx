@@ -30,7 +30,7 @@ const modeCards = [
 
 const quickStartHref =
   "/practice?problem=contains-duplicate&mode=learn&coach=guided&patterns=hashing&quick=1";
-const agentStartHref = "/start";
+const agentStartHref = "/today";
 
 function entryHref(currentUser: SessionUser | null, target: string) {
   if (currentUser) return target;

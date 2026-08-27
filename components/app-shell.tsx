@@ -7,10 +7,12 @@ import { GlobalCoachDock } from "@/components/global-coach-dock";
 import { LogoutButton } from "@/components/logout-button";
 import type { SessionUser } from "@/lib/auth";
 
-type NavIcon = "learn" | "recognize" | "practice" | "progress" | "review";
+type NavIcon = "learn" | "recognize" | "practice" | "progress" | "review" | "roadmap" | "today";
 
 const navigation: Array<{ href: string; match: string; label: string; icon: NavIcon }> = [
+  { href: "/today", match: "/today", label: "Today", icon: "today" },
   { href: "/start", match: "/start", label: "Start", icon: "practice" },
+  { href: "/roadmap", match: "/roadmap", label: "Roadmap", icon: "roadmap" },
   { href: "/learn/setup", match: "/learn", label: "My Path", icon: "learn" },
   { href: "/recognize/setup", match: "/recognize", label: "Recognize", icon: "recognize" },
   { href: "/progress", match: "/progress", label: "Progress", icon: "progress" },
@@ -25,6 +27,9 @@ const pageMeta: Record<string, { eyebrow: string; title: string; backHref: strin
   "/practice/setup": { eyebrow: "Practice", title: "Set your coaching level", backHref: "/" },
   "/practice/select": { eyebrow: "Practice", title: "Select a problem", backHref: "/practice/setup" },
   "/practice": { eyebrow: "Inline coach", title: "Problem workspace", backHref: "/" },
+  "/today": { eyebrow: "Today", title: "Your daily plan", backHref: "/" },
+  "/onboarding": { eyebrow: "Onboarding", title: "Build your plan", backHref: "/" },
+  "/roadmap": { eyebrow: "Roadmap", title: "Blind 75 & NeetCode 150", backHref: "/" },
   "/progress": { eyebrow: "Analytics", title: "Mastery dashboard", backHref: "/" },
   "/review": { eyebrow: "Recall", title: "Review queue", backHref: "/" },
   "/techniques": { eyebrow: "Library", title: "Technique library", backHref: "/" }
@@ -79,13 +84,13 @@ export function AppShell({ children, currentUser }: { children: React.ReactNode;
         <div className="mt-10">
           <p className={`rail-section-label ${railCollapsed ? "sr-only" : ""}`}>Workspace</p>
           <nav className="mt-3 space-y-1">
-            {navigation.slice(0, 3).map((item) => <RailLink key={item.href} item={item} pathname={pathname} />)}
+            {navigation.slice(0, 5).map((item) => <RailLink key={item.href} item={item} pathname={pathname} />)}
           </nav>
         </div>
         <div className="mt-8">
           <p className={`rail-section-label ${railCollapsed ? "sr-only" : ""}`}>Insights</p>
           <nav className="mt-3 space-y-1">
-            {navigation.slice(3).map((item) => <RailLink key={item.href} item={item} pathname={pathname} />)}
+            {navigation.slice(5).map((item) => <RailLink key={item.href} item={item} pathname={pathname} />)}
           </nav>
         </div>
         <div className="rail-account mt-auto">
@@ -170,7 +175,9 @@ function NavGlyph({ icon }: { icon: NavIcon }) {
     recognize: <><circle cx="12" cy="12" r="3" /><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" /></>,
     practice: <><path d="m8 16 8-8" /><path d="m14 6 4 4" /><path d="M6 18h4l9-9a2.8 2.8 0 0 0-4-4l-9 9v4Z" /></>,
     progress: <><path d="M4 19V9" /><path d="M10 19V5" /><path d="M16 19v-7" /><path d="M22 19V2" /></>,
-    review: <><path d="M4 5h16v14H4z" /><path d="M8 9h8M8 13h6" /></>
+    review: <><path d="M4 5h16v14H4z" /><path d="M8 9h8M8 13h6" /></>,
+    roadmap: <><rect x="3" y="4" width="18" height="5" rx="1.4" /><rect x="3" y="15" width="18" height="5" rx="1.4" /></>,
+    today: <><path d="M3 10.5 10 4l7 6.5" /><path d="M5 9v7h10V9" /></>
   };
   return <svg viewBox="0 0 24 24" aria-hidden="true" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{paths[icon]}</svg>;
 }

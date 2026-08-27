@@ -135,10 +135,31 @@ async function runPostgresMigrations(sql: NeonClient) {
       accepted_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
     )`,
+    `CREATE TABLE IF NOT EXISTS study_plan_runs (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      status TEXT NOT NULL DEFAULT 'proposed',
+      model TEXT NOT NULL,
+      source TEXT NOT NULL,
+      input_json TEXT NOT NULL,
+      output_json TEXT NOT NULL,
+      tool_trace_json TEXT NOT NULL,
+      accepted_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS daily_checkins (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      checkin_date TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE (user_id, checkin_date)
+    )`,
     "CREATE INDEX IF NOT EXISTS sessions_user_id_idx ON sessions(user_id)",
     "CREATE INDEX IF NOT EXISTS attempts_user_created_idx ON attempts(user_id, created_at DESC)",
     "CREATE INDEX IF NOT EXISTS review_items_user_due_idx ON review_items(user_id, due_at)",
     "CREATE INDEX IF NOT EXISTS mastery_agent_runs_user_created_idx ON mastery_agent_runs(user_id, created_at DESC)",
+    "CREATE INDEX IF NOT EXISTS study_plan_runs_user_created_idx ON study_plan_runs(user_id, created_at DESC)",
+    "CREATE INDEX IF NOT EXISTS daily_checkins_user_date_idx ON daily_checkins(user_id, checkin_date DESC)",
   ];
 
   for (const statement of statements) {
@@ -195,6 +216,25 @@ function runSqliteMigrations(db: DatabaseSync) {
         tool_trace_json TEXT NOT NULL,
         accepted_at TEXT,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS study_plan_runs (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'proposed',
+        model TEXT NOT NULL,
+        source TEXT NOT NULL,
+        input_json TEXT NOT NULL,
+        output_json TEXT NOT NULL,
+        tool_trace_json TEXT NOT NULL,
+        accepted_at TEXT,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS daily_checkins (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        checkin_date TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (user_id, checkin_date)
       );
     `);
 

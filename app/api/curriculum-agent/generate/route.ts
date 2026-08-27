@@ -1,0 +1,179 @@
+import OpenAI from "openai";
+import type { ResponseFunctionToolCall } from "openai/resources/responses/responses";
+import { NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth";
+import { createId, dbExecute } from "@/lib/db";
+import {
+  allProblems,
+  getOfficialProblemRoadmapMeta,
+  patternOptions,
+  type RoadmapTrack
+} from "@/lib/product";
+import {
+  buildFallbackWeeklyPlan,
+  curriculumPlanSchema,
+  expandWeeklyPlanToDays,
+  validateCurriculumWeeklyPlan,
+  type CurriculumPlan,
+  type ExperienceLevel,
+  type OnboardingAnswers
+} from "@/lib/curriculum-agent";
+
+const model = process.env.OPENAI_CURRICULUM_MODEL?.trim() || "gpt-4.1-mini";
+const client = process.env.OPENAI_API_KEY
+  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  : null;
+
+const DEFAULT_TRACK: RoadmapTrack = "neetcode150";
+
+const tools = [
+  {
+    type: "function" as const,
+    name: "get_roadmap_overview",
+    description: "Read how many NeetCode 150 problems exist per pattern, so pacing across weeks is realistic.",
+    strict: true,
+    parameters: {
+      type: "object",
+      additionalProperties: false,
+      properties: {},
+      required: []
+    }
+  }
+];
+
+export async function POST(request: Request) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const body = (await request.json()) as {
+    experienceLevel?: ExperienceLevel;
+    deadlineWeeks?: number | null;
+    dailyMinutes?: number;
+  };
+
+  const answers: OnboardingAnswers = {
+    experienceLevel:
+      body.experienceLevel === "new" || body.experienceLevel === "comfortable" ? body.experienceLevel : "rusty",
+    deadlineWeeks:
+      typeof body.deadlineWeeks === "number" && body.deadlineWeeks > 0 ? body.deadlineWeeks : null,
+    dailyMinutes: typeof body.dailyMinutes === "number" && body.dailyMinutes > 0 ? body.dailyMinutes : 45
+  };
+
+  const fallbackWeekly = buildFallbackWeeklyPlan(answers);
+  const runId = createId("study-plan");
+  const toolTrace: string[] = [];
+  let weeklyPlan = fallbackWeekly;
+  let source: "agent" | "fallback" = "fallback";
+
+  if (client) {
+    try {
+      const generated = await runCurriculumAgent(answers, toolTrace);
+      const validated = validateCurriculumWeeklyPlan(generated);
+      if (validated) {
+        weeklyPlan = validated;
+        source = "agent";
+      }
+    } catch (error) {
+      toolTrace.push(
+        `fallback:${error instanceof Error ? error.message.slice(0, 160) : "agent_error"}`
+      );
+    }
+  } else {
+    toolTrace.push("fallback:missing_openai_api_key");
+  }
+
+  const plan: CurriculumPlan = expandWeeklyPlanToDays(weeklyPlan, DEFAULT_TRACK);
+
+  await dbExecute(
+    `
+      INSERT INTO study_plan_runs
+        (id, user_id, status, model, source, input_json, output_json, tool_trace_json)
+      VALUES (?, ?, 'proposed', ?, ?, ?, ?, ?)
+    `,
+    [runId, user.id, model, source, JSON.stringify(answers), JSON.stringify(plan), JSON.stringify(toolTrace)]
+  );
+
+  return NextResponse.json({ runId, source, plan, toolTrace });
+}
+
+async function runCurriculumAgent(answers: OnboardingAnswers, toolTrace: string[]) {
+  if (!client) throw new Error("OpenAI client unavailable");
+
+  let response = await client.responses.create({
+    model,
+    instructions: [
+      "You are the PatternLift Curriculum Planner. Build a multi-week study plan structure (weeks and pattern focus only, not individual problems).",
+      "Call get_roadmap_overview before deciding pacing, so week count and pattern order reflect real problem availability.",
+      `Learner: experience level "${answers.experienceLevel}", ${answers.deadlineWeeks ? `interview in about ${answers.deadlineWeeks} weeks` : "no fixed deadline"}, about ${answers.dailyMinutes} minutes a day.`,
+      "New learners should start every week with learn mode. Rusty learners should front-load recognize mode. Comfortable learners should lean on practice and review sooner.",
+      "Order patterns easier-to-harder: hashing and two-pointers before dynamic-programming and greedy.",
+      "Keep the rationale concrete and under 40 words. Never claim evidence the tool did not return."
+    ].join(" "),
+    input: "Build my curriculum's weekly structure from the onboarding answers you were given.",
+    tools,
+    tool_choice: "required",
+    text: {
+      verbosity: "medium",
+      format: {
+        type: "json_schema",
+        name: "curriculum_weekly_plan",
+        description: "A validated weekly structure for the learner's study plan.",
+        strict: true,
+        schema: curriculumPlanSchema
+      }
+    },
+    max_output_tokens: 900
+  });
+
+  for (let round = 0; round < 4; round += 1) {
+    const calls = response.output.filter(
+      (item): item is ResponseFunctionToolCall => item.type === "function_call"
+    );
+    if (calls.length === 0) {
+      if (!response.output_text) throw new Error("Agent returned no plan");
+      return JSON.parse(response.output_text) as unknown;
+    }
+
+    const outputs = calls.map((call) => {
+      toolTrace.push(call.name);
+      return {
+        type: "function_call_output" as const,
+        call_id: call.call_id,
+        output: JSON.stringify(executeTool())
+      };
+    });
+
+    response = await client.responses.create({
+      model,
+      previous_response_id: response.id,
+      input: outputs,
+      tools,
+      tool_choice: "auto",
+      text: {
+        verbosity: "medium",
+        format: {
+          type: "json_schema",
+          name: "curriculum_weekly_plan",
+          strict: true,
+          schema: curriculumPlanSchema
+        }
+      },
+      max_output_tokens: 900
+    });
+  }
+
+  throw new Error("Agent exceeded its tool-call limit");
+}
+
+function executeTool() {
+  const counts = patternOptions.map((pattern) => ({
+    patternId: pattern.id,
+    patternLabel: pattern.label,
+    problemCount: allProblems.filter(
+      (problem) =>
+        problem.targetPatternId === pattern.id &&
+        getOfficialProblemRoadmapMeta(problem.id)?.tracks.includes(DEFAULT_TRACK)
+    ).length
+  }));
+  return { track: DEFAULT_TRACK, patterns: counts };
+}

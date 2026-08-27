@@ -94,5 +94,17 @@ export async function POST(request: Request) {
     (previousReview?.repetitions ?? 0) + 1
   ]);
 
+  const todayKey = new Date().toISOString().slice(0, 10);
+  await dbExecute(
+    `
+      INSERT INTO daily_checkins (id, user_id, checkin_date)
+      SELECT ?, ?, ?
+      WHERE NOT EXISTS (
+        SELECT 1 FROM daily_checkins WHERE user_id = ? AND checkin_date = ?
+      )
+    `,
+    [createId("checkin"), user.id, todayKey, user.id, todayKey]
+  );
+
   return NextResponse.json({ ok: true });
 }
