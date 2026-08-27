@@ -93,62 +93,73 @@ export const fundamentalsSeries: FundamentalsEpisode[] = [
     episode: 11,
     titleCn: "验证二叉搜索树",
     titleEn: "Validate Binary Search Tree",
-    problemIds: ["official-validate-binary-search-tree"]
+    problemIds: ["official-validate-binary-search-tree"],
+    bvid: "BV14G411P7C1"
   },
   {
     episode: 12,
     titleCn: "二叉树的最近公共祖先",
     titleEn: "Lowest Common Ancestor of a Binary Tree",
     problemIds: ["official-lowest-common-ancestor-of-a-binary-search-tree"],
-    note: "The catalog has the binary-search-tree version; the general binary-tree version isn't in yet, but the technique carries over."
+    note: "The video's main focus (LC 236, general binary tree) isn't in the catalog yet - the catalog has its binary-search-tree variant (LC 235) instead.",
+    bvid: "BV1W44y1Z7AR"
   },
   {
     episode: 13,
     titleCn: "二叉树的层序遍历",
     titleEn: "Binary Tree Level Order Traversal",
-    problemIds: ["binary-tree-level-order"]
+    problemIds: ["binary-tree-level-order"],
+    bvid: "BV1hG4y1277i"
   },
   {
     episode: 14,
     titleCn: "回溯算法套路①子集型回溯",
     titleEn: "Backtracking I: Subsets",
-    problemIds: ["subsets"]
+    problemIds: ["subsets", "official-letter-combinations-of-a-phone-number", "official-palindrome-partitioning"],
+    bvid: "BV1mG4y1A7Gu"
   },
   {
     episode: 15,
     titleCn: "回溯算法套路②组合型回溯+剪枝",
     titleEn: "Backtracking II: Combinations + Pruning",
-    problemIds: ["combination-sum"]
+    problemIds: ["official-generate-parentheses", "combination-sum"],
+    note: "The video's main worked examples are Combinations (LC 77) and Combination Sum III (LC 216), not in the catalog yet - Combination Sum (LC 39) is the exact follow-up exercise it assigns as homework.",
+    bvid: "BV1xG4y1F7nC"
   },
   {
     episode: 16,
     titleCn: "回溯算法套路③排列型回溯+N皇后",
     titleEn: "Backtracking III: Permutations + N-Queens",
-    problemIds: ["official-permutations", "official-n-queens"]
+    problemIds: ["official-permutations", "official-n-queens"],
+    bvid: "BV1mY411D7f6"
   },
   {
     episode: 17,
     titleCn: "动态规划入门：从记忆化搜索到递推",
     titleEn: "DP Fundamentals: Memoization to Tabulation",
-    problemIds: ["official-climbing-stairs"]
+    problemIds: ["house-robber", "official-climbing-stairs", "official-house-robber-ii"],
+    bvid: "BV1Xj411K7oF"
   },
   {
     episode: 18,
     titleCn: "0-1 背包 完全背包",
     titleEn: "0/1 Knapsack, Unbounded Knapsack",
-    problemIds: ["partition-equal-subset-sum", "coin-change"]
+    problemIds: ["official-target-sum", "coin-change", "partition-equal-subset-sum"],
+    bvid: "BV16Y411v7Y6"
   },
   {
     episode: 19,
     titleCn: "最长公共子序列 编辑距离",
     titleEn: "Longest Common Subsequence, Edit Distance",
-    problemIds: ["longest-common-subsequence", "official-edit-distance"]
+    problemIds: ["longest-common-subsequence", "official-edit-distance"],
+    bvid: "BV1TM4y1o7ug"
   },
   {
     episode: 20,
     titleCn: "最长递增子序列",
     titleEn: "Longest Increasing Subsequence",
-    problemIds: ["official-longest-increasing-subsequence"]
+    problemIds: ["official-longest-increasing-subsequence"],
+    bvid: "BV1ub411Q7sB"
   },
   {
     episode: 21,
