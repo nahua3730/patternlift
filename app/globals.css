@@ -2202,8 +2202,10 @@ select {
 }
 
 @media (max-width: 860px) {
+  .workspace-content-wide { height: auto; overflow: visible; padding-bottom: 7.5rem; }
+  .session-workspace { height: auto; min-height: calc(100vh - 1.5rem); overflow: visible; }
   .session-editor-main,
-  .session-editor-main-context-collapsed { grid-template-columns: minmax(0,1fr); grid-template-rows: minmax(26rem,1fr) 20rem; overflow-y: auto; }
+  .session-editor-main-context-collapsed { grid-template-columns: minmax(0,1fr); grid-template-rows: minmax(26rem,1fr) 20rem; overflow-y: visible; }
   .quick-start-guide { grid-column: 1; }
   .ide-context-rail { min-height: 20rem; border-top: 1px solid #d4dce8; border-left: 0; }
   .ide-context-rail-collapsed { min-height: 3.25rem; }
