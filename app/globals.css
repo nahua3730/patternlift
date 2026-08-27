@@ -2217,8 +2217,9 @@ select {
   .learning-text-action { padding: .5rem 0; text-align: center; }
   .session-command-bar { align-items: flex-start; flex-direction: column; }
   .session-command-actions { width: 100%; }
-  .session-coach-select { min-width: 0; flex: 1; }
-  .session-coach-select select { min-width: 0; width: 100%; }
+  .session-coach-select { min-width: 0; flex: 1 1 6rem; }
+  .session-coach-select span { display: none; }
+  .session-coach-select select { min-width: 0; width: 100%; font-size: .72rem; }
   .session-open-coach span { display: none; }
   .session-editor-main { height: auto; min-height: 78vh; }
   .quick-start-guide { grid-template-columns: 1fr; }
