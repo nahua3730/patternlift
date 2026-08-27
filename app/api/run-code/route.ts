@@ -66,11 +66,29 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ results: runResults });
   } catch (error) {
-    const message =
+    const rawMessage =
       error instanceof Error ? error.message : "Unable to run the submitted code.";
+    const missingBinary = /^spawn (\S+) ENOENT$/.exec(rawMessage)?.[1];
+    const message = missingBinary
+      ? `This deployment can't run ${languageLabels[body.language] ?? body.language} code right now (the ${missingBinary} toolchain isn't installed here). Switch to JavaScript, TypeScript, Python, or Ruby to test your solution, or verify this language's logic on LeetCode directly.`
+      : rawMessage;
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }
+
+const languageLabels: Record<SupportedLanguage, string> = {
+  javascript: "JavaScript",
+  typescript: "TypeScript",
+  python: "Python",
+  ruby: "Ruby",
+  c: "C",
+  csharp: "C#",
+  java: "Java",
+  cpp: "C++",
+  swift: "Swift",
+  go: "Go",
+  kotlin: "Kotlin"
+};
 
 function signatureUsesType(
   signature: RunCodeRequest["signature"],
