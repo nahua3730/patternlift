@@ -272,7 +272,10 @@ export function PracticeWorkspace({
     [activeProblem.contrastPatternId]
   );
   const contrastPatternLabel = contrastPattern?.label ?? "Neighboring pattern";
-  const activeCodeConfig = getProblemCodeConfig(activeProblem);
+  const activeCodeConfig = useMemo(
+    () => getProblemCodeConfig(activeProblem),
+    [activeProblem]
+  );
   const hasNativeCodeConfig = hasNativeProblemCodeConfig(activeProblem.id);
   const availableLanguages = useMemo(
     () => getAvailableLanguages(activeCodeConfig),
