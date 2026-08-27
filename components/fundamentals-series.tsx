@@ -15,11 +15,11 @@ const TIER_TONE = {
   mastered: "success"
 } as const;
 
-function episodeVideoUrl(ep: FundamentalsEpisode) {
+export function episodeVideoUrl(ep: FundamentalsEpisode) {
   return ep.bvid ? `https://www.bilibili.com/video/${ep.bvid}/` : fundamentalsSeriesUrl;
 }
 
-function ProblemRow({ problemId, reps, muted = false }: { problemId: string; reps: Record<string, number>; muted?: boolean }) {
+export function ProblemRow({ problemId, reps, muted = false }: { problemId: string; reps: Record<string, number>; muted?: boolean }) {
   const problem = problemsById.get(problemId);
   if (!problem) return null;
   const tier = tierForReps(reps[problemId] ?? 0);
@@ -101,14 +101,22 @@ export function FundamentalsSeriesView({ reps }: { reps: Record<string, number> 
                 <h2 className="mt-1 text-lg font-semibold text-ink">{ep.titleCn}</h2>
                 <p className="text-sm text-black/60">{ep.titleEn}</p>
               </div>
-              <a
-                href={episodeVideoUrl(ep)}
-                target="_blank"
-                rel="noreferrer"
-                className="shrink-0 rounded-full border border-black/10 bg-mist px-3 py-2 text-xs font-medium text-black/72 transition hover:border-black/24"
-              >
-                Watch explainer ↗
-              </a>
+              <div className="flex shrink-0 items-center gap-2">
+                <a
+                  href={episodeVideoUrl(ep)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-full border border-black/10 bg-mist px-3 py-2 text-xs font-medium text-black/72 transition hover:border-black/24"
+                >
+                  Open on Bilibili ↗
+                </a>
+                <Link
+                  href={`/fundamentals/${ep.episode}`}
+                  className="rounded-full bg-ink px-3 py-2 text-xs font-semibold text-white transition hover:opacity-85"
+                >
+                  Watch & discuss →
+                </Link>
+              </div>
             </div>
 
             {ep.note ? <p className="mt-3 text-sm leading-6 text-black/60">{ep.note}</p> : null}

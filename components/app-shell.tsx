@@ -47,7 +47,11 @@ export function AppShell({ children, currentUser }: { children: React.ReactNode;
   const isHome = pathname === "/";
   const isAuthPage = pathname === "/login" || pathname === "/signup";
   const isPracticeWorkspace = pathname === "/practice";
-  const meta = pageMeta[pathname] ?? { eyebrow: "PatternLift", title: "Workspace", backHref: "/" };
+  const meta =
+    pageMeta[pathname] ??
+    (pathname.startsWith("/fundamentals/")
+      ? { eyebrow: "Curated series", title: "Watch & practice", backHref: "/fundamentals" }
+      : { eyebrow: "PatternLift", title: "Workspace", backHref: "/" });
 
   if (isHome) {
     return (
