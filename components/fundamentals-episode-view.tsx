@@ -242,20 +242,6 @@ export function FundamentalsEpisodeView({
 
       <section className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
         <div className="uiverse-panel overflow-hidden p-0">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/8 p-4">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-ink">Watch at full quality</p>
-              <p className="text-xs text-black/50">Opens the real Bilibili in a new tab - pause anytime and come back here.</p>
-            </div>
-            <a
-              href={episodeVideoUrl(episode)}
-              target="_blank"
-              rel="noreferrer"
-              className="shrink-0 rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white transition hover:opacity-85"
-            >
-              Watch on Bilibili ↗
-            </a>
-          </div>
           <div className="relative aspect-video w-full bg-black">
             {episode.bvid ? (
               <iframe
@@ -267,14 +253,22 @@ export function FundamentalsEpisodeView({
               />
             ) : (
               <div className="flex h-full items-center justify-center p-6 text-center text-sm text-white/70">
-                No embedded preview for this step yet - use the button above to watch on Bilibili.
+                No embedded video for this step yet -{" "}
+                <a href={episodeVideoUrl(episode)} target="_blank" rel="noreferrer" className="ml-1 underline">
+                  open it on Bilibili ↗
+                </a>
               </div>
             )}
           </div>
           {episode.bvid ? (
             <p className="px-4 py-2 text-xs text-black/50">
-              This is a lower-quality in-app preview - Bilibili caps embedded, logged-out playback on their end,
-              and that&apos;s outside our control. Use &ldquo;Watch on Bilibili&rdquo; above for full quality.
+              Playing here so the coach stays beside it. Bilibili caps embedded, logged-out playback quality on
+              their end (outside our control) - if you&apos;d rather have full quality and don&apos;t need the
+              coach right now,{" "}
+              <a href={episodeVideoUrl(episode)} target="_blank" rel="noreferrer" className="underline">
+                open it on Bilibili instead ↗
+              </a>
+              .
             </p>
           ) : null}
         </div>
@@ -282,8 +276,7 @@ export function FundamentalsEpisodeView({
         <div className="uiverse-panel flex max-h-[520px] flex-col p-4">
           <p className="text-sm font-semibold uppercase tracking-wide text-ember">Discuss this technique</p>
           <p className="mt-1 text-xs text-black/50">
-            This chat stays right here no matter which tab you&apos;re watching in - pause the video whenever,
-            switch back, and keep asking.
+            Pause the video anytime and ask right here - no tabs to switch.
           </p>
           <div ref={conversationRef} className="mt-3 flex-1 space-y-3 overflow-y-auto pr-1">
             {messages.map((message) => (
