@@ -634,8 +634,12 @@ export function PracticeWorkspace({
       recommendedClues: activeProblem.recommendedClues,
       recommendedFirstStep: activeProblem.recommendedFirstStep
     });
+    const hasPassingRun = runSummary ? runSummary.passed === runSummary.total : false;
+    // A passing run is strong, objective evidence the learner isn't
+    // "confused" even if this particular message didn't name the pattern -
+    // don't let a keyword-matching miss overrule code that already works.
     const outcome: AttemptResult["outcome"] =
-      score >= 75 ? "solid" : score >= 40 ? "partial" : "confused";
+      score >= 75 ? "solid" : score >= 40 || hasPassingRun ? "partial" : "confused";
     const selectedPatternLabel =
       patternOptions.find((pattern) => pattern.id === selectedPattern)?.label ??
       "Still exploring";
@@ -2046,6 +2050,18 @@ function buildOpeningMessage({
   };
 }
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Whole-word match only - a plain substring check would let "tests" match
+// the word "test", or "hashtag" match "hash", producing false positives.
+function containsWord(haystack: string, needle: string) {
+  const escaped = escapeRegExp(needle.trim());
+  if (!escaped) return false;
+  return new RegExp(`(?:^|[^a-z0-9])${escaped}(?:[^a-z0-9]|$)`, "i").test(haystack);
+}
+
 function inferPatternFromReply(text: string): PatternId | null {
   const normalized = text.toLowerCase();
   let bestMatch: { id: PatternId; score: number } | null = null;
@@ -2055,15 +2071,15 @@ function inferPatternFromReply(text: string): PatternId | null {
     const labelWords = pattern.label.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
 
     for (const word of labelWords) {
-      if (word.length > 2 && normalized.includes(word)) score += 2;
+      if (word.length > 2 && containsWord(normalized, word)) score += 2;
     }
 
     for (const clue of pattern.clues) {
-      if (normalized.includes(clue.toLowerCase())) score += 3;
+      if (containsWord(normalized, clue.toLowerCase())) score += 3;
     }
 
     const shortName = pattern.id.replace(/-/g, " ");
-    if (normalized.includes(shortName)) score += 3;
+    if (containsWord(normalized, shortName)) score += 3;
 
     if (!bestMatch || score > bestMatch.score) {
       bestMatch = { id: pattern.id, score };
@@ -2078,7 +2094,7 @@ function inferCluesFromReply(text: string) {
   return patternOptions
     .flatMap((pattern) => pattern.clues)
     .filter((clue, index, clues) => clues.indexOf(clue) === index)
-    .filter((clue) => normalized.includes(clue.toLowerCase()));
+    .filter((clue) => containsWord(normalized, clue.toLowerCase()));
 }
 
 function inferFirstStepFromReply(text: string) {
@@ -2100,7 +2116,7 @@ function inferFirstStepFromReply(text: string) {
   return (
     candidates.find((step) => {
       const words = step.toLowerCase().split(/[^a-z0-9]+/).filter((word) => word.length > 3);
-      return words.some((word) => normalized.includes(word));
+      return words.some((word) => containsWord(normalized, word));
     }) ?? null
   );
 }
