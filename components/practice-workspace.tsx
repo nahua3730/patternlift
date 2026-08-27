@@ -267,11 +267,13 @@ export function PracticeWorkspace({
   const liveVoiceSubmittedRef = useRef(false);
   const liveVoiceSilenceTimerRef = useRef<number | null>(null);
   const voiceInputTargetRef = useRef<"drawer" | "inline">("drawer");
+  const activeProblemIdRef = useRef(problemId);
 
   const activeProblem = useMemo(
     () => allProblems.find((problem) => problem.id === problemId) ?? allProblems[0],
     [problemId]
   );
+  activeProblemIdRef.current = activeProblem.id;
   const correctPattern = useMemo(
     () => patternOptions.find((pattern) => pattern.id === activeProblem.targetPatternId)!,
     [activeProblem.targetPatternId]
@@ -334,15 +336,29 @@ export function PracticeWorkspace({
       if (!response.ok || !payload.statement) {
         throw new Error(payload.error || "Unable to load the problem statement right now.");
       }
+      if (activeProblemIdRef.current !== problemId) return;
       setProblemText(payload.statement.summary);
       setProblemExamples(payload.statement.examples);
       setProblemConstraints(payload.statement.constraints);
+      if (payload.statement.examples.length > 0) {
+        setTestCases(
+          payload.statement.examples.slice(0, 3).map((example, index) => ({
+            id: `${problemId}-real-example-${index + 1}`,
+            label: `Example ${index + 1}`,
+            argsExpression: JSON.stringify([example.input]),
+            expectedExpression: JSON.stringify(example.output),
+            kind: "built-in" as const
+          }))
+        );
+        setSelectedTestCaseId(`${problemId}-real-example-1`);
+      }
     } catch (error) {
+      if (activeProblemIdRef.current !== problemId) return;
       setProblemStatementError(
         error instanceof Error ? error.message : "Unable to load the problem statement right now."
       );
     } finally {
-      setProblemStatementLoading(false);
+      if (activeProblemIdRef.current === problemId) setProblemStatementLoading(false);
     }
   }, []);
 
@@ -1573,7 +1589,7 @@ export function PracticeWorkspace({
 
               {!hasNativeCodeConfig ? (
                 <div className="rounded-[8px] border border-coral/12 bg-[linear-gradient(180deg,rgba(255,247,244,0.92),rgba(255,241,237,0.92))] p-4 text-sm leading-7 text-black/68">
-                  This problem now has a runnable fallback harness. Paste one official sample input and expected output into the test panel below, then solve it in any supported language while we keep building richer problem-specific scaffolding.
+                  This problem doesn&apos;t have a dedicated judge yet, so your function takes the whole example as one raw string - parse whatever you need out of it yourself, then return the answer as a string. The test panel below is pre-filled with real examples; add your own with the input in the same shape if you want more.
                 </div>
               ) : null}
 

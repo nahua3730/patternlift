@@ -384,7 +384,7 @@ function buildFallbackProblemCodeConfig(problem: Pick<AppProblem, "id" | "title"
     starterCode: buildStarterCode("function solve(rawInput)", [
       `Work on ${problem.title} here even though we have not modeled a bespoke harness yet.`,
       "Parse rawInput into the structure you want, solve the problem, and return the answer as a string.",
-      "Use the custom test panel below to paste one official sample input and expected output."
+      "The test panel below is pre-filled with real examples for this problem."
     ]),
     signature: {
       params: [{ name: "rawInput", type: "string" }],
