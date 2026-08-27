@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LogoutButton } from "@/components/logout-button";
 import type { SessionUser } from "@/lib/auth";
 
 const modeCards = [
@@ -51,9 +52,14 @@ export function HomePage({ currentUser }: { currentUser: SessionUser | null }) {
         </Link>
         <nav className="flex items-center gap-2">
           {currentUser ? (
-            <span className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm">
-              Signed in as {currentUser.displayName || currentUser.email}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm">
+                Signed in as {currentUser.displayName || currentUser.email}
+              </span>
+              <LogoutButton className="uiverse-button-secondary inline-flex items-center justify-center px-4 py-2 text-sm font-medium">
+                Log out
+              </LogoutButton>
+            </div>
           ) : (
             <>
               <Link
