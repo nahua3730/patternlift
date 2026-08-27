@@ -251,6 +251,7 @@ export function PracticeWorkspace({
   const [isRunningCode, setIsRunningCode] = useState(false);
   const [testCases, setTestCases] = useState<EditableExample[]>([]);
   const [selectedTestCaseId, setSelectedTestCaseId] = useState<string | null>(null);
+  const moreMenuRef = useRef<HTMLDetailsElement | null>(null);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const codeEditorRef = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<Monaco | null>(null);
@@ -368,6 +369,26 @@ export function PracticeWorkspace({
     setProblemStatementError(null);
     void loadProblemStatement(activeProblem.id, hasNativeCodeConfig);
   }, [activeProblem.id, hasNativeCodeConfig, loadProblemStatement]);
+
+  useEffect(() => {
+    function closeMoreMenuOnOutsideInteraction(event: MouseEvent | KeyboardEvent) {
+      const menu = moreMenuRef.current;
+      if (!menu || !menu.open) return;
+      if (event instanceof KeyboardEvent) {
+        if (event.key === "Escape") menu.open = false;
+        return;
+      }
+      if (event.target instanceof Node && !menu.contains(event.target)) {
+        menu.open = false;
+      }
+    }
+    document.addEventListener("click", closeMoreMenuOnOutsideInteraction);
+    document.addEventListener("keydown", closeMoreMenuOnOutsideInteraction);
+    return () => {
+      document.removeEventListener("click", closeMoreMenuOnOutsideInteraction);
+      document.removeEventListener("keydown", closeMoreMenuOnOutsideInteraction);
+    };
+  }, []);
 
   const activeInlineCoachHint = inlineCoachHints[inlineCoachHints.length - 1] ?? null;
 
@@ -1356,14 +1377,30 @@ export function PracticeWorkspace({
           <button type="button" onClick={() => setIsCoachPanelOpen(true)} className="session-open-coach">
             <CoachSparkIcon /> <span>Conversation</span>
           </button>
-          <details className="session-more-menu">
+          <details className="session-more-menu" ref={moreMenuRef}>
             <summary className="session-more-action" aria-label="More workspace options">•••</summary>
             <div className="session-more-popover">
               <Link href={selectionBackHref}>Choose another problem</Link>
               {activeCoachStyle === "off" ? (
-                <button type="button" onClick={() => setActiveCoachStyle("guided")}>Turn coach on</button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveCoachStyle("guided");
+                    if (moreMenuRef.current) moreMenuRef.current.open = false;
+                  }}
+                >
+                  Turn coach on
+                </button>
               ) : (
-                <button type="button" onClick={() => setActiveCoachStyle("off")}>Turn coach off</button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveCoachStyle("off");
+                    if (moreMenuRef.current) moreMenuRef.current.open = false;
+                  }}
+                >
+                  Turn coach off
+                </button>
               )}
             </div>
           </details>
