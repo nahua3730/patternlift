@@ -4,6 +4,7 @@ import {
   patternOptions,
   type RoadmapTrack
 } from "@/lib/product";
+import { hasNativeProblemCodeConfig } from "@/lib/problem-code";
 
 export type ExperienceLevel = "new" | "rusty" | "comfortable";
 export type StudyMode = "learn" | "recognize" | "practice" | "review";
@@ -249,17 +250,26 @@ function difficultyRank(difficulty: string) {
   return difficulty === "Easy" ? 0 : difficulty === "Medium" ? 1 : difficulty === "Hard" ? 2 : 3;
 }
 
+// Native problems have real judged test cases; fallback problems only offer a
+// "paste your own sample input" harness. Prefer native ones so a learner's plan
+// stays testable, especially early on - fall back to non-native only once a
+// pattern's native problems are used up.
+function pickRank(problem: { id: string; difficulty: string }) {
+  const nativeRank = hasNativeProblemCodeConfig(problem.id) ? 0 : 1;
+  return nativeRank * 10 + difficultyRank(problem.difficulty);
+}
+
 function pickProblem(patternId: string, track: RoadmapTrack, used: Set<string>) {
   const inTrack = allProblems
     .filter((problem) => problem.targetPatternId === patternId)
     .filter((problem) => getOfficialProblemRoadmapMeta(problem.id)?.tracks.includes(track))
     .filter((problem) => !used.has(problem.id))
-    .sort((left, right) => difficultyRank(left.difficulty) - difficultyRank(right.difficulty));
+    .sort((left, right) => pickRank(left) - pickRank(right));
 
   const anyTrack = allProblems
     .filter((problem) => problem.targetPatternId === patternId)
     .filter((problem) => !used.has(problem.id))
-    .sort((left, right) => difficultyRank(left.difficulty) - difficultyRank(right.difficulty));
+    .sort((left, right) => pickRank(left) - pickRank(right));
 
   const fallbackReuse = allProblems.filter((problem) => problem.targetPatternId === patternId);
 

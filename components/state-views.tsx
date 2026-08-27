@@ -1,7 +1,6 @@
 "use client";
 
 import { PracticeWorkspace } from "@/components/practice-workspace";
-import { ProgressPanel } from "@/components/progress-panel";
 import { ReviewQueue } from "@/components/review-queue";
 import { TechniqueLibrary } from "@/components/technique-library";
 import { usePatternLiftState } from "@/components/patternlift-state";
@@ -28,26 +27,6 @@ export function PracticePageView({
       coachStyle={coachStyle}
       selectedPatternIds={selectedPatternIds}
       quickStart={quickStart}
-    />
-  );
-}
-
-export function ProgressPageView() {
-  const {
-    currentStreak,
-    history,
-    reviewCount,
-    solidAttempts,
-    totalAttempts
-  } = usePatternLiftState();
-
-  return (
-    <ProgressPanel
-      totalAttempts={totalAttempts}
-      solidAttempts={solidAttempts}
-      reviewCount={reviewCount}
-      currentStreak={currentStreak}
-      history={history}
     />
   );
 }

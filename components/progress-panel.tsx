@@ -1,296 +1,219 @@
-"use client";
-
-import { useMemo, useState } from "react";
 import Link from "next/link";
-import {
-  allProblems,
-  getOfficialProblemRoadmapMeta,
-  patternOptions,
-  roadmapTrackTotals
-} from "@/lib/product";
-import { buildMasteryModel } from "@/lib/mastery";
-import { ProductList, ProductRow, StatStrip, StatusBadge } from "@/components/product-system";
-
-type HistoryItem = {
-  id: string;
-  problemId: string;
-  problemTitle: string;
-  selectedPatternLabel: string;
-  actualPatternLabel?: string;
-  outcome: "solid" | "partial" | "confused";
-  insight: string;
-  score?: number;
-  hintsUsed?: number;
-  codePassed?: boolean | null;
-  confidence?: number;
-  confusedWith?: string | null;
-  createdAt?: string;
-};
+import { allProblems, patternOptions } from "@/lib/product";
+import { tierForReps } from "@/lib/mastery-tiers";
+import type { buildMasteryModel, MasteryAttempt } from "@/lib/mastery";
+import { ProductList, ProductRow } from "@/components/product-system";
+import { ProgressRing } from "@/components/progress-ring";
 
 type ProgressPanelProps = {
   totalAttempts: number;
   solidAttempts: number;
-  reviewCount: number;
-  currentStreak: number;
-  history: HistoryItem[];
+  reviewDueCount: number;
+  streak: number;
+  masteryModel: ReturnType<typeof buildMasteryModel>;
+  reps: Record<string, number>;
+  recentAttempts: MasteryAttempt[];
 };
 
-type LaneFilter = "all" | "active" | "needs-review" | "mastered";
-type LaneStatus = "fresh" | "active" | "needs-review" | "mastered";
-type RoadmapLane = {
-  id: string;
-  label: string;
-  completed: number;
-  total: number;
-  solid: number;
-  needsReview: number;
-  percent: number;
-  strengthPercent: number;
-  status: LaneStatus;
+const STATUS_COPY: Record<
+  "new" | "building" | "strong" | "mastered",
+  { label: string; className: string }
+> = {
+  new: { label: "Not started", className: "bg-stone-100 text-stone-700" },
+  building: { label: "Building", className: "bg-amber-100 text-amber-700" },
+  strong: { label: "Solid", className: "bg-sky-100 text-sky-700" },
+  mastered: { label: "Mastered", className: "bg-emerald-100 text-emerald-700" }
 };
 
 export function ProgressPanel({
   totalAttempts,
   solidAttempts,
-  reviewCount,
-  currentStreak,
-  history
+  reviewDueCount,
+  streak,
+  masteryModel,
+  reps,
+  recentAttempts
 }: ProgressPanelProps) {
-  const [laneFilter, setLaneFilter] = useState<LaneFilter>("all");
+  const accuracy = totalAttempts === 0 ? 0 : Math.round((solidAttempts / totalAttempts) * 100);
+  const masteryById = new Map(masteryModel.mastery.map((pattern) => [pattern.id, pattern]));
 
-  const accuracy =
-    totalAttempts === 0 ? 0 : Math.round((solidAttempts / totalAttempts) * 100);
-  const masteryModel = useMemo(() => buildMasteryModel(history), [history]);
-  const practicedMastery = masteryModel.mastery
-    .filter((pattern) => pattern.attempts > 0)
-    .sort((left, right) => left.mastery - right.mastery);
-  const nextMasteryFocus = practicedMastery[0] ?? masteryModel.mastery[0];
-  const averageMastery = practicedMastery.length === 0
-    ? 0
-    : Math.round(
-        practicedMastery.reduce((sum, pattern) => sum + pattern.mastery, 0) /
-          practicedMastery.length
-      );
+  const patternRows = patternOptions.map((pattern) => {
+    const problems = allProblems.filter((problem) => problem.targetPatternId === pattern.id);
+    const total = problems.length;
+    let masteredCount = 0;
+    let touchedCount = 0;
+    for (const problem of problems) {
+      const tier = tierForReps(reps[problem.id] ?? 0);
+      if (tier !== "none") touchedCount += 1;
+      if (tier === "mastered") masteredCount += 1;
+    }
+    const percentMastered = total === 0 ? 0 : Math.round((masteredCount / total) * 100);
+    const evidence = masteryById.get(pattern.id);
 
-  const latestByProblem = useMemo(() => {
-    const map = new Map<string, HistoryItem>();
-    history.forEach((item) => {
-      if (!map.has(item.problemId)) {
-        map.set(item.problemId, item);
-      }
-    });
-    return map;
-  }, [history]);
-
-  const attemptedProblemIds = useMemo(
-    () => new Set(history.map((item) => item.problemId)),
-    [history]
-  );
-
-  const officialTrackProgress = useMemo(() => {
-    const attemptedBlind75 = new Set<string>();
-    const attemptedNeetCode150 = new Set<string>();
-
-    attemptedProblemIds.forEach((problemId) => {
-      const meta = getOfficialProblemRoadmapMeta(problemId);
-      if (!meta) return;
-      if (meta.tracks.includes("blind75")) attemptedBlind75.add(problemId);
-      if (meta.tracks.includes("neetcode150")) attemptedNeetCode150.add(problemId);
-    });
-
-    return [
-      {
-        id: "blind75",
-        label: "Blind 75",
-        completed: attemptedBlind75.size,
-        total: roadmapTrackTotals.blind75
-      },
-      {
-        id: "neetcode150",
-        label: "NeetCode 150",
-        completed: attemptedNeetCode150.size,
-        total: roadmapTrackTotals.neetcode150
-      }
-    ];
-  }, [attemptedProblemIds]);
-
-  const roadmapLanes = useMemo(() => {
-    return patternOptions
-      .flatMap<RoadmapLane>((pattern) => {
-        const problems = allProblems.filter((problem) => problem.targetPatternId === pattern.id);
-        if (problems.length === 0) return [];
-
-        const attempted = problems.filter((problem) => attemptedProblemIds.has(problem.id));
-        const solid = attempted.filter(
-          (problem) => latestByProblem.get(problem.id)?.outcome === "solid"
-        );
-        const needsReview = attempted.filter(
-          (problem) => latestByProblem.get(problem.id)?.outcome !== "solid"
-        );
-
-        const completed = attempted.length;
-        const total = problems.length;
-        const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
-        const strengthPercent =
-          completed === 0 ? 0 : Math.round((solid.length / completed) * 100);
-
-        const status: LaneStatus =
-          completed === 0
-            ? "fresh"
-            : completed === total && needsReview.length === 0
-              ? "mastered"
-              : needsReview.length > 0
-                ? "needs-review"
-                : "active";
-
-        return [{
-          id: pattern.id,
-          label: pattern.label,
-          completed,
-          total,
-          solid: solid.length,
-          needsReview: needsReview.length,
-          percent,
-          strengthPercent,
-          status
-        }];
-      });
-  }, [attemptedProblemIds, latestByProblem]);
-
-  const filteredLanes = roadmapLanes.filter((lane) => {
-    if (laneFilter === "all") return true;
-    return lane.status === laneFilter;
+    return {
+      id: pattern.id,
+      label: pattern.label,
+      total,
+      masteredCount,
+      touchedCount,
+      percentMastered,
+      attempts: evidence?.attempts ?? 0,
+      status: evidence?.status ?? "new",
+      diagnosis:
+        evidence && evidence.attempts > 0
+          ? evidence.diagnosis
+          : touchedCount > 0
+            ? `${touchedCount} of ${total} problems touched. Keep repeating to build mastery.`
+            : "Not started yet.",
+      recommendedProblemId: evidence?.recommendedProblemId ?? null
+    };
   });
 
-  const nextFocusLane =
-    roadmapLanes
-      .filter((lane) => lane.needsReview > 0)
-      .sort((left, right) => right.needsReview - left.needsReview)[0] ??
-    roadmapLanes.find((lane) => lane.completed === 0) ??
-    roadmapLanes[0];
+  const rankedPatternRows = [...patternRows].sort((left, right) => {
+    if (left.attempts > 0 && right.attempts > 0) {
+      return (masteryById.get(left.id)?.mastery ?? 0) - (masteryById.get(right.id)?.mastery ?? 0);
+    }
+    if (left.attempts > 0) return -1;
+    if (right.attempts > 0) return 1;
+    return right.touchedCount - left.touchedCount;
+  });
+
+  const overallRingSegments = ["Easy", "Medium", "Hard"].map((difficulty, index) => {
+    const color = ["#059669", "#f59e0b", "#e11d48"][index];
+    const problems = allProblems.filter((problem) => problem.difficulty === difficulty);
+    const done = problems.filter((problem) => (reps[problem.id] ?? 0) > 0).length;
+    return { label: difficulty, color, done, total: problems.length };
+  });
+
+  const latestPerProblem = new Map<string, MasteryAttempt>();
+  for (const attempt of recentAttempts) {
+    if (!latestPerProblem.has(attempt.problemId)) {
+      latestPerProblem.set(attempt.problemId, attempt);
+    }
+  }
+  const recentDistinct = [...latestPerProblem.values()].slice(0, 5);
 
   return (
     <section className="grid gap-6">
       <div className="uiverse-panel p-6">
-        <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-6">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-ember">
-              Progress
-            </p>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-ember">Progress</p>
             <h2 className="mt-2 text-3xl font-semibold leading-tight text-ink">
-              See what you can recognize—not just what you have finished.
+              Where you stand, and what to fix next.
             </h2>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-black/60">
+              Ranked by pattern, weakest first — so you always know what to practice next instead of
+              guessing.
+            </p>
+            <Link
+              href="/today"
+              className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-lake"
+            >
+              Continue today&apos;s plan <span aria-hidden="true">→</span>
+            </Link>
           </div>
-          <div className="rounded-[8px] border border-black/10 bg-white/88 px-4 py-3 text-sm text-black/62">
-            Next focus:{" "}
-            <span className="font-semibold text-ink">
-              {nextMasteryFocus?.label ?? nextFocusLane?.label ?? "Pick a fresh lane"}
-            </span>
+          <div className="flex items-center gap-5">
+            <ProgressRing segments={overallRingSegments.filter((segment) => segment.total > 0)} />
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
+              <Stat label="Day streak" value={String(streak)} />
+              <Stat label="Attempts" value={String(totalAttempts)} />
+              <Stat label="Recognized cleanly" value={`${accuracy}%`} />
+              <Stat label="Reviews due" value={String(reviewDueCount)} />
+            </dl>
           </div>
         </div>
-
-        <StatStrip items={[
-          { label: "Attempts", value: String(totalAttempts) },
-          { label: "Strong reps", value: String(solidAttempts) },
-          { label: "Review cards", value: String(reviewCount) },
-          { label: "Average mastery", value: `${averageMastery}%` }
-        ]} />
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="uiverse-panel p-6">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-coral">
-                Pattern mastery engine
-              </p>
-              <h3 className="mt-2 text-2xl font-semibold text-ink">Your weakest signals, ranked.</h3>
-            </div>
-            <span className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/58">
-              recognition + explanation + hints + code
-            </span>
+      <div className="uiverse-panel p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-coral">
+              Pattern strength
+            </p>
+            <h3 className="mt-2 text-2xl font-semibold text-ink">Your weakest patterns, ranked.</h3>
           </div>
-
-          <ProductList className="mt-5">
-            {(practicedMastery.length > 0 ? practicedMastery : masteryModel.mastery.slice(0, 4))
-              .slice(0, 5)
-              .map((pattern) => (
-                <ProductRow
-                  key={pattern.id}
-                  leading={<span className="mastery-row-score">{pattern.mastery}</span>}
-                  title={<span className="flex flex-wrap items-center gap-2">{pattern.label}<StatusBadge tone={pattern.status === "strong" ? "success" : "info"}>{pattern.status}</StatusBadge></span>}
-                  description={<><span>{pattern.attempts} reps · {pattern.correctRecognitions} recognized cold · {pattern.averageHints.toFixed(1)} avg hints</span><ProgressBar percent={pattern.mastery} tone="lake" className="mt-2" /><span className="mt-2 block">{pattern.diagnosis}</span></>}
-                  trailing={pattern.recommendedProblemId ? <Link href={`/practice?problem=${pattern.recommendedProblemId}&mode=recognize&coach=guided`} className="row-action">Next drill →</Link> : null}
-                />
-              ))}
-          </ProductList>
         </div>
 
+        <ProductList className="mt-5">
+          {rankedPatternRows.map((pattern) => {
+            const statusCopy = STATUS_COPY[pattern.status];
+            return (
+              <ProductRow
+                key={pattern.id}
+                title={
+                  <span className="flex flex-wrap items-center gap-2">
+                    {pattern.label}
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusCopy.className}`}>
+                      {statusCopy.label}
+                    </span>
+                  </span>
+                }
+                description={
+                  <>
+                    <span>
+                      {pattern.masteredCount} of {pattern.total} mastered · {pattern.touchedCount} touched
+                    </span>
+                    <ProgressBar percent={pattern.percentMastered} tone="lake" className="mt-2" />
+                    <span className="mt-2 block">{pattern.diagnosis}</span>
+                  </>
+                }
+                trailing={
+                  <Link
+                    href={
+                      pattern.recommendedProblemId
+                        ? `/practice?problem=${pattern.recommendedProblemId}&mode=recognize&coach=guided`
+                        : "/roadmap"
+                    }
+                    className="row-action"
+                  >
+                    {pattern.touchedCount === 0 ? "Start →" : "Next drill →"}
+                  </Link>
+                }
+              />
+            );
+          })}
+        </ProductList>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
         <div className="uiverse-panel p-6">
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-ember">
-            Confusion pairs
+            Where you get confused
           </p>
-          <h3 className="mt-2 text-2xl font-semibold text-ink">Where your instinct crosses wires.</h3>
+          <h3 className="mt-2 text-xl font-semibold text-ink">Contrast these before your next solve.</h3>
           <ProductList className="mt-5">
-            {masteryModel.confusions.length > 0 ? masteryModel.confusions.slice(0, 5).map((pair) => (
-              <ProductRow key={`${pair.predicted}-${pair.actual}`} title={`${pair.predicted} → ${pair.actual}`} description={`Contrast these before the next solve.`} meta={`${pair.count} miss${pair.count === 1 ? "" : "es"}`} />
-            )) : (
+            {masteryModel.confusions.length > 0 ? (
+              masteryModel.confusions.slice(0, 3).map((pair) => (
+                <ProductRow
+                  key={`${pair.predicted}-${pair.actual}`}
+                  title={`${pair.predicted} → ${pair.actual}`}
+                  description="You picked the first pattern when the second one actually fit."
+                  meta={`${pair.count} miss${pair.count === 1 ? "" : "es"}`}
+                />
+              ))
+            ) : (
               <div className="rounded-[8px] border border-dashed border-black/12 bg-white/60 p-5 text-sm leading-6 text-black/58">
-                No confusion pair yet. PatternLift will surface one as soon as a prediction differs from the actual pattern.
+                No mix-ups yet. This shows up once a guessed pattern differs from the actual one.
               </div>
             )}
           </ProductList>
-          <div className="mt-4 rounded-[8px] bg-[#fff5ed] p-4 text-sm leading-6 text-black/64">
-            Current recognition accuracy: <span className="font-semibold text-ink">{accuracy}%</span>. High-confidence misses are weighted more heavily so calibration improves too.
-          </div>
-        </div>
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <div className="uiverse-panel p-6">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-lake">
-              Official roadmap
-            </p>
-            <span className="text-sm text-black/54">{currentStreak} day streak</span>
-          </div>
-
-          <div className="mt-5 space-y-5">
-            {officialTrackProgress.map((track) => {
-              const percent =
-                track.total === 0 ? 0 : Math.round((track.completed / track.total) * 100);
-
-              return (
-                <article key={track.id} className="space-y-2">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-base font-semibold text-ink">{track.label}</h3>
-                      <p className="text-sm text-black/58">
-                        {track.completed} of {track.total}
-                      </p>
-                    </div>
-                    <span className="text-base font-semibold text-ink">{percent}%</span>
-                  </div>
-                  <ProgressBar percent={percent} tone="coral" />
-                </article>
-              );
-            })}
-          </div>
         </div>
 
         <div className="uiverse-panel p-6">
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-coral">
-              Recent reps
+              Recent activity
             </p>
-            <span className="text-sm text-black/54">{history.length} saved</span>
+            <Link href="/roadmap" className="text-sm font-semibold text-lake">
+              Full roadmap →
+            </Link>
           </div>
           <div className="mt-5 space-y-3">
-            {history.slice(0, 5).map((item) => {
-              const meta = getOfficialProblemRoadmapMeta(item.problemId);
-              return (
+            {recentDistinct.length > 0 ? (
+              recentDistinct.map((item) => (
                 <article
-                  key={item.id}
+                  key={`${item.problemId}-${item.createdAt}`}
                   className="rounded-[8px] border border-black/10 bg-white/86 p-4"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3">
@@ -304,100 +227,30 @@ export function ProgressPanel({
                             : "bg-rose-100 text-rose-700"
                       }`}
                     >
-                      {item.outcome === "solid"
-                        ? "Strong"
-                        : item.outcome === "partial"
-                          ? "Mixed"
-                          : "Needs review"}
+                      {item.outcome === "solid" ? "Strong" : item.outcome === "partial" ? "Mixed" : "Needs review"}
                     </span>
                   </div>
-                  <p className="mt-2 text-sm text-black/58">
-                    {meta?.leetcodeNumber
-                      ? `LeetCode #${meta.leetcodeNumber}`
-                      : item.selectedPatternLabel}
-                  </p>
+                  <p className="mt-2 text-sm text-black/58">{item.actualPatternLabel ?? item.selectedPatternLabel}</p>
                 </article>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      <div className="uiverse-panel p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-coral">
-              Pattern roadmap
-            </p>
-            <h3 className="mt-2 text-2xl font-semibold text-ink">
-              One lane at a time.
-            </h3>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {[
-              { id: "all", label: "All lanes" },
-              { id: "active", label: "Active" },
-              { id: "needs-review", label: "Needs review" },
-              { id: "mastered", label: "Mastered" }
-            ].map((filter) => {
-              const active = laneFilter === filter.id;
-              return (
-                <button
-                  key={filter.id}
-                  type="button"
-                  onClick={() => setLaneFilter(filter.id as LaneFilter)}
-                  className={`rounded-full px-3 py-2 text-sm font-medium transition ${
-                    active
-                      ? "bg-ink text-white"
-                      : "border border-black/10 bg-white text-black/68"
-                  }`}
-                >
-                  {filter.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="mt-5 space-y-3">
-          {filteredLanes.map((lane) => (
-            <article
-              key={lane.id}
-              className="rounded-[8px] border border-black/10 bg-white/88 p-4"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h4 className="text-base font-semibold text-ink">{lane.label}</h4>
-                  <p className="mt-1 text-sm text-black/58">
-                    {lane.completed} of {lane.total} problems touched
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <LaneStatus status={lane.status} />
-                  <span className="text-sm font-semibold text-ink">{lane.percent}%</span>
-                </div>
+              ))
+            ) : (
+              <div className="rounded-[8px] border border-dashed border-black/12 bg-white/60 p-5 text-sm leading-6 text-black/58">
+                Nothing logged yet. Solve a problem in the workspace to see it here.
               </div>
-
-              <ProgressBar percent={lane.percent} tone="coral" className="mt-4" />
-
-              <div className="mt-4 flex flex-wrap gap-3 text-sm text-black/62">
-                <span>{lane.solid} strong</span>
-                <span>{lane.needsReview} need review</span>
-                <span>{lane.strengthPercent}% confidence</span>
-              </div>
-
-              <div className="mt-3">
-                <div className="flex items-center justify-between gap-3 text-sm">
-                  <span className="text-black/58">Confidence in attempted reps</span>
-                  <span className="text-black/52">{lane.strengthPercent}%</span>
-                </div>
-                <ProgressBar percent={lane.strengthPercent} tone="lake" className="mt-2" />
-              </div>
-            </article>
-          ))}
+            )}
+          </div>
         </div>
       </div>
     </section>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-xs font-semibold uppercase tracking-[0.1em] text-black/45">{label}</dt>
+      <dd className="mt-1 text-2xl font-semibold text-ink">{value}</dd>
+    </div>
   );
 }
 
@@ -421,36 +274,5 @@ function ProgressBar({
         style={{ width: `${percent === 0 ? 0 : Math.max(4, percent)}%` }}
       />
     </div>
-  );
-}
-
-function LaneStatus({
-  status
-}: {
-  status: LaneStatus;
-}) {
-  const copy = {
-    fresh: {
-      label: "Fresh",
-      className: "bg-stone-100 text-stone-700"
-    },
-    active: {
-      label: "Active",
-      className: "bg-sky-100 text-sky-700"
-    },
-    "needs-review": {
-      label: "Needs review",
-      className: "bg-rose-100 text-rose-700"
-    },
-    mastered: {
-      label: "Mastered",
-      className: "bg-emerald-100 text-emerald-700"
-    }
-  }[status];
-
-  return (
-    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${copy.className}`}>
-      {copy.label}
-    </span>
   );
 }

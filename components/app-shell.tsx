@@ -11,16 +11,19 @@ type NavIcon = "learn" | "recognize" | "practice" | "progress" | "review" | "roa
 
 const navigation: Array<{ href: string; match: string; label: string; icon: NavIcon }> = [
   { href: "/today", match: "/today", label: "Today", icon: "today" },
-  { href: "/start", match: "/start", label: "Start", icon: "practice" },
   { href: "/roadmap", match: "/roadmap", label: "Roadmap", icon: "roadmap" },
-  { href: "/learn/setup", match: "/learn", label: "My Path", icon: "learn" },
-  { href: "/recognize/setup", match: "/recognize", label: "Recognize", icon: "recognize" },
   { href: "/progress", match: "/progress", label: "Progress", icon: "progress" },
-  { href: "/review", match: "/review", label: "Review", icon: "review" }
+  { href: "/review", match: "/review", label: "Review", icon: "review" },
+  { href: "/start", match: "/start", label: "Quick pick", icon: "practice" },
+  { href: "/learn/setup", match: "/learn", label: "My Path", icon: "learn" },
+  { href: "/recognize/setup", match: "/recognize", label: "Recognize", icon: "recognize" }
 ];
 
+const PRACTICE_NAV_COUNT = 2;
+const INSIGHTS_NAV_COUNT = 2;
+
 const pageMeta: Record<string, { eyebrow: string; title: string; backHref: string }> = {
-  "/start": { eyebrow: "Mastery Agent", title: "Your next session", backHref: "/" },
+  "/start": { eyebrow: "Quick pick", title: "Your next session", backHref: "/" },
   "/learn/setup": { eyebrow: "Learning path", title: "Choose your focus", backHref: "/" },
   "/learn": { eyebrow: "Learning path", title: "Build your session", backHref: "/learn/setup" },
   "/recognize/setup": { eyebrow: "Recognition", title: "Set your coaching level", backHref: "/" },
@@ -82,15 +85,21 @@ export function AppShell({ children, currentUser }: { children: React.ReactNode;
           </button>
         </div>
         <div className="mt-10">
-          <p className={`rail-section-label ${railCollapsed ? "sr-only" : ""}`}>Workspace</p>
+          <p className={`rail-section-label ${railCollapsed ? "sr-only" : ""}`}>Practice</p>
           <nav className="mt-3 space-y-1">
-            {navigation.slice(0, 5).map((item) => <RailLink key={item.href} item={item} pathname={pathname} />)}
+            {navigation.slice(0, PRACTICE_NAV_COUNT).map((item) => <RailLink key={item.href} item={item} pathname={pathname} />)}
           </nav>
         </div>
         <div className="mt-8">
           <p className={`rail-section-label ${railCollapsed ? "sr-only" : ""}`}>Insights</p>
           <nav className="mt-3 space-y-1">
-            {navigation.slice(5).map((item) => <RailLink key={item.href} item={item} pathname={pathname} />)}
+            {navigation.slice(PRACTICE_NAV_COUNT, PRACTICE_NAV_COUNT + INSIGHTS_NAV_COUNT).map((item) => <RailLink key={item.href} item={item} pathname={pathname} />)}
+          </nav>
+        </div>
+        <div className="mt-8">
+          <p className={`rail-section-label ${railCollapsed ? "sr-only" : ""}`}>More ways to practice</p>
+          <nav className="mt-3 space-y-1">
+            {navigation.slice(PRACTICE_NAV_COUNT + INSIGHTS_NAV_COUNT).map((item) => <RailLink key={item.href} item={item} pathname={pathname} />)}
           </nav>
         </div>
         <div className="rail-account mt-auto">
