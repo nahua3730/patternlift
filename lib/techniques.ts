@@ -649,6 +649,19 @@ export function getTechniqueById(id: TechniqueId) {
   return techniqueById.get(id) ?? null;
 }
 
+function escapeRegExpForWordMatch(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Whole-word/phrase match only - a plain substring check would let "oranges"
+// match "range" or "arrangement" match "range", pulling in irrelevant
+// technique suggestions.
+function containsWord(haystack: string, needle: string) {
+  const escaped = escapeRegExpForWordMatch(needle.trim());
+  if (!escaped) return false;
+  return new RegExp(`(?:^|[^a-z0-9])${escaped}(?:[^a-z0-9]|$)`, "i").test(haystack);
+}
+
 export function getSuggestedTechniques(options: {
   primaryPatternId: string | null;
   contrastPatternId: string | null;
@@ -656,6 +669,7 @@ export function getSuggestedTechniques(options: {
 }) {
   const scores = new Map<TechniqueId, number>();
   const normalized = options.problemPrompt.toLowerCase();
+  const has = (phrase: string) => containsWord(normalized, phrase);
 
   function bump(id: TechniqueId, points: number) {
     scores.set(id, (scores.get(id) ?? 0) + points);
@@ -667,98 +681,77 @@ export function getSuggestedTechniques(options: {
   if (primary) bump(primary, 5);
   if (contrast && contrast !== primary) bump(contrast, 3);
 
-  if (normalized.includes("tree") || normalized.includes("binary tree")) {
+  if (has("tree") || has("binary tree")) {
     bump("binary-tree-recursion", 4);
     bump("recursion-perspective", 2);
   }
 
-  if (normalized.includes("graph")) {
+  if (has("graph")) {
     bump("framework-thinking", 2);
   }
 
-  if (
-    normalized.includes("substring") ||
-    normalized.includes("subarray") ||
-    normalized.includes("contiguous")
-  ) {
+  if (has("substring") || has("subarray") || has("contiguous")) {
     bump("sliding-window", 4);
   }
 
-  if (normalized.includes("sorted") || normalized.includes("rotated")) {
+  if (has("sorted") || has("rotated")) {
     bump("binary-search", 3);
     bump("two-pointers", 2);
   }
 
-  if (normalized.includes("top k") || normalized.includes("k most")) {
+  if (has("top k") || has("k most")) {
     bump("heap", 4);
   }
 
-  if (
-    normalized.includes("shortest path") ||
-    normalized.includes("minimum steps") ||
-    normalized.includes("level order")
-  ) {
+  if (has("shortest path") || has("minimum steps") || has("level order")) {
     bump("bfs", 4);
   }
 
-  if (
-    normalized.includes("permutation") ||
-    normalized.includes("combination") ||
-    normalized.includes("subset")
-  ) {
+  if (has("permutation") || has("combination") || has("subset")) {
     bump("dfs-backtracking", 4);
   }
 
   if (
-    normalized.includes("ways") ||
-    normalized.includes("minimum cost") ||
-    normalized.includes("maximum profit") ||
-    normalized.includes("coin")
+    has("ways") ||
+    has("minimum cost") ||
+    has("maximum profit") ||
+    has("coin")
   ) {
     bump("dynamic-programming", 3);
   }
 
-  if (normalized.includes("query") && normalized.includes("sum")) {
+  if (has("query") && has("sum")) {
     bump("prefix-sum", 4);
   }
 
   if (
-    normalized.includes("range addition") ||
-    normalized.includes("bookings") ||
-    (normalized.includes("range") && normalized.includes("update"))
+    has("range addition") ||
+    has("bookings") ||
+    (has("range") && has("update"))
   ) {
     bump("difference-array", 4);
   }
 
-  if (
-    normalized.includes("next greater") ||
-    normalized.includes("daily temperature") ||
-    normalized.includes("histogram")
-  ) {
+  if (has("next greater") || has("daily temperature") || has("histogram")) {
     bump("monotonic-stack", 4);
   }
 
-  if (
-    normalized.includes("sliding window maximum") ||
-    normalized.includes("sliding window minimum")
-  ) {
+  if (has("sliding window maximum") || has("sliding window minimum")) {
     bump("monotonic-queue", 5);
     bump("sliding-window", 2);
   }
 
   if (
-    normalized.includes("minimum") ||
-    normalized.includes("maximum") ||
-    normalized.includes("constraint") ||
-    normalized.includes("10^5")
+    has("minimum") ||
+    has("maximum") ||
+    has("constraint") ||
+    has("10^5")
   ) {
     bump("complexity", 2);
   }
 
   for (const technique of techniqueLibrary) {
-    const extraMatches = technique.signalMatchers.filter((signal) =>
-      normalized.includes(signal)
-    ).length;
+    const extraMatches = technique.signalMatchers.filter((signal) => has(signal)).length;
 
     if (extraMatches > 0) {
       bump(technique.id, extraMatches);
