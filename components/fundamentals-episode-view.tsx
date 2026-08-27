@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ProblemRow, episodeVideoUrl } from "@/components/fundamentals-series";
 import { fundamentalsSeries, type FundamentalsEpisode } from "@/lib/fundamentals-series";
+import { mimeTypeToExtension, pickRecordingMimeType } from "@/lib/voice-recording";
 
 type ChatMessage = {
   id: string;
@@ -30,7 +31,11 @@ export function FundamentalsEpisodeView({
   const [draft, setDraft] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [recordingState, setRecordingState] = useState<"idle" | "recording" | "transcribing">("idle");
   const conversationRef = useRef<HTMLDivElement | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordingChunksRef = useRef<Blob[]>([]);
+  const recordingStreamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     setMessages([introMessage(episode)]);
@@ -42,6 +47,13 @@ export function FundamentalsEpisodeView({
     const node = conversationRef.current;
     if (node) node.scrollTop = node.scrollHeight;
   }, [messages]);
+
+  useEffect(() => {
+    return () => {
+      mediaRecorderRef.current?.stop();
+      recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
+    };
+  }, []);
 
   const sendMessage = useCallback(async () => {
     const text = draft.trim();
@@ -98,6 +110,96 @@ export function FundamentalsEpisodeView({
     }
   }, [draft, episode.episode, isLoading, messages]);
 
+  const transcribeRecordedAudio = useCallback(async (mimeType: string) => {
+    const chunks = recordingChunksRef.current;
+    const stream = recordingStreamRef.current;
+    recordingStreamRef.current = null;
+    mediaRecorderRef.current = null;
+    stream?.getTracks().forEach((track) => track.stop());
+
+    if (chunks.length === 0) {
+      setRecordingState("idle");
+      setError("No audio was captured. Try recording again.");
+      return;
+    }
+
+    const extension = mimeTypeToExtension(mimeType);
+    const blob = new Blob(chunks, { type: mimeType || "audio/webm" });
+    const file = new File([blob], `fundamentals-note.${extension}`, { type: blob.type });
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await fetch("/api/transcribe", { method: "POST", body: formData });
+      const payload = (await response.json()) as { text?: string; error?: string };
+      if (!response.ok || !payload.text) {
+        throw new Error(payload.error ?? "Transcription failed.");
+      }
+      const transcript = payload.text.trim();
+      if (!transcript) {
+        throw new Error("The recording came back empty. Try a slightly longer note.");
+      }
+      setDraft((current) => [current.trim(), transcript].filter(Boolean).join(current.trim() ? " " : ""));
+      setError(null);
+    } catch (transcriptionError) {
+      setError(
+        transcriptionError instanceof Error
+          ? transcriptionError.message
+          : "I couldn't transcribe that recording. Please try again."
+      );
+    } finally {
+      recordingChunksRef.current = [];
+      setRecordingState("idle");
+    }
+  }, []);
+
+  const toggleVoiceInput = useCallback(async () => {
+    if (recordingState === "transcribing") return;
+
+    if (recordingState === "recording") {
+      mediaRecorderRef.current?.stop();
+      setRecordingState("transcribing");
+      return;
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      setError("Audio recording is not supported in this browser.");
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = pickRecordingMimeType();
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+
+      recordingStreamRef.current = stream;
+      recordingChunksRef.current = [];
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) recordingChunksRef.current.push(event.data);
+      };
+      recorder.onerror = () => {
+        setError("Recording ran into a problem. Please try again.");
+        setRecordingState("idle");
+      };
+      recorder.onstop = () => {
+        void transcribeRecordedAudio(recorder.mimeType);
+      };
+
+      setError(null);
+      setRecordingState("recording");
+      recorder.start();
+    } catch (recordingError) {
+      const message =
+        recordingError instanceof DOMException && recordingError.name === "NotAllowedError"
+          ? "Microphone access was blocked. Allow microphone access to record a note."
+          : "I couldn't start recording. Please try again.";
+      setError(message);
+      setRecordingState("idle");
+    }
+  }, [recordingState, transcribeRecordedAudio]);
+
   const prevEpisode = fundamentalsSeries.find((ep) => ep.episode === episode.episode - 1);
   const nextEpisode = fundamentalsSeries.find((ep) => ep.episode === episode.episode + 1);
   const allProblemIds = [...episode.problemIds, ...(episode.relatedProblemIds ?? [])];
@@ -143,7 +245,7 @@ export function FundamentalsEpisodeView({
           <div className="relative aspect-video w-full bg-black">
             {episode.bvid ? (
               <iframe
-                src={`https://player.bilibili.com/player.html?bvid=${episode.bvid}&page=1&high_quality=1&danmaku=0`}
+                src={`https://player.bilibili.com/player.html?bvid=${episode.bvid}&page=1&high_quality=1&quality=64&danmaku=0`}
                 allow="fullscreen; autoplay"
                 allowFullScreen
                 className="absolute inset-0 h-full w-full"
@@ -160,7 +262,8 @@ export function FundamentalsEpisodeView({
           </div>
           {episode.bvid ? (
             <p className="px-4 py-2 text-xs text-black/50">
-              Video not loading?{" "}
+              Video not loading, or want full quality? Bilibili caps embedded, logged-out playback quality on
+              their end - being logged into Bilibili in this browser usually unlocks it here too.{" "}
               <a href={episodeVideoUrl(episode)} target="_blank" rel="noreferrer" className="underline">
                 Open it on Bilibili directly ↗
               </a>
@@ -198,6 +301,36 @@ export function FundamentalsEpisodeView({
               disabled={isLoading}
             />
             <button
+              type="button"
+              onClick={() => void toggleVoiceInput()}
+              aria-label={
+                recordingState === "recording"
+                  ? "Stop recording and transcribe"
+                  : recordingState === "transcribing"
+                    ? "Transcribing recording"
+                    : "Start recording for transcription"
+              }
+              title={
+                recordingState === "recording"
+                  ? "Stop recording and transcribe"
+                  : recordingState === "transcribing"
+                    ? "Transcribing recording"
+                    : "Start recording for transcription"
+              }
+              disabled={recordingState === "transcribing"}
+              className={`coach-voice-button ${
+                recordingState === "recording"
+                  ? "border-coral/20 bg-coral text-white shadow-[0_10px_18px_rgba(255,92,92,0.18)]"
+                  : recordingState === "transcribing"
+                    ? "cursor-wait border-black/10 bg-black/6 text-black/40"
+                    : "text-slate-500"
+              }`}
+            >
+              <span aria-hidden="true" className="block text-lg leading-none">
+                {recordingState === "recording" ? "◼" : recordingState === "transcribing" ? "⋯" : "🎙"}
+              </span>
+            </button>
+            <button
               type="submit"
               disabled={isLoading || !draft.trim()}
               className="shrink-0 rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white transition hover:opacity-85 disabled:opacity-40"
@@ -205,6 +338,13 @@ export function FundamentalsEpisodeView({
               Send
             </button>
           </form>
+          {recordingState !== "idle" ? (
+            <p className="mt-2 text-[11px] text-black/40">
+              {recordingState === "recording"
+                ? "Recording now. Tap the mic again when you want me to transcribe it."
+                : "Transcribing your recording..."}
+            </p>
+          ) : null}
         </div>
       </section>
 

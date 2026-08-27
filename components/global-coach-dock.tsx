@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { parseCoachAgentStream, type CoachRequest } from "@/lib/coach";
 import { allProblems, patternOptions } from "@/lib/product";
 import { buildTechniqueBriefs, getSuggestedTechniques } from "@/lib/techniques";
+import { mimeTypeToExtension, pickRecordingMimeType } from "@/lib/voice-recording";
 
 type DockMessage = {
   id: string;
@@ -594,21 +595,4 @@ export function GlobalCoachDock() {
       </div>
     </aside>
   );
-}
-
-function pickRecordingMimeType() {
-  const candidates = [
-    "audio/webm;codecs=opus",
-    "audio/webm",
-    "audio/mp4",
-    "audio/mpeg"
-  ];
-
-  return candidates.find((candidate) => MediaRecorder.isTypeSupported(candidate)) ?? "";
-}
-
-function mimeTypeToExtension(mimeType: string) {
-  if (mimeType.includes("mp4")) return "m4a";
-  if (mimeType.includes("mpeg")) return "mp3";
-  return "webm";
 }
