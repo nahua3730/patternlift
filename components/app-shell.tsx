@@ -7,7 +7,7 @@ import { GlobalCoachDock } from "@/components/global-coach-dock";
 import { LogoutButton } from "@/components/logout-button";
 import type { SessionUser } from "@/lib/auth";
 
-type NavIcon = "learn" | "recognize" | "practice" | "progress" | "review" | "roadmap" | "today" | "techniques";
+type NavIcon = "learn" | "recognize" | "practice" | "progress" | "review" | "roadmap" | "today" | "techniques" | "series";
 
 const navigation: Array<{ href: string; match: string; label: string; icon: NavIcon }> = [
   { href: "/today", match: "/today", label: "Today", icon: "today" },
@@ -17,7 +17,8 @@ const navigation: Array<{ href: string; match: string; label: string; icon: NavI
   { href: "/start", match: "/start", label: "Quick pick", icon: "practice" },
   { href: "/learn/setup", match: "/learn", label: "My Path", icon: "learn" },
   { href: "/recognize/setup", match: "/recognize", label: "Recognize", icon: "recognize" },
-  { href: "/techniques", match: "/techniques", label: "Techniques", icon: "techniques" }
+  { href: "/techniques", match: "/techniques", label: "Techniques", icon: "techniques" },
+  { href: "/fundamentals", match: "/fundamentals", label: "Fundamentals Series", icon: "series" }
 ];
 
 const PRACTICE_NAV_COUNT = 2;
@@ -36,7 +37,8 @@ const pageMeta: Record<string, { eyebrow: string; title: string; backHref: strin
   "/roadmap": { eyebrow: "Roadmap", title: "Blind 75 & NeetCode 150", backHref: "/" },
   "/progress": { eyebrow: "Analytics", title: "Mastery dashboard", backHref: "/" },
   "/review": { eyebrow: "Recall", title: "Review queue", backHref: "/" },
-  "/techniques": { eyebrow: "Library", title: "Technique library", backHref: "/" }
+  "/techniques": { eyebrow: "Library", title: "Technique library", backHref: "/" },
+  "/fundamentals": { eyebrow: "Curated series", title: "Fundamentals series", backHref: "/" }
 };
 
 export function AppShell({ children, currentUser }: { children: React.ReactNode; currentUser: SessionUser | null }) {
@@ -188,7 +190,8 @@ function NavGlyph({ icon }: { icon: NavIcon }) {
     review: <><path d="M4 5h16v14H4z" /><path d="M8 9h8M8 13h6" /></>,
     roadmap: <><rect x="3" y="4" width="18" height="5" rx="1.4" /><rect x="3" y="15" width="18" height="5" rx="1.4" /></>,
     today: <><path d="M3 10.5 10 4l7 6.5" /><path d="M5 9v7h10V9" /></>,
-    techniques: <><path d="M9 18h6" /><path d="M10 21h4" /><path d="M12 3a6 6 0 0 0-6 6c0 2.5 1.5 3.5 2 5h8c.5-1.5 2-2.5 2-5a6 6 0 0 0-6-6Z" /></>
+    techniques: <><path d="M9 18h6" /><path d="M10 21h4" /><path d="M12 3a6 6 0 0 0-6 6c0 2.5 1.5 3.5 2 5h8c.5-1.5 2-2.5 2-5a6 6 0 0 0-6-6Z" /></>,
+    series: <><rect x="2.5" y="4.5" width="19" height="14" rx="2" /><path d="m10.5 9 4.5 3-4.5 3Z" /></>
   };
   return <svg viewBox="0 0 24 24" aria-hidden="true" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{paths[icon]}</svg>;
 }
