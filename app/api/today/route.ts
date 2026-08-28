@@ -98,6 +98,22 @@ export async function GET() {
     dominantConfusion
   });
 
+  // Support-plan context for today's pattern, computed once here so the
+  // client doesn't need a second round trip - recentAttempts is already
+  // newest-first (loadRecentAttempts orders by created_at DESC).
+  const patternAttempts = patternLabel
+    ? recentAttempts.filter((attempt) => attempt.actualPatternLabel === patternLabel)
+    : [];
+  const mostRecentPatternAttempt = patternAttempts[0];
+  const priorSolidExists = patternAttempts.slice(1).some((attempt) => attempt.outcome === "solid");
+  const todaySupport = {
+    recentScaffoldLevel: mostRecentPatternAttempt?.scaffoldLevel,
+    recentOutcomeWasSolid: mostRecentPatternAttempt ? mostRecentPatternAttempt.outcome === "solid" : undefined,
+    recentFailureAfterPriorMastery: Boolean(
+      mostRecentPatternAttempt && mostRecentPatternAttempt.outcome !== "solid" && priorSolidExists
+    )
+  };
+
   return NextResponse.json({
     plan: {
       headline: plan.headline,
@@ -117,6 +133,8 @@ export async function GET() {
     dueReviews: dueReviewsMapped,
     streak,
     checkins,
-    session
+    session,
+    todaySkills: todayMastery?.skills,
+    todaySupport
   });
 }

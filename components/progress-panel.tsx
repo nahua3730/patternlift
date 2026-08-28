@@ -3,6 +3,7 @@ import { allProblems, patternOptions } from "@/lib/product";
 import { tierForReps } from "@/lib/mastery-tiers";
 import type { buildMasteryModel, MasteryAttempt } from "@/lib/mastery";
 import type { SkillDimension, TechniqueSkillVector } from "@/lib/skill-vector";
+import { SCAFFOLD_LABEL, type ScaffoldLevel } from "@/lib/scaffold";
 import { ProductList, ProductRow } from "@/components/product-system";
 import { ProgressRing } from "@/components/progress-ring";
 
@@ -38,6 +39,31 @@ function bottleneckFor(skills: TechniqueSkillVector | undefined) {
   );
   if (skills[weakest].score >= 70) return null;
   return { dimension: weakest, label: SKILL_LABELS[weakest], score: skills[weakest].score };
+}
+
+// V2.3 Part 17: a small, plain-language trend showing whether support is
+// fading over time, e.g. "Heavy support → Partial skeleton → Independent".
+// attempts is expected newest-first (loadRecentAttempts ordering); only
+// consecutive DISTINCT levels are kept so a run of five "Independent"
+// attempts in a row doesn't repeat the same word five times.
+function supportTrendFor(attempts: MasteryAttempt[], patternLabel: string): string | null {
+  const oldestFirst = attempts
+    .filter((attempt) => attempt.actualPatternLabel === patternLabel && attempt.scaffoldLevel != null)
+    .slice()
+    .reverse();
+  if (oldestFirst.length < 2) return null;
+
+  const levels: ScaffoldLevel[] = [];
+  for (const attempt of oldestFirst) {
+    const level = attempt.scaffoldLevel as ScaffoldLevel;
+    if (levels[levels.length - 1] !== level) levels.push(level);
+  }
+  if (levels.length < 2) return null;
+
+  return levels
+    .slice(-3)
+    .map((level) => SCAFFOLD_LABEL[level])
+    .join(" → ");
 }
 
 type ProgressPanelProps = {
@@ -102,7 +128,8 @@ export function ProgressPanel({
             : "Not started yet.",
       recommendedProblemId: evidence?.recommendedProblemId ?? null,
       skills: evidence?.skills,
-      bottleneck: bottleneckFor(evidence?.skills)
+      bottleneck: bottleneckFor(evidence?.skills),
+      supportTrend: supportTrendFor(recentAttempts, pattern.label)
     };
   });
 
@@ -196,6 +223,11 @@ export function ProgressPanel({
                     {pattern.bottleneck ? (
                       <span className="mt-2 block text-xs font-semibold text-coral">
                         Weakest link: {pattern.bottleneck.label} ({pattern.bottleneck.score}%)
+                      </span>
+                    ) : null}
+                    {pattern.supportTrend ? (
+                      <span className="mt-2 block text-xs font-medium text-emerald-700">
+                        Support needed: {pattern.supportTrend}
                       </span>
                     ) : null}
                     {pattern.skills ? <SkillBreakdown skills={pattern.skills} /> : null}

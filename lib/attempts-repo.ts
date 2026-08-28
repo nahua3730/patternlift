@@ -15,10 +15,13 @@ export async function loadRecentAttempts(userId: string, limit = 24): Promise<Ma
     confidence: number;
     confused_with: string | null;
     created_at: string;
+    highest_hint_level: number | null;
+    scaffold_level: number | null;
   }>(
     `
       SELECT problem_id, problem_title, selected_pattern_label, correct_pattern_label,
-        outcome, score, explanation_score, hints_used, code_passed, confidence, confused_with, created_at
+        outcome, score, explanation_score, hints_used, code_passed, confidence, confused_with, created_at,
+        highest_hint_level, scaffold_level
       FROM attempts
       WHERE user_id = ?
       ORDER BY created_at DESC
@@ -42,6 +45,8 @@ export async function loadRecentAttempts(userId: string, limit = 24): Promise<Ma
     codePassed: row.code_passed == null ? null : row.code_passed === 1,
     confidence: row.confidence,
     confusedWith: row.confused_with,
-    createdAt: row.created_at
+    createdAt: row.created_at,
+    highestHintLevel: row.highest_hint_level ?? undefined,
+    scaffoldLevel: row.scaffold_level ?? undefined
   }));
 }

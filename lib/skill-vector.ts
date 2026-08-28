@@ -1,4 +1,5 @@
 import type { ConfusionPair, MasteryAttempt } from "@/lib/mastery";
+import { independenceScoreForHintDepth } from "@/lib/hint-ladder";
 
 // Six dimensions instead of one blended mastery number, so "62%" can mean
 // something specific: strong recognition but weak implementation reads very
@@ -130,12 +131,23 @@ function scoreReasoning(attempts: MasteryAttempt[], patternLabel: string): Dimen
   };
 }
 
+// A pass under heavy code-fading scaffold is real, but weaker evidence of
+// independent implementation skill than a pass on a blank editor - most of
+// the construction was already given to them. Only applied when the
+// attempt actually recorded a scaffold level (V2.3+); older rows fall back
+// to the plain pass/fail read.
+function scaffoldAdjustedPassScore(scaffoldLevel: number | undefined) {
+  if (scaffoldLevel == null) return 100;
+  const byLevel: Record<number, number> = { 0: 100, 1: 90, 2: 75, 3: 55 };
+  return byLevel[Math.max(0, Math.min(3, scaffoldLevel))] ?? 75;
+}
+
 function scoreImplementation(attempts: MasteryAttempt[]): DimensionScore {
   const withCode = attempts.filter((attempt) => attempt.codePassed !== null && attempt.codePassed !== undefined);
   if (withCode.length === 0) return emptyDimension();
 
   const weighted = withCode.map((attempt, index) => ({
-    value: attempt.codePassed ? 100 : 30,
+    value: attempt.codePassed ? scaffoldAdjustedPassScore(attempt.scaffoldLevel) : 30,
     weight: recencyWeight(index)
   }));
 
@@ -146,19 +158,29 @@ function scoreImplementation(attempts: MasteryAttempt[]): DimensionScore {
   };
 }
 
+// Independence prefers the real hint-ladder depth (0-5) when an attempt
+// has it - "solved with a Level 1 nudge" and "solved with Level 5 code
+// help" are very different evidence, which a raw hint-message count can't
+// distinguish. Older rows without a recorded depth fall back to the
+// legacy count-based estimate so they still contribute evidence.
 function scoreIndependence(attempts: MasteryAttempt[]): DimensionScore {
-  const withHints = attempts.filter((attempt) => typeof attempt.hintsUsed === "number");
-  if (withHints.length === 0) return emptyDimension();
+  const withSignal = attempts.filter(
+    (attempt) => typeof attempt.hintsUsed === "number" || typeof attempt.highestHintLevel === "number"
+  );
+  if (withSignal.length === 0) return emptyDimension();
 
-  const weighted = withHints.map((attempt, index) => ({
-    value: clamp(100 - (attempt.hintsUsed ?? 0) * 20, 10, 100),
-    weight: recencyWeight(index)
-  }));
+  const weighted = withSignal.map((attempt, index) => {
+    const value =
+      typeof attempt.highestHintLevel === "number"
+        ? independenceScoreForHintDepth(attempt.highestHintLevel)
+        : clamp(100 - (attempt.hintsUsed ?? 0) * 20, 10, 100);
+    return { value, weight: recencyWeight(index) };
+  });
 
   return {
     score: clampRound(weightedAverage(weighted)),
-    confidence: evidenceConfidence(withHints.length),
-    evidenceCount: withHints.length
+    confidence: evidenceConfidence(withSignal.length),
+    evidenceCount: withSignal.length
   };
 }
 

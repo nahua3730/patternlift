@@ -58,6 +58,10 @@ export async function POST(request: Request) {
     retention
   );
 
+  // Retry-after-remediation succeeded if the outcome improved past
+  // "confused" - null when this attempt wasn't a remediation retry at all.
+  const retrySucceeded = body.isRetryAfterRemediation ? body.outcome !== "confused" : null;
+
   if (process.env.NODE_ENV !== "production") {
     // eslint-disable-next-line no-console
     console.debug("[diagnosis]", body.problemTitle, {
@@ -65,7 +69,12 @@ export async function POST(request: Request) {
       actual: body.correctPatternLabel,
       outcome: body.outcome,
       retention,
-      diagnosis
+      diagnosis,
+      highestHintLevel: body.highestHintLevel,
+      scaffoldLevel: body.scaffoldLevel,
+      remediationUsed: body.remediationUsed,
+      isRetryAfterRemediation: body.isRetryAfterRemediation,
+      retrySucceeded
     });
   }
 
@@ -90,8 +99,12 @@ export async function POST(request: Request) {
         primary_failure_type,
         secondary_failure_type,
         diagnosis_confidence,
-        diagnosis_payload
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        diagnosis_payload,
+        highest_hint_level,
+        scaffold_level,
+        remediation_used,
+        retry_succeeded
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
   , [
     createId("attempt"),
@@ -112,7 +125,11 @@ export async function POST(request: Request) {
     diagnosis.primaryFailure,
     diagnosis.secondaryFailure ?? null,
     diagnosis.confidence,
-    JSON.stringify(diagnosis)
+    JSON.stringify(diagnosis),
+    body.highestHintLevel ?? null,
+    body.scaffoldLevel ?? null,
+    body.remediationUsed && body.remediationUsed.length > 0 ? JSON.stringify(body.remediationUsed) : null,
+    retrySucceeded == null ? null : retrySucceeded ? 1 : 0
   ]);
 
   await dbExecute(`DELETE FROM review_items WHERE user_id = ? AND problem_title = ?`, [

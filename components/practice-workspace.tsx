@@ -17,11 +17,36 @@ import {
   type CompareMode,
   type SupportedLanguage
 } from "@/lib/problem-code";
-import { buildTechniqueBriefs, getSuggestedTechniques } from "@/lib/techniques";
+import {
+  buildTechniqueBriefs,
+  getSuggestedTechniques,
+  getTechniqueById,
+  mapPatternToTechniqueId
+} from "@/lib/techniques";
 import Link from "next/link";
 import { AudioWaveform } from "@/components/audio-waveform";
 import { runPythonInBrowser } from "@/lib/browser-python-runner";
 import { diagnoseAttempt, type AttemptDiagnosis, type RecommendedAction } from "@/lib/diagnosis";
+import { buildScaffoldedStarterCode, type ScaffoldLevel } from "@/lib/scaffold";
+import { getHint, getHintLadder, type HintLevel } from "@/lib/hint-ladder";
+
+// Part 8's exact escalating wording - the button label itself signals how
+// much is about to be revealed, so asking for level 3 never feels like an
+// accident.
+const HINT_REQUEST_LABEL: Record<HintLevel, string> = {
+  1: "Give me a small nudge",
+  2: "Another hint",
+  3: "Show the core idea",
+  4: "Show pseudocode",
+  5: "Help with code"
+};
+const HINT_PROMPT_QUESTION: Record<HintLevel, string> = {
+  1: "Need a hint?",
+  2: "Still stuck?",
+  3: "Want the key rule?",
+  4: "Want the steps written out?",
+  5: "Want help with the code?"
+};
 
 // Plain-language labels for the immediate post-attempt nudge - never shown
 // as the raw enum value.
@@ -130,6 +155,19 @@ export type AttemptResult = {
   explanationScore: number;
   confusedWith: string | null;
   inputMethod: "text" | "voice";
+  // V2.3: real hint-ladder depth (0 = none, 1-5 = deepest level opened)
+  // rather than the old chat-message-count proxy, plus the code-fading
+  // scaffold this attempt was solved under. Both optional so callers that
+  // predate the hint ladder / scaffold system keep working.
+  highestHintLevel?: number;
+  scaffoldLevel?: number;
+  // Client-computed diagnosis for this attempt, passed up so the session
+  // orchestrator can decide on remediation without recomputing it.
+  diagnosis?: AttemptDiagnosis;
+  // Set when this attempt IS a retry that followed a remediation step -
+  // lets the server record whether the remediation actually helped.
+  isRetryAfterRemediation?: boolean;
+  remediationUsed?: string[];
 };
 
 type PracticeWorkspaceProps = {
@@ -141,6 +179,14 @@ type PracticeWorkspaceProps = {
   quickStart?: boolean;
   guessPatternId?: string;
   guessReason?: string;
+  // V2.3 code fading + hint depth cap. Default to today's existing
+  // behavior (level 2 = unmodified starter code, full 5-level ladder
+  // available) so callers that don't know about SupportPlan yet - the
+  // standalone /practice and /recognize pages - are unaffected.
+  scaffoldLevel?: ScaffoldLevel;
+  maxHintLevel?: HintLevel;
+  isRetryAfterRemediation?: boolean;
+  remediationUsed?: string[];
 };
 
 type RunResult = {
@@ -223,7 +269,11 @@ export function PracticeWorkspace({
   selectedPatternIds = [],
   quickStart = false,
   guessPatternId,
-  guessReason
+  guessReason,
+  scaffoldLevel = 2,
+  maxHintLevel = 5,
+  isRetryAfterRemediation = false,
+  remediationUsed = []
 }: PracticeWorkspaceProps) {
   const [problemId, setProblemId] = useState<string>(initialProblemId ?? allProblems[0].id);
   const [problemText, setProblemText] = useState(allProblems[0].prompt);
@@ -251,6 +301,11 @@ export function PracticeWorkspace({
   const [hasLoggedAttempt, setHasLoggedAttempt] = useState(false);
   const [loggedOutcome, setLoggedOutcome] = useState<AttemptResult["outcome"] | null>(null);
   const [attemptDiagnosis, setAttemptDiagnosis] = useState<AttemptDiagnosis | null>(null);
+  // 0 = no hint opened yet. Tracks the deepest level opened this problem -
+  // that depth (not the raw click count) is what feeds independence
+  // scoring, per Part 7.
+  const [hintLevel, setHintLevel] = useState<HintLevel | 0>(0);
+  const [highestHintLevelUsed, setHighestHintLevelUsed] = useState(0);
   const [confidence, setConfidence] = useState<1 | 2 | 3>(2);
   const [nextInputMethod, setNextInputMethod] = useState<"text" | "voice">("text");
   const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>("python");
@@ -313,6 +368,10 @@ export function PracticeWorkspace({
     [activeProblem.contrastPatternId]
   );
   const contrastPatternLabel = contrastPattern?.label ?? "Neighboring pattern";
+  const activeTechnique = useMemo(() => {
+    const techniqueId = mapPatternToTechniqueId(activeProblem.targetPatternId);
+    return techniqueId ? getTechniqueById(techniqueId) : null;
+  }, [activeProblem.targetPatternId]);
   const activeCodeConfig = useMemo(
     () => getProblemCodeConfig(activeProblem),
     [activeProblem]
@@ -524,22 +583,31 @@ export function PracticeWorkspace({
         contrastPatternLabel
       })
     ]);
+    const scaffold = (language: SupportedLanguage) =>
+      buildScaffoldedStarterCode(
+        getStarterCode(activeCodeConfig, activeProblem.title, language),
+        language,
+        scaffoldLevel,
+        { coreIdea: activeTechnique?.coreIdea, firstSteps: correctPattern.firstSteps }
+      );
     setCodeByLanguage({
-      javascript: getStarterCode(activeCodeConfig, activeProblem.title, "javascript"),
-      typescript: getStarterCode(activeCodeConfig, activeProblem.title, "typescript"),
-      python: getStarterCode(activeCodeConfig, activeProblem.title, "python"),
-      ruby: getStarterCode(activeCodeConfig, activeProblem.title, "ruby"),
-      c: getStarterCode(activeCodeConfig, activeProblem.title, "c"),
-      csharp: getStarterCode(activeCodeConfig, activeProblem.title, "csharp"),
-      java: getStarterCode(activeCodeConfig, activeProblem.title, "java"),
-      cpp: getStarterCode(activeCodeConfig, activeProblem.title, "cpp"),
-      swift: getStarterCode(activeCodeConfig, activeProblem.title, "swift"),
-      go: getStarterCode(activeCodeConfig, activeProblem.title, "go"),
-      kotlin: getStarterCode(activeCodeConfig, activeProblem.title, "kotlin")
+      javascript: scaffold("javascript"),
+      typescript: scaffold("typescript"),
+      python: scaffold("python"),
+      ruby: scaffold("ruby"),
+      c: scaffold("c"),
+      csharp: scaffold("csharp"),
+      java: scaffold("java"),
+      cpp: scaffold("cpp"),
+      swift: scaffold("swift"),
+      go: scaffold("go"),
+      kotlin: scaffold("kotlin")
     });
     setSelectedLanguage((current) =>
       availableLanguages.includes(current) ? current : availableLanguages[0]
     );
+    setHintLevel(0);
+    setHighestHintLevelUsed(0);
     setRunResults(null);
     setRunnerError(null);
     setApproaches(null);
@@ -555,7 +623,17 @@ export function PracticeWorkspace({
       })) ?? [];
     setTestCases(nextCases);
     setSelectedTestCaseId(nextCases[0]?.id ?? null);
-  }, [activeCodeConfig, activeProblem, availableLanguages, contrastPatternLabel, correctPattern.label, mode]);
+  }, [
+    activeCodeConfig,
+    activeProblem,
+    activeTechnique,
+    availableLanguages,
+    contrastPatternLabel,
+    correctPattern.firstSteps,
+    correctPattern.label,
+    mode,
+    scaffoldLevel
+  ]);
 
   function handleEditorMount(monaco: Monaco) {
     monaco.editor.defineTheme("patternlift-ide", {
@@ -636,10 +714,21 @@ export function PracticeWorkspace({
     setCoachError(null);
   }
 
+  function requestNextHint() {
+    const next = Math.min(maxHintLevel, ((hintLevel as number) + 1)) as HintLevel;
+    setHintLevel(next);
+    setHighestHintLevelUsed((current) => Math.max(current, next));
+  }
+
   function resetCodeEditor() {
     setCodeByLanguage((current) => ({
       ...current,
-      [selectedLanguage]: getStarterCode(activeCodeConfig, activeProblem.title, selectedLanguage)
+      [selectedLanguage]: buildScaffoldedStarterCode(
+        getStarterCode(activeCodeConfig, activeProblem.title, selectedLanguage),
+        selectedLanguage,
+        scaffoldLevel,
+        { coreIdea: activeTechnique?.coreIdea, firstSteps: correctPattern.firstSteps }
+      )
     }));
     setRunResults(null);
     setRunnerError(null);
@@ -777,7 +866,12 @@ export function PracticeWorkspace({
           selectedPatternLabel !== correctPattern.label && selectedPatternLabel !== "Still exploring"
             ? selectedPatternLabel
             : null,
-        inputMethod
+        inputMethod,
+        highestHintLevel: highestHintLevelUsed,
+        scaffoldLevel,
+        diagnosis: clientDiagnosis,
+        isRetryAfterRemediation,
+        remediationUsed
       });
       setHasLoggedAttempt(true);
       setLoggedOutcome(outcome);
@@ -1645,7 +1739,34 @@ export function PracticeWorkspace({
                     ))}
                   </div>
                 </div>
-              ) : loggedOutcome ? (
+              ) : null}
+              {!hasLoggedAttempt ? (
+                <div className="mb-2 rounded-xl border border-black/8 bg-mist/60 p-3 text-xs">
+                  {hintLevel > 0 ? (
+                    <div className="mb-2 rounded-lg bg-white p-2.5">
+                      <p className="font-semibold text-ink">
+                        Level {hintLevel} · {getHint(activeTechnique?.id ?? null, hintLevel as HintLevel).label}
+                      </p>
+                      <p className="mt-1 whitespace-pre-wrap leading-5 text-black/68">
+                        {getHint(activeTechnique?.id ?? null, hintLevel as HintLevel).text}
+                      </p>
+                    </div>
+                  ) : null}
+                  {hintLevel < maxHintLevel ? (
+                    <button
+                      type="button"
+                      onClick={requestNextHint}
+                      className="rounded-full border border-black/15 bg-white px-3 py-1.5 text-xs font-semibold text-black/70 transition hover:border-black/30"
+                    >
+                      {HINT_PROMPT_QUESTION[((hintLevel as number) + 1) as HintLevel]}{" "}
+                      <span className="text-black/45">{HINT_REQUEST_LABEL[((hintLevel as number) + 1) as HintLevel]}</span>
+                    </button>
+                  ) : hintLevel > 0 ? (
+                    <span className="text-[11px] text-black/40">No more hints for this attempt.</span>
+                  ) : null}
+                </div>
+              ) : null}
+              {loggedOutcome ? (
                 <div className={`session-attempt-logged session-attempt-logged-${loggedOutcome}`}>
                   <span className="session-attempt-logged-dot" aria-hidden="true" />
                   <span>

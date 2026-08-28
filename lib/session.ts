@@ -2,6 +2,9 @@ import type { CoachStyle, CurriculumDay } from "@/lib/curriculum-agent";
 import { allProblems, patternOptions } from "@/lib/product";
 import type { TechniqueSkillVector, DimensionScore } from "@/lib/skill-vector";
 import type { ConfusionPair } from "@/lib/mastery";
+import type { FailureCategory } from "@/lib/diagnosis";
+import type { RemediationActivity } from "@/lib/remediation";
+import type { SupportPlan } from "@/lib/support-plan";
 
 // What the session orchestrator knows about the learner's standing on
 // TODAY's pattern - optional, so callers without this data (or patterns
@@ -34,7 +37,8 @@ export type SessionStepType =
   | "guided_problem"
   | "contrast"
   | "independent_problem"
-  | "reflection";
+  | "reflection"
+  | "remediation";
 
 export type SessionStep = {
   id: string;
@@ -50,9 +54,16 @@ export type SessionStep = {
   prompt?: string;
   // For guided_problem / independent_problem steps only - how much coaching
   // support this step gets. Independent steps deliberately use lighter
-  // support than guided ones, even on the same day's coachStyle setting -
-  // a seed for the future Code Fading system, not the full thing yet.
+  // support than guided ones, even on the same day's coachStyle setting.
   coachStyle?: CoachStyle;
+  // V2.3: what this step is remediating, and with what. remediation steps
+  // carry failureType + remediationId; a step produced as a retry after
+  // remediation carries retryOfStepId so the branch logic never re-branches
+  // off a retry (caps remediation at one cycle per original step).
+  failureType?: FailureCategory;
+  remediationId?: string;
+  retryOfStepId?: string;
+  supportPlan?: SupportPlan;
 };
 
 export type DailySession = {
@@ -265,4 +276,59 @@ export function buildDailySession(
     estimatedMinutes: steps.reduce((sum, step) => sum + step.estimatedMinutes, 0),
     steps
   };
+}
+
+// V2.3 dynamic branching. Called client-side (session-runner.tsx) right
+// after a problem step completes - deterministic, rule-based, and bounded:
+// it never regenerates the session, it only ever inserts at most one
+// remediation + one retry step immediately after the step that triggered
+// it. A step already marked retryOfStepId never branches again, which is
+// what caps remediation at one cycle per original step (Part 12/20-G).
+export function buildRemediationBranch(params: {
+  originalStep: SessionStep;
+  activity: RemediationActivity;
+  supportPlan: SupportPlan;
+  freshProblemId?: string;
+  freshProblemTitle?: string;
+}): SessionStep[] {
+  const { originalStep, activity, supportPlan, freshProblemId, freshProblemTitle } = params;
+
+  const remediationStep: SessionStep = {
+    id: `${originalStep.id}-remediation-${activity.id}`,
+    type: "remediation",
+    title: activity.title,
+    estimatedMinutes: activity.estimatedMinutes,
+    patternId: originalStep.patternId,
+    patternLabel: originalStep.patternLabel,
+    problemId: originalStep.problemId,
+    problemTitle: originalStep.problemTitle,
+    failureType: activity.failureType,
+    remediationId: activity.id
+  };
+
+  const retryProblemId = activity.nextAction === "fresh_problem" && freshProblemId ? freshProblemId : originalStep.problemId;
+  const retryProblemTitle =
+    activity.nextAction === "fresh_problem" && freshProblemTitle ? freshProblemTitle : originalStep.problemTitle;
+  const retryType: SessionStepType = activity.nextAction === "fresh_recognition_prompt" ? "recall" : originalStep.type;
+
+  const retryStep: SessionStep = {
+    id: `${originalStep.id}-retry`,
+    type: retryType,
+    title:
+      activity.nextAction === "fresh_recognition_prompt"
+        ? `Fresh recognition: ${retryProblemTitle ?? "Problem"}`
+        : activity.nextAction === "fresh_problem"
+          ? `Transfer: ${retryProblemTitle ?? "Problem"}`
+          : `Retry: ${retryProblemTitle ?? "Problem"}`,
+    estimatedMinutes: originalStep.estimatedMinutes,
+    patternId: originalStep.patternId,
+    patternLabel: originalStep.patternLabel,
+    problemId: retryProblemId,
+    problemTitle: retryProblemTitle,
+    coachStyle: supportPlan.coachStyle,
+    retryOfStepId: originalStep.id,
+    supportPlan
+  };
+
+  return [remediationStep, retryStep];
 }

@@ -191,6 +191,13 @@ async function runPostgresMigrations(sql: NeonClient) {
     "ALTER TABLE attempts ADD COLUMN IF NOT EXISTS secondary_failure_type TEXT",
     "ALTER TABLE attempts ADD COLUMN IF NOT EXISTS diagnosis_confidence REAL",
     "ALTER TABLE attempts ADD COLUMN IF NOT EXISTS diagnosis_payload TEXT",
+    // V2.3 remediation/hint-ladder/code-fading columns. hints_used stays
+    // the legacy total-hint-messages count; highest_hint_level is the new,
+    // more meaningful signal (depth, not just count).
+    "ALTER TABLE attempts ADD COLUMN IF NOT EXISTS highest_hint_level INTEGER",
+    "ALTER TABLE attempts ADD COLUMN IF NOT EXISTS scaffold_level INTEGER",
+    "ALTER TABLE attempts ADD COLUMN IF NOT EXISTS remediation_used TEXT",
+    "ALTER TABLE attempts ADD COLUMN IF NOT EXISTS retry_succeeded INTEGER",
   ];
 
   for (const statement of statements) {
@@ -300,6 +307,10 @@ function runSqliteMigrations(db: DatabaseSync) {
     ensureSqliteColumn(db, "attempts", "secondary_failure_type", "TEXT");
     ensureSqliteColumn(db, "attempts", "diagnosis_confidence", "REAL");
     ensureSqliteColumn(db, "attempts", "diagnosis_payload", "TEXT");
+    ensureSqliteColumn(db, "attempts", "highest_hint_level", "INTEGER");
+    ensureSqliteColumn(db, "attempts", "scaffold_level", "INTEGER");
+    ensureSqliteColumn(db, "attempts", "remediation_used", "TEXT");
+    ensureSqliteColumn(db, "attempts", "retry_succeeded", "INTEGER");
     ensureSqliteColumn(db, "review_items", "user_id", "TEXT");
     ensureSqliteColumn(db, "review_items", "problem_id", "TEXT");
     ensureSqliteColumn(db, "review_items", "due_at", "TEXT");

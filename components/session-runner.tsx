@@ -1,12 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PracticeWorkspace, type AttemptResult } from "@/components/practice-workspace";
+import { RemediationStepView } from "@/components/remediation-step";
 import { usePatternLiftState } from "@/components/patternlift-state";
 import { patternOptions } from "@/lib/product";
 import type { DailySession, SessionStep } from "@/lib/session";
+import { buildRemediationBranch } from "@/lib/session";
 import { getTechniqueById, mapPatternToTechniqueId } from "@/lib/techniques";
+import { getRemediationById, pickRemediation } from "@/lib/remediation";
+import { chooseSupportPlan, type SupportPlan } from "@/lib/support-plan";
+import type { TechniqueSkillVector } from "@/lib/skill-vector";
+import type { ScaffoldLevel } from "@/lib/scaffold";
 
 type TodayResponse = {
   plan: {
@@ -22,13 +28,21 @@ type TodayResponse = {
     weekNumber: number;
     patternLabel: string;
     studyMode: "learn" | "recognize" | "practice" | "review";
+    problems: Array<{ id: string; title: string; difficulty: string; reps: number }>;
   };
   streak: number;
   checkins: string[];
   session: DailySession;
+  todaySkills?: TechniqueSkillVector;
+  todaySupport?: {
+    recentScaffoldLevel?: number;
+    recentOutcomeWasSolid?: boolean;
+    recentFailureAfterPriorMastery: boolean;
+  };
 };
 
 const STORAGE_PREFIX = "patternlift-session-";
+const STEPS_STORAGE_PREFIX = "patternlift-session-steps-";
 
 function lastFourteenDays() {
   const days: string[] = [];
@@ -63,12 +77,40 @@ function saveCompletedSteps(dayNumber: number, ids: string[]) {
   }
 }
 
+// Steps are persisted separately from completedStepIds, because V2.3
+// branching can INSERT steps (remediation + retry) that didn't exist in
+// the server-planned session - without this, a refresh mid-remediation
+// would silently drop the branch and jump back to the original plan.
+function readSteps(dayNumber: number): SessionStep[] | null {
+  try {
+    const saved = window.localStorage.getItem(`${STEPS_STORAGE_PREFIX}${dayNumber}`);
+    return saved ? (JSON.parse(saved) as SessionStep[]) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveSteps(dayNumber: number, steps: SessionStep[]) {
+  try {
+    window.localStorage.setItem(`${STEPS_STORAGE_PREFIX}${dayNumber}`, JSON.stringify(steps));
+  } catch {
+    // Not fatal - branch just won't survive a refresh.
+  }
+}
+
+function pickFreshProblemId(usedProblemIds: string[], todayProblems: TodayResponse["today"]["problems"]) {
+  const fresh = todayProblems.find((problem) => !usedProblemIds.includes(problem.id));
+  return fresh ?? null;
+}
+
 export function SessionRunner() {
   const { addAttempt } = usePatternLiftState();
   const [data, setData] = useState<TodayResponse | null>(null);
   const [notScheduled, setNotScheduled] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [completedStepIds, setCompletedStepIds] = useState<string[]>([]);
+  const [steps, setSteps] = useState<SessionStep[]>([]);
+  const [lastDebugInfo, setLastDebugInfo] = useState<Record<string, unknown> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,6 +127,8 @@ export function SessionRunner() {
         if (cancelled || !payload) return;
         setData(payload);
         setCompletedStepIds(readCompletedSteps(payload.today.dayNumber));
+        const savedSteps = readSteps(payload.today.dayNumber);
+        setSteps(savedSteps && savedSteps.length > 0 ? savedSteps : payload.session.steps);
       })
       .catch((fetchError) => {
         if (!cancelled) setError(fetchError instanceof Error ? fetchError.message : "Something went wrong.");
@@ -120,18 +164,85 @@ export function SessionRunner() {
     return <div className="mx-auto max-w-2xl py-16 text-center text-sm text-black/40">Loading today&apos;s session…</div>;
   }
 
-  const { session } = data;
+  const dayNumber = data.today.dayNumber;
+
   const markStepComplete = (stepId: string) => {
     setCompletedStepIds((current) => {
       if (current.includes(stepId)) return current;
       const next = [...current, stepId];
-      saveCompletedSteps(data.today.dayNumber, next);
+      saveCompletedSteps(dayNumber, next);
       return next;
     });
   };
 
-  const activeStep = session.steps.find((step) => !completedStepIds.includes(step.id)) ?? null;
-  const allDone = session.steps.length > 0 && !activeStep;
+  const insertBranch = (originalStep: SessionStep, branchSteps: SessionStep[]) => {
+    setSteps((current) => {
+      const index = current.findIndex((step) => step.id === originalStep.id);
+      if (index === -1) return current;
+      const next = [...current.slice(0, index + 1), ...branchSteps, ...current.slice(index + 1)];
+      saveSteps(dayNumber, next);
+      return next;
+    });
+  };
+
+  // V2.3 dynamic branching entry point - called after a problem step's
+  // attempt is recorded, before the step is marked complete. Deterministic
+  // and bounded: a step that's already a retry (retryOfStepId set) never
+  // branches again, capping remediation at one cycle per original step.
+  const handleAttemptForStep = (step: SessionStep, result: AttemptResult) => {
+    addAttempt(result);
+
+    const failureType = result.diagnosis?.primaryFailure;
+    const alreadyRetried = Boolean(step.retryOfStepId);
+
+    if (failureType && !alreadyRetried) {
+      const techniqueId = mapPatternToTechniqueId(step.patternId ?? null);
+      const activity = pickRemediation(techniqueId, failureType);
+
+      if (process.env.NODE_ENV !== "production") {
+        // eslint-disable-next-line no-console
+        console.debug("[remediation branch]", {
+          step: step.id,
+          failureType,
+          techniqueId,
+          activityId: activity?.id ?? null
+        });
+      }
+
+      if (activity) {
+        const usedProblemIds = steps.map((entry) => entry.problemId).filter((id): id is string => Boolean(id));
+        const freshProblem =
+          activity.nextAction === "fresh_problem" ? pickFreshProblemId(usedProblemIds, data.today.problems) : null;
+        const supportPlan = chooseSupportPlan({
+          skills: data.todaySkills,
+          defaultCoachStyle: step.coachStyle ?? data.plan.coachStyle,
+          recentScaffoldLevel: data.todaySupport?.recentScaffoldLevel as ScaffoldLevel | undefined,
+          recentOutcomeWasSolid: data.todaySupport?.recentOutcomeWasSolid,
+          recentFailureAfterPriorMastery: data.todaySupport?.recentFailureAfterPriorMastery
+        });
+        const branch = buildRemediationBranch({
+          originalStep: step,
+          activity,
+          supportPlan,
+          freshProblemId: freshProblem?.id,
+          freshProblemTitle: freshProblem?.title
+        });
+        insertBranch(step, branch);
+      }
+    }
+
+    setLastDebugInfo({
+      step: step.id,
+      diagnosis: result.diagnosis,
+      highestHintLevel: result.highestHintLevel,
+      scaffoldLevel: result.scaffoldLevel
+    });
+
+    markStepComplete(step.id);
+  };
+
+  const activeStep = steps.find((step) => !completedStepIds.includes(step.id)) ?? null;
+  const allDone = steps.length > 0 && !activeStep;
 
   return (
     <div className="grid gap-5">
@@ -142,17 +253,17 @@ export function SessionRunner() {
               Day {data.today.dayNumber} of {data.plan.totalDays} · Week {data.today.weekNumber}
             </p>
             <h1 className="mt-1 text-xl font-semibold text-ink">
-              {session.steps.length > 0 ? `Your ${session.estimatedMinutes}-minute session` : "Nothing scheduled today"}
+              {steps.length > 0 ? `Your session` : "Nothing scheduled today"}
             </h1>
-            <p className="mt-1 text-sm text-black/50">{session.headline}</p>
+            <p className="mt-1 text-sm text-black/50">{data.session.headline}</p>
           </div>
           <Link href="/progress" className="shrink-0 text-xs font-medium text-black/45 transition hover:text-ink">
             {data.streak} day streak
           </Link>
         </div>
-        {session.steps.length > 0 ? (
+        {steps.length > 0 ? (
           <div className="mt-4 flex flex-wrap gap-2">
-            {session.steps.map((step, index) => {
+            {steps.map((step, index) => {
               const done = completedStepIds.includes(step.id);
               const active = activeStep?.id === step.id;
               return (
@@ -163,7 +274,9 @@ export function SessionRunner() {
                       ? "bg-emerald-50 text-emerald-700"
                       : active
                         ? "bg-ink text-white"
-                        : "bg-mist text-black/45"
+                        : step.retryOfStepId || step.type === "remediation"
+                          ? "bg-amber-50 text-amber-700"
+                          : "bg-mist text-black/45"
                   }`}
                 >
                   <span>{done ? "✓" : index + 1}</span>
@@ -175,7 +288,7 @@ export function SessionRunner() {
         ) : null}
       </div>
 
-      {session.steps.length === 0 ? (
+      {steps.length === 0 ? (
         <div className="uiverse-panel p-8 text-center text-sm text-black/60">
           Nothing scheduled today - a good day to browse the{" "}
           <Link href="/roadmap" className="font-semibold text-indigo-600">
@@ -195,8 +308,15 @@ export function SessionRunner() {
           </Link>
         </div>
       ) : activeStep ? (
-        <StepRenderer step={activeStep} onComplete={() => markStepComplete(activeStep.id)} onAttempt={addAttempt} />
+        <StepRenderer
+          step={activeStep}
+          data={data}
+          onComplete={() => markStepComplete(activeStep.id)}
+          onAttempt={(result) => handleAttemptForStep(activeStep, result)}
+        />
       ) : null}
+
+      {process.env.NODE_ENV !== "production" && lastDebugInfo ? <DevDebugPanel info={lastDebugInfo} /> : null}
 
       <details className="uiverse-panel p-4 text-sm text-black/60">
         <summary className="cursor-pointer select-none font-medium text-black/50">
@@ -218,6 +338,19 @@ export function SessionRunner() {
   );
 }
 
+function DevDebugPanel({ info }: { info: Record<string, unknown> }) {
+  return (
+    <details className="uiverse-panel p-4 text-xs text-black/60">
+      <summary className="cursor-pointer select-none font-medium text-black/50">
+        Dev: last diagnosis / support plan
+      </summary>
+      <pre className="mt-2 overflow-x-auto whitespace-pre-wrap rounded-lg bg-mist p-3 text-[11px] leading-5">
+        {JSON.stringify(info, null, 2)}
+      </pre>
+    </details>
+  );
+}
+
 function stepShortLabel(step: SessionStep) {
   switch (step.type) {
     case "recall":
@@ -232,18 +365,36 @@ function stepShortLabel(step: SessionStep) {
       return "On your own";
     case "reflection":
       return "Reflect";
+    case "remediation":
+      return "Repair";
   }
 }
 
 function StepRenderer({
   step,
+  data,
   onComplete,
   onAttempt
 }: {
   step: SessionStep;
+  data: TodayResponse;
   onComplete: () => void;
   onAttempt: (result: AttemptResult) => void;
 }) {
+  const supportPlan: SupportPlan | undefined = useMemo(() => {
+    if (step.type !== "recall" && step.type !== "guided_problem" && step.type !== "independent_problem") {
+      return undefined;
+    }
+    if (step.supportPlan) return step.supportPlan;
+    return chooseSupportPlan({
+      skills: data.todaySkills,
+      defaultCoachStyle: step.coachStyle ?? data.plan.coachStyle,
+      recentScaffoldLevel: data.todaySupport?.recentScaffoldLevel as ScaffoldLevel | undefined,
+      recentOutcomeWasSolid: data.todaySupport?.recentOutcomeWasSolid,
+      recentFailureAfterPriorMastery: data.todaySupport?.recentFailureAfterPriorMastery
+    });
+  }, [step, data.todaySkills, data.todaySupport, data.plan.coachStyle]);
+
   if (step.type === "recall" || step.type === "guided_problem" || step.type === "independent_problem") {
     if (!step.problemId) return null;
     const mode = step.type === "recall" ? "recognize" : "practice";
@@ -254,7 +405,10 @@ function StepRenderer({
           key={`${step.id}-${step.problemId}`}
           initialProblemId={step.problemId}
           mode={mode}
-          coachStyle={step.coachStyle}
+          coachStyle={supportPlan?.coachStyle ?? step.coachStyle}
+          scaffoldLevel={supportPlan?.scaffoldLevel}
+          maxHintLevel={supportPlan?.maxHintLevel}
+          isRetryAfterRemediation={Boolean(step.retryOfStepId)}
           onComplete={(result) => {
             onAttempt(result);
             onComplete();
@@ -270,6 +424,18 @@ function StepRenderer({
 
   if (step.type === "contrast") {
     return <ContrastStep step={step} onComplete={onComplete} />;
+  }
+
+  if (step.type === "remediation") {
+    const activity = step.remediationId ? getRemediationById(step.remediationId) : null;
+    if (!activity) return null;
+    return (
+      <RemediationStepView
+        activity={activity}
+        onComplete={() => onComplete()}
+        onSkip={onComplete}
+      />
+    );
   }
 
   return <ReflectionStep step={step} onComplete={onComplete} />;

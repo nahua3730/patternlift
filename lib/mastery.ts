@@ -18,6 +18,11 @@ export type MasteryAttempt = {
   confidence?: number;
   confusedWith?: string | null;
   createdAt?: string;
+  // V2.3: the deepest hint level requested (0-5, 0/undefined = none) and
+  // the code-fading scaffold level the attempt was solved under (0-3) -
+  // both feed independence/implementation scoring in skill-vector.ts.
+  highestHintLevel?: number;
+  scaffoldLevel?: number;
 };
 
 export type PatternMastery = {
