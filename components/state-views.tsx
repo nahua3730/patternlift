@@ -26,7 +26,7 @@ export function PracticePageView({
   return (
     <PracticeWorkspace
       key={`${initialProblemId ?? "default"}-${mode ?? "learn"}-${coachStyle ?? "guided"}`}
-      onComplete={addAttempt}
+      onAttempt={addAttempt}
       initialProblemId={initialProblemId}
       mode={mode}
       coachStyle={coachStyle}

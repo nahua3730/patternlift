@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import Editor, { type Monaco, type OnMount } from "@monaco-editor/react";
 import type { editor as MonacoEditor } from "monaco-editor";
 import { parseCoachAgentStream, type CoachRequest } from "@/lib/coach";
+import { SessionActionBar } from "@/components/session-action-bar";
 import { compareValues } from "@/lib/compare-values";
 import {
   allProblems,
@@ -171,7 +172,15 @@ export type AttemptResult = {
 };
 
 type PracticeWorkspaceProps = {
-  onComplete: (result: AttemptResult) => void;
+  // Fires the moment the learner explicitly clicks "Submit attempt" -
+  // persistence, diagnosis, and any remediation-branch decision happen
+  // here. Distinct from onComplete: submitting is not the same as being
+  // done with the step (V2.3.1).
+  onAttempt: (result: AttemptResult) => void;
+  // Fires when the learner clicks "Continue" after an attempt has been
+  // submitted - this is what actually advances the session step. Optional
+  // because the standalone /practice page has no "next step" to advance to.
+  onComplete?: () => void;
   initialProblemId?: string;
   mode?: "learn" | "recognize" | "practice";
   coachStyle?: CoachStyle;
@@ -187,6 +196,10 @@ type PracticeWorkspaceProps = {
   maxHintLevel?: HintLevel;
   isRetryAfterRemediation?: boolean;
   remediationUsed?: string[];
+  // What the primary button says after submission, e.g. "Continue to
+  // Repair" - the session runner knows what comes next; this component
+  // doesn't need to.
+  continueLabel?: string;
 };
 
 type RunResult = {
@@ -262,6 +275,7 @@ const modeCopy = {
 } as const;
 
 export function PracticeWorkspace({
+  onAttempt,
   onComplete,
   initialProblemId,
   mode = "recognize",
@@ -273,7 +287,8 @@ export function PracticeWorkspace({
   scaffoldLevel = 2,
   maxHintLevel = 5,
   isRetryAfterRemediation = false,
-  remediationUsed = []
+  remediationUsed = [],
+  continueLabel
 }: PracticeWorkspaceProps) {
   const [problemId, setProblemId] = useState<string>(initialProblemId ?? allProblems[0].id);
   const [problemText, setProblemText] = useState(allProblems[0].prompt);
@@ -301,6 +316,15 @@ export function PracticeWorkspace({
   const [hasLoggedAttempt, setHasLoggedAttempt] = useState(false);
   const [loggedOutcome, setLoggedOutcome] = useState<AttemptResult["outcome"] | null>(null);
   const [attemptDiagnosis, setAttemptDiagnosis] = useState<AttemptDiagnosis | null>(null);
+  // V2.3.1: what the coach chat has picked up about the learner's pattern
+  // guess SO FAR, accumulated across the whole conversation rather than
+  // only the single most recent message - this is what an explicit
+  // "Submit attempt" click uses, decoupling "sent a message" from
+  // "submitted an attempt" so submission is never accidental.
+  const [inferredPatternId, setInferredPatternId] = useState<PatternId | null>(null);
+  const [inferredClues, setInferredClues] = useState<string[]>([]);
+  const [inferredFirstStep, setInferredFirstStep] = useState<string | null>(null);
+  const [lastLearnerNote, setLastLearnerNote] = useState("");
   // 0 = no hint opened yet. Tracks the deepest level opened this problem -
   // that depth (not the raw click count) is what feeds independence
   // scoring, per Part 7.
@@ -608,6 +632,10 @@ export function PracticeWorkspace({
     );
     setHintLevel(0);
     setHighestHintLevelUsed(0);
+    setInferredPatternId(null);
+    setInferredClues([]);
+    setInferredFirstStep(null);
+    setLastLearnerNote("");
     setRunResults(null);
     setRunnerError(null);
     setApproaches(null);
@@ -822,6 +850,11 @@ export function PracticeWorkspace({
     const selectedPattern = inferPatternFromReply(userText);
     const selectedClues = inferCluesFromReply(userText);
     const selectedFirstStep = inferFirstStepFromReply(userText);
+    const selectedPatternLabel =
+      patternOptions.find((pattern) => pattern.id === selectedPattern)?.label ??
+      "Still exploring";
+    // Grounds this single message for the AI coach's context only - not
+    // the attempt's final outcome, which is decided at explicit submission.
     const score = scoreReply({
       selectedPattern,
       selectedClues,
@@ -830,78 +863,19 @@ export function PracticeWorkspace({
       recommendedClues: activeProblem.recommendedClues,
       recommendedFirstStep: activeProblem.recommendedFirstStep
     });
-    const hasPassingRun = runSummary ? runSummary.passed === runSummary.total : false;
-    // A passing run is strong, objective evidence the learner isn't
-    // "confused" even if this particular message didn't name the pattern -
-    // don't let a keyword-matching miss overrule code that already works.
-    const outcome: AttemptResult["outcome"] =
-      score >= 75 ? "solid" : score >= 40 || hasPassingRun ? "partial" : "confused";
-    const selectedPatternLabel =
-      patternOptions.find((pattern) => pattern.id === selectedPattern)?.label ??
-      "Still exploring";
-    const hintsUsed = chatMessages.filter(
-      (message, index) => message.speaker === "coach" && index > 0
-    ).length;
-    const codePassed = runSummary ? runSummary.passed === runSummary.total : null;
+    const outcome: AttemptResult["outcome"] = score >= 75 ? "solid" : score >= 40 ? "partial" : "confused";
     const inputMethod = nextInputMethod;
-    const hasAttemptEvidence =
-      selectedPattern !== null || selectedClues.length > 0 || selectedFirstStep !== null;
 
-    if (!hasLoggedAttempt && hasAttemptEvidence) {
-      // Client-side, using the same deterministic engine the server
-      // persists - no need to wait on a round-trip for immediate feedback.
-      // Retention context (e.g. "you knew this before") needs cross-session
-      // history the client doesn't have handy here, so this reads that as a
-      // fresh attempt; the Progress page picks up the retention-aware view
-      // once the server has persisted it.
-      const clientDiagnosis = diagnoseAttempt({
-        selectedPatternLabel,
-        actualPatternLabel: correctPattern.label,
-        outcome,
-        explanationScore: score,
-        codePassed,
-        hintsUsed,
-        confidence
-      });
-      setAttemptDiagnosis(clientDiagnosis);
-      if (process.env.NODE_ENV !== "production") {
-        // eslint-disable-next-line no-console
-        console.debug("[diagnosis:client]", activeProblem.title, clientDiagnosis);
-      }
-      onComplete({
-        problemId: activeProblem.id,
-        problemTitle: activeProblem.title,
-        selectedPatternLabel,
-        selectedPatternId: selectedPattern,
-        correctPatternLabel: correctPattern.label,
-        selectedClues,
-        selectedFirstStep,
-        learnerNote: userText,
-        outcome,
-        score,
-        feedbackTitle: "Coach conversation started",
-        feedbackBody: userText,
-        reviewQuestion: activeProblem.reviewQuestion,
-        weakPatternLabel: correctPattern.label,
-        contrastPatternLabel,
-        hintsUsed,
-        codePassed,
-        confidence,
-        explanationScore: score,
-        confusedWith:
-          selectedPatternLabel !== correctPattern.label && selectedPatternLabel !== "Still exploring"
-            ? selectedPatternLabel
-            : null,
-        inputMethod,
-        highestHintLevel: highestHintLevelUsed,
-        scaffoldLevel,
-        diagnosis: clientDiagnosis,
-        isRetryAfterRemediation,
-        remediationUsed
-      });
-      setHasLoggedAttempt(true);
-      setLoggedOutcome(outcome);
+    // V2.3.1: sending a message to the coach is conversational - it no
+    // longer silently submits an attempt on PatternLift's behalf. It DOES
+    // update what "Submit attempt" will use once the learner explicitly
+    // clicks it, so nothing typed here is lost.
+    if (selectedPattern) setInferredPatternId(selectedPattern);
+    if (selectedClues.length > 0) {
+      setInferredClues((current) => Array.from(new Set([...current, ...selectedClues])));
     }
+    if (selectedFirstStep) setInferredFirstStep(selectedFirstStep);
+    setLastLearnerNote(userText);
 
     if (activeCoachStyle === "off") {
       setChatMessages((current) => [
@@ -1019,6 +993,82 @@ export function PracticeWorkspace({
       setIsCoachLoading(false);
       setActiveCoachTool(null);
     }
+  }
+
+  // V2.3.1: the ONLY way an attempt is actually submitted - explicit,
+  // learner-triggered, and always available regardless of whether the
+  // code passes, partially passes, or the learner never named a pattern
+  // at all. A wrong or incomplete attempt is real evidence the diagnosis
+  // engine can use; it should never be blocked from being submitted.
+  function handleSubmitAttempt() {
+    if (hasLoggedAttempt) return;
+
+    const selectedPatternLabel =
+      patternOptions.find((pattern) => pattern.id === inferredPatternId)?.label ?? "Still exploring";
+    const score = scoreReply({
+      selectedPattern: inferredPatternId,
+      selectedClues: inferredClues,
+      selectedFirstStep: inferredFirstStep,
+      targetPatternId: activeProblem.targetPatternId,
+      recommendedClues: activeProblem.recommendedClues,
+      recommendedFirstStep: activeProblem.recommendedFirstStep
+    });
+    const hasPassingRun = runSummary ? runSummary.passed === runSummary.total : false;
+    const outcome: AttemptResult["outcome"] =
+      score >= 75 ? "solid" : score >= 40 || hasPassingRun ? "partial" : "confused";
+    const hintsUsed = chatMessages.filter(
+      (message, index) => message.speaker === "coach" && index > 0
+    ).length;
+    const codePassed = runSummary ? runSummary.passed === runSummary.total : null;
+
+    const clientDiagnosis = diagnoseAttempt({
+      selectedPatternLabel,
+      actualPatternLabel: correctPattern.label,
+      outcome,
+      explanationScore: score,
+      codePassed,
+      hintsUsed,
+      confidence
+    });
+    setAttemptDiagnosis(clientDiagnosis);
+    if (process.env.NODE_ENV !== "production") {
+      // eslint-disable-next-line no-console
+      console.debug("[diagnosis:client]", activeProblem.title, clientDiagnosis);
+    }
+
+    onAttempt({
+      problemId: activeProblem.id,
+      problemTitle: activeProblem.title,
+      selectedPatternLabel,
+      selectedPatternId: inferredPatternId,
+      correctPatternLabel: correctPattern.label,
+      selectedClues: inferredClues,
+      selectedFirstStep: inferredFirstStep,
+      learnerNote: lastLearnerNote,
+      outcome,
+      score,
+      feedbackTitle: "Attempt submitted",
+      feedbackBody: lastLearnerNote,
+      reviewQuestion: activeProblem.reviewQuestion,
+      weakPatternLabel: correctPattern.label,
+      contrastPatternLabel,
+      hintsUsed,
+      codePassed,
+      confidence,
+      explanationScore: score,
+      confusedWith:
+        selectedPatternLabel !== correctPattern.label && selectedPatternLabel !== "Still exploring"
+          ? selectedPatternLabel
+          : null,
+      inputMethod: nextInputMethod,
+      highestHintLevel: highestHintLevelUsed,
+      scaffoldLevel,
+      diagnosis: clientDiagnosis,
+      isRetryAfterRemediation,
+      remediationUsed
+    });
+    setHasLoggedAttempt(true);
+    setLoggedOutcome(outcome);
   }
 
   const appliedGateGuessRef = useRef(false);
@@ -2314,6 +2364,25 @@ export function PracticeWorkspace({
           </aside>
         </section>
       </div>
+      <SessionActionBar
+        phase={hasLoggedAttempt ? "submitted" : "working"}
+        runSummary={runSummary}
+        runnerError={runnerError}
+        isRunningCode={isRunningCode}
+        onRun={runExamples}
+        onSubmit={handleSubmitAttempt}
+        diagnosisSummary={
+          attemptDiagnosis?.primaryFailure
+            ? attemptDiagnosis.learnerFacingSummary
+            : loggedOutcome === "solid"
+              ? "Nice — that held up well."
+              : null
+        }
+        outcome={loggedOutcome}
+        continueLabel={continueLabel ?? "Continue"}
+        onContinue={onComplete}
+        fallbackHref={onComplete ? undefined : selectionBackHref}
+      />
     </div>
   );
 }

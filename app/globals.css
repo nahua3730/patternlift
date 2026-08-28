@@ -1725,8 +1725,11 @@ select {
    (e.g. inside the Today session, which isn't the full-height
    workspace-content-wide shell /practice gets) - without it, height:100%
    resolves to auto against an undefined ancestor and the whole grid,
-   including Monaco itself, collapses toward zero. */
-.session-editor-main { display: grid; height: 100%; min-height: 32rem; grid-template-columns: minmax(0,1fr) auto var(--coach-panel-width, min(22rem, 32%)); grid-template-rows: minmax(0,1fr); overflow: hidden; background: #e9edf4; }
+   including Monaco itself, collapses toward zero. Viewport-relative so it
+   actually USES available space (V2.3.1 Part 10) rather than sitting at a
+   fixed size with a lot of empty page below it - max() keeps a sane floor
+   on short viewports where the calc() term would go too low. */
+.session-editor-main { display: grid; height: 100%; min-height: max(30rem, calc(100dvh - 19rem)); grid-template-columns: minmax(0,1fr) auto var(--coach-panel-width, min(22rem, 32%)); grid-template-rows: minmax(0,1fr); overflow: hidden; background: #e9edf4; }
 .session-editor-main:not(.session-editor-main-resizing) { transition: grid-template-columns 200ms ease; }
 .session-editor-main-has-guide { grid-template-rows: auto minmax(0,1fr); }
 .session-editor-main-context-collapsed { grid-template-columns: minmax(0,1fr) 3.25rem; }
@@ -1858,6 +1861,41 @@ select {
 .session-send-button { background: #111827; color: white; }
 .session-send-button:disabled { cursor: not-allowed; background: #e2e8f0; color: #94a3b8; }
 .session-mic-button:active, .session-send-button:not(:disabled):active { transform: scale(.94); }
+
+/* V2.3.1 short per-step orientation - never competes with the activity
+   below it, just answers "what am I doing right now?" in one line. */
+.session-step-intro { border-radius: 12px; border: 1px solid #e1e7ef; background: #fff; padding: .75rem 1rem; }
+.session-step-intro-title { color: #0f172a; font-size: .82rem; font-weight: 760; letter-spacing: -.01em; }
+.session-step-intro-body { margin-top: .2rem; color: #64748b; font-size: .74rem; line-height: 1.5; }
+
+/* V2.3.1 persistent session action footer - the one place that always
+   answers "what do I click now?". Sits below the editor/coach split, full
+   width, so it never scrolls out of view with the editor content. */
+.session-action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-top: 1px solid #d9e1ec;
+  background: rgba(248,250,252,.98);
+  padding: .85rem 1.1rem;
+}
+.session-action-bar-submitted { background: rgba(240,253,244,.6); }
+.session-action-buttons { display: flex; flex: 0 0 auto; gap: .55rem; }
+.session-action-primary { display: inline-flex; align-items: center; gap: .4rem; border-radius: 10px; background: #4f46e5; padding: .7rem 1.1rem; color: white; font-size: .74rem; font-weight: 750; box-shadow: 0 9px 20px rgba(79,70,229,.2); white-space: nowrap; }
+.session-action-secondary { border: 1px solid #e1e7ef; border-radius: 10px; background: #fff; padding: .7rem 1rem; color: #475569; font-size: .74rem; font-weight: 700; white-space: nowrap; }
+.session-action-secondary:disabled { opacity: .55; }
+.session-action-status { display: inline-block; font-size: .72rem; font-weight: 750; }
+.session-action-status-good { color: #047857; }
+.session-action-status-warn { color: #b45309; }
+.session-action-status-muted { color: #94a3b8; }
+.session-action-hint { margin-top: .2rem; color: #94a3b8; font-size: .66rem; }
+.session-action-recorded { font-size: .78rem; font-weight: 780; }
+.session-action-recorded-solid { color: #047857; }
+.session-action-recorded-partial { color: #b45309; }
+.session-action-recorded-confused { color: #b91c1c; }
+.session-action-summary { margin-top: .25rem; max-width: 46rem; color: #475569; font-size: .74rem; line-height: 1.5; }
 
 .session-attempt-logged { display: flex; align-items: center; gap: .5rem; margin-bottom: .5rem; padding-bottom: .5rem; border-bottom: 1px solid rgba(0,0,0,.08); font-size: .72rem; font-weight: 550; }
 .session-attempt-logged-dot { height: .5rem; width: .5rem; flex: 0 0 auto; border-radius: 999px; }

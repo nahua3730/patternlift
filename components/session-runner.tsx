@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { PracticeWorkspace, type AttemptResult } from "@/components/practice-workspace";
 import { RemediationStepView } from "@/components/remediation-step";
+import { SessionStepIntro } from "@/components/session-step-intro";
 import { usePatternLiftState } from "@/components/patternlift-state";
 import { patternOptions } from "@/lib/product";
 import type { DailySession, SessionStep } from "@/lib/session";
@@ -194,8 +195,14 @@ export function SessionRunner() {
 
     const failureType = result.diagnosis?.primaryFailure;
     const alreadyRetried = Boolean(step.retryOfStepId);
+    // Refreshing right after a submission resets PracticeWorkspace's own
+    // local "submitted" state (it isn't persisted), so a learner can end
+    // up clicking Submit a second time for the same step. Without this
+    // guard, that would insert a SECOND Repair+Retry pair - this makes
+    // the branch insertion idempotent per original step.
+    const alreadyBranched = steps.some((entry) => entry.id.startsWith(`${step.id}-remediation-`));
 
-    if (failureType && !alreadyRetried) {
+    if (failureType && !alreadyRetried && !alreadyBranched) {
       const techniqueId = mapPatternToTechniqueId(step.patternId ?? null);
       const activity = pickRemediation(techniqueId, failureType);
 
@@ -238,7 +245,11 @@ export function SessionRunner() {
       scaffoldLevel: result.scaffoldLevel
     });
 
-    markStepComplete(step.id);
+    // V2.3.1: submitting no longer silently advances the session - the
+    // step is only marked complete once the learner clicks Continue on
+    // the post-submission result card (PracticeWorkspace's onComplete).
+    // Any remediation branch above is already queued by the time that
+    // happens, so Continue naturally lands on the Repair step next.
   };
 
   const activeStep = steps.find((step) => !completedStepIds.includes(step.id)) ?? null;
@@ -310,6 +321,7 @@ export function SessionRunner() {
       ) : activeStep ? (
         <StepRenderer
           step={activeStep}
+          steps={steps}
           data={data}
           onComplete={() => markStepComplete(activeStep.id)}
           onAttempt={(result) => handleAttemptForStep(activeStep, result)}
@@ -352,6 +364,7 @@ function DevDebugPanel({ info }: { info: Record<string, unknown> }) {
 }
 
 function stepShortLabel(step: SessionStep) {
+  if (step.retryOfStepId) return "Retry";
   switch (step.type) {
     case "recall":
       return "Recall";
@@ -372,11 +385,13 @@ function stepShortLabel(step: SessionStep) {
 
 function StepRenderer({
   step,
+  steps,
   data,
   onComplete,
   onAttempt
 }: {
   step: SessionStep;
+  steps: SessionStep[];
   data: TodayResponse;
   onComplete: () => void;
   onAttempt: (result: AttemptResult) => void;
@@ -395,11 +410,21 @@ function StepRenderer({
     });
   }, [step, data.todaySkills, data.todaySupport, data.plan.coachStyle]);
 
+  // What the primary button says after submission - "Continue to Repair",
+  // "Continue to Contrast" - so the learner understands WHY the session
+  // is about to change, per V2.3.1's "never look like it randomly changed."
+  const continueLabel = useMemo(() => {
+    const index = steps.findIndex((entry) => entry.id === step.id);
+    const next = index >= 0 ? steps[index + 1] : undefined;
+    return next ? `Continue to ${stepShortLabel(next)}` : "Continue";
+  }, [steps, step.id]);
+
   if (step.type === "recall" || step.type === "guided_problem" || step.type === "independent_problem") {
     if (!step.problemId) return null;
     const mode = step.type === "recall" ? "recognize" : "practice";
     return (
       <div className="grid gap-3">
+        <SessionStepIntro step={step} />
         <StepPrompt step={step} />
         <PracticeWorkspace
           key={`${step.id}-${step.problemId}`}
@@ -409,10 +434,9 @@ function StepRenderer({
           scaffoldLevel={supportPlan?.scaffoldLevel}
           maxHintLevel={supportPlan?.maxHintLevel}
           isRetryAfterRemediation={Boolean(step.retryOfStepId)}
-          onComplete={(result) => {
-            onAttempt(result);
-            onComplete();
-          }}
+          continueLabel={continueLabel}
+          onAttempt={onAttempt}
+          onComplete={onComplete}
         />
       </div>
     );
