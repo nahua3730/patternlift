@@ -266,18 +266,16 @@ export function FundamentalsEpisodeView({
             )}
           </div>
           {episode.bvid ? (
-            <p className="px-4 py-2 text-xs text-black/50">
-              Bilibili caps embedded, logged-out playback quality on their end (outside our control). For full
-              quality,{" "}
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-black/8 px-4 py-3">
+              <p className="text-xs text-black/50">Bilibili caps embedded, logged-out quality on their end.</p>
               <button
                 type="button"
                 onClick={() => openSideBySideWindow(episodeVideoUrl(episode), `bilibili-ep-${episode.episode}`)}
-                className="underline"
+                className="shrink-0 rounded-full border border-black/10 bg-mist px-3 py-1.5 text-xs font-medium text-black/70 transition hover:border-black/24"
               >
-                open it on Bilibili in its own window ↗
-              </button>{" "}
-              and drag it beside this one - the coach here stays open, no tab switching.
-            </p>
+                Full quality on Bilibili ↗
+              </button>
+            </div>
           ) : null}
         </div>
 
