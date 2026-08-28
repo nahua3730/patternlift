@@ -2019,6 +2019,13 @@ export function PracticeWorkspace({
                 <p className="ide-context-kicker">Problem statement</p>
                 <h3>{activeProblem.title}</h3>
                 <div className="ide-context-badges"><span>{correctPattern.label}</span>{contrastPattern ? <span>vs {contrastPattern.label}</span> : null}</div>
+                {suggestedTechniques[0] ? (
+                  <Link href={`/techniques?tech=${suggestedTechniques[0].id}`} className="ide-technique-link">
+                    <span className="ide-technique-link-kicker">Technique</span>
+                    <span>{suggestedTechniques[0].title}</span>
+                    <span aria-hidden="true">→</span>
+                  </Link>
+                ) : null}
                 {problemStatementLoading ? (
                   <p className="ide-problem-copy">Loading the real problem statement…</p>
                 ) : problemStatementError ? (

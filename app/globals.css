@@ -1748,6 +1748,9 @@ select {
 .ide-context-content h3 { margin-top: .35rem; color: #0f172a; font-size: 1.05rem; font-weight: 760; letter-spacing: -.025em; }
 .ide-context-badges { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .8rem; }
 .ide-context-badges span { border: 1px solid #dbe3ee; border-radius: 999px; background: white; padding: .3rem .55rem; color: #64748b; font-size: .62rem; font-weight: 650; }
+.ide-technique-link { display: inline-flex; align-items: center; gap: .4rem; margin-top: .6rem; border: 1px solid rgba(99,102,241,.22); border-radius: 999px; background: rgba(99,102,241,.08); padding: .35rem .7rem; color: #4338ca; font-size: .72rem; font-weight: 650; transition: background 160ms ease, border-color 160ms ease; }
+.ide-technique-link:hover { background: rgba(99,102,241,.14); border-color: rgba(99,102,241,.32); }
+.ide-technique-link-kicker { color: #6366f1; font-size: .6rem; text-transform: uppercase; letter-spacing: .06em; }
 .ide-problem-copy { margin-top: 1rem; white-space: pre-wrap; color: #475569; font-size: .82rem; line-height: 1.75; }
 .ide-problem-examples { display: flex; flex-direction: column; gap: .6rem; margin-top: 1.1rem; }
 .ide-problem-example { border: 1px solid #dde4ee; border-radius: 10px; background: #f8fafc; padding: .7rem .8rem; font-size: .74rem; line-height: 1.6; }

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ProblemRow, episodeVideoUrl } from "@/components/fundamentals-series";
 import { fundamentalsSeries, type FundamentalsEpisode } from "@/lib/fundamentals-series";
 import { openSideBySideWindow } from "@/lib/popup-window";
+import { getTechniqueById } from "@/lib/techniques";
 import { mimeTypeToExtension, pickRecordingMimeType } from "@/lib/voice-recording";
 
 type ChatMessage = {
@@ -204,6 +205,7 @@ export function FundamentalsEpisodeView({
   const prevEpisode = fundamentalsSeries.find((ep) => ep.episode === episode.episode - 1);
   const nextEpisode = fundamentalsSeries.find((ep) => ep.episode === episode.episode + 1);
   const allProblemIds = [...episode.problemIds, ...(episode.relatedProblemIds ?? [])];
+  const technique = episode.techniqueId ? getTechniqueById(episode.techniqueId) : null;
 
   return (
     <div className="grid gap-6">
@@ -240,6 +242,25 @@ export function FundamentalsEpisodeView({
         <h1 className="mt-1 text-2xl font-semibold text-ink sm:text-3xl">{episode.titleCn}</h1>
         <p className="text-sm text-black/60">{episode.titleEn}</p>
       </div>
+
+      {technique ? (
+        <div className="uiverse-panel p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-ember">
+                Technique · {technique.title} · {technique.titleCn}
+              </p>
+              <p className="mt-1 text-sm leading-6 text-black/70">{technique.coreIdea}</p>
+            </div>
+            <Link
+              href={`/techniques?tech=${technique.id}`}
+              className="shrink-0 rounded-full border border-black/10 bg-mist px-3 py-1.5 text-xs font-medium text-black/70 transition hover:border-black/24"
+            >
+              Full reference →
+            </Link>
+          </div>
+        </div>
+      ) : null}
 
       <section className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
         <div className="uiverse-panel overflow-hidden p-0">

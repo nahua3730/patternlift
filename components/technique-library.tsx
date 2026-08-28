@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { techniqueLibrary, type Technique } from "@/lib/techniques";
 
 type Lang = "en" | "cn";
@@ -38,9 +39,17 @@ const LABELS = {
 } as const;
 
 export function TechniqueLibrary() {
+  const searchParams = useSearchParams();
   const [lang, setLang] = useState<Lang>("en");
   const [selected, setSelected] = useState<Technique | null>(null);
   const t = LABELS[lang];
+
+  useEffect(() => {
+    const techId = searchParams.get("tech");
+    if (!techId) return;
+    const match = techniqueLibrary.find((technique) => technique.id === techId);
+    if (match) setSelected(match);
+  }, [searchParams]);
 
   return (
     <div className="grid gap-6">
