@@ -668,6 +668,32 @@ export function PracticeWorkspace({
     setEditorReadyVersion((current) => current + 1);
   };
 
+  // Monaco's own automaticLayout ResizeObserver watches the exact node it
+  // was created in - if that node's real size only settles AFTER Monaco's
+  // first internal measurement (e.g. while the surrounding flex layout is
+  // still resolving on mount), it can get stuck reporting a near-zero size
+  // with no further resize event to correct it. Re-running layout()
+  // ourselves, both right away and once the container has had a chance to
+  // settle, is the standard fix for that race.
+  useEffect(() => {
+    const editor = codeEditorRef.current;
+    const container = splitContainerRef.current;
+    if (!editor || !container) return;
+
+    editor.layout();
+    const settleTimer = window.setTimeout(() => editor.layout(), 120);
+
+    const observer = new ResizeObserver(() => {
+      editor.layout();
+    });
+    observer.observe(container);
+
+    return () => {
+      window.clearTimeout(settleTimer);
+      observer.disconnect();
+    };
+  }, [editorReadyVersion]);
+
   function beginQuickStart() {
     setShowQuickStartGuide(false);
     codeEditorRef.current?.focus();

@@ -1720,7 +1720,13 @@ select {
 .session-more-popover a, .session-more-popover button { border-radius: 8px; padding: .65rem .7rem; color: #475569; font-size: .7rem; font-weight: 700; text-align: left; }
 .session-more-popover a:hover, .session-more-popover button:hover { background: #f1f5f9; color: #0f172a; }
 
-.session-editor-main { display: grid; height: 100%; min-height: 0; grid-template-columns: minmax(0,1fr) auto var(--coach-panel-width, min(22rem, 32%)); grid-template-rows: minmax(0,1fr); overflow: hidden; background: #e9edf4; }
+/* min-height is a real floor (not 0) so the editor still has usable
+   height when embedded somewhere without a definite ancestor height
+   (e.g. inside the Today session, which isn't the full-height
+   workspace-content-wide shell /practice gets) - without it, height:100%
+   resolves to auto against an undefined ancestor and the whole grid,
+   including Monaco itself, collapses toward zero. */
+.session-editor-main { display: grid; height: 100%; min-height: 32rem; grid-template-columns: minmax(0,1fr) auto var(--coach-panel-width, min(22rem, 32%)); grid-template-rows: minmax(0,1fr); overflow: hidden; background: #e9edf4; }
 .session-editor-main:not(.session-editor-main-resizing) { transition: grid-template-columns 200ms ease; }
 .session-editor-main-has-guide { grid-template-rows: auto minmax(0,1fr); }
 .session-editor-main-context-collapsed { grid-template-columns: minmax(0,1fr) 3.25rem; }
