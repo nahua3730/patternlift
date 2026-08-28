@@ -2,8 +2,43 @@ import Link from "next/link";
 import { allProblems, patternOptions } from "@/lib/product";
 import { tierForReps } from "@/lib/mastery-tiers";
 import type { buildMasteryModel, MasteryAttempt } from "@/lib/mastery";
+import type { SkillDimension, TechniqueSkillVector } from "@/lib/skill-vector";
 import { ProductList, ProductRow } from "@/components/product-system";
 import { ProgressRing } from "@/components/progress-ring";
+
+// Plain-language labels for the six dimensions - never shown as jargon like
+// "implementation: 62" without context. Order matters: this is the display
+// order for the expanded breakdown.
+const SKILL_LABELS: Record<SkillDimension, string> = {
+  recognition: "Recognizing this pattern",
+  concept: "Explaining why it fits",
+  reasoning: "Reasoning through the invariant",
+  implementation: "Turning it into working code",
+  independence: "Solving without hints",
+  retention: "Remembering it over time"
+};
+const SKILL_ORDER: SkillDimension[] = [
+  "recognition",
+  "concept",
+  "reasoning",
+  "implementation",
+  "independence",
+  "retention"
+];
+
+// Only flag a bottleneck when there's real evidence AND the score is low
+// enough to be worth calling out - otherwise every pattern would show a
+// "weakest" line even when everything is fine.
+function bottleneckFor(skills: TechniqueSkillVector | undefined) {
+  if (!skills) return null;
+  const withEvidence = SKILL_ORDER.filter((dimension) => skills[dimension].evidenceCount > 0);
+  if (withEvidence.length === 0) return null;
+  const weakest = withEvidence.reduce((min, dimension) =>
+    skills[dimension].score < skills[min].score ? dimension : min
+  );
+  if (skills[weakest].score >= 70) return null;
+  return { dimension: weakest, label: SKILL_LABELS[weakest], score: skills[weakest].score };
+}
 
 type ProgressPanelProps = {
   totalAttempts: number;
@@ -65,7 +100,9 @@ export function ProgressPanel({
           : touchedCount > 0
             ? `${touchedCount} of ${total} problems touched. Keep repeating to build mastery.`
             : "Not started yet.",
-      recommendedProblemId: evidence?.recommendedProblemId ?? null
+      recommendedProblemId: evidence?.recommendedProblemId ?? null,
+      skills: evidence?.skills,
+      bottleneck: bottleneckFor(evidence?.skills)
     };
   });
 
@@ -156,6 +193,12 @@ export function ProgressPanel({
                     </span>
                     <ProgressBar percent={pattern.percentMastered} tone="lake" className="mt-2" />
                     <span className="mt-2 block">{pattern.diagnosis}</span>
+                    {pattern.bottleneck ? (
+                      <span className="mt-2 block text-xs font-semibold text-coral">
+                        Weakest link: {pattern.bottleneck.label} ({pattern.bottleneck.score}%)
+                      </span>
+                    ) : null}
+                    {pattern.skills ? <SkillBreakdown skills={pattern.skills} /> : null}
                   </>
                 }
                 trailing={
@@ -243,6 +286,37 @@ export function ProgressPanel({
         </div>
       </div>
     </section>
+  );
+}
+
+function SkillBreakdown({ skills }: { skills: TechniqueSkillVector }) {
+  const withEvidence = SKILL_ORDER.filter((dimension) => skills[dimension].evidenceCount > 0);
+  if (withEvidence.length === 0) return null;
+  return (
+    <details className="mt-3 text-xs text-black/58">
+      <summary className="cursor-pointer select-none font-semibold text-black/70">
+        Full skill breakdown
+      </summary>
+      <div className="mt-3 space-y-2">
+        {withEvidence.map((dimension) => {
+          const dim = skills[dimension];
+          return (
+            <div key={dimension}>
+              <div className="flex items-center justify-between">
+                <span>{SKILL_LABELS[dimension]}</span>
+                <span className="font-semibold text-black/70">{dim.score}%</span>
+              </div>
+              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-black/6">
+                <div
+                  className="h-full rounded-full bg-[linear-gradient(90deg,#7bd3ff,#4b86f8)]"
+                  style={{ width: `${Math.max(4, dim.score)}%`, opacity: 0.4 + dim.confidence * 0.6 }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </details>
   );
 }
 

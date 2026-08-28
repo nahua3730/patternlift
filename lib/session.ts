@@ -1,5 +1,32 @@
 import type { CoachStyle, CurriculumDay } from "@/lib/curriculum-agent";
 import { allProblems, patternOptions } from "@/lib/product";
+import type { TechniqueSkillVector, DimensionScore } from "@/lib/skill-vector";
+import type { ConfusionPair } from "@/lib/mastery";
+
+// What the session orchestrator knows about the learner's standing on
+// TODAY's pattern - optional, so callers without this data (or patterns
+// with zero evidence) get the same composition as before.
+export type SessionLearnerContext = {
+  skills?: TechniqueSkillVector;
+  dominantConfusion?: ConfusionPair | null;
+};
+
+const WEAK_THRESHOLD = 60;
+const STRONG_THRESHOLD = 70;
+
+// Only treat a dimension as "weak" when there's real evidence behind it -
+// a fresh pattern with zero attempts isn't weak, it's just unknown.
+function isWeak(dimension?: DimensionScore) {
+  return Boolean(dimension) && dimension!.evidenceCount > 0 && dimension!.score < WEAK_THRESHOLD;
+}
+
+function isStrong(dimension?: DimensionScore) {
+  return Boolean(dimension) && dimension!.evidenceCount > 0 && dimension!.score >= STRONG_THRESHOLD;
+}
+
+function atLeastGuided(style: CoachStyle): CoachStyle {
+  return style === "optional" ? "guided" : style;
+}
 
 export type SessionStepType =
   | "recall"
@@ -58,13 +85,36 @@ function contrastFor(problemId: string | undefined) {
   return { id: problem.contrastPatternId, label: patternLabelFor(problem.contrastPatternId) };
 }
 
-export function buildDailySession(day: CurriculumDay, dueReviews: DueReviewInput[], coachStyle: CoachStyle): DailySession {
+export function buildDailySession(
+  day: CurriculumDay,
+  dueReviews: DueReviewInput[],
+  coachStyle: CoachStyle,
+  learner?: SessionLearnerContext
+): DailySession {
   const steps: SessionStep[] = [];
   const patternLabel = day.patternLabel || patternLabelFor(day.patternId);
   const [primaryProblemId, secondaryProblemId] = day.problemIds;
   const contrast = contrastFor(primaryProblemId);
 
-  const firstDueReview = dueReviews.find((review) => review.problemId);
+  const skills = learner?.skills;
+  const weakRecognition = isWeak(skills?.recognition);
+  const weakReasoning = isWeak(skills?.reasoning);
+  const weakImplementation = isWeak(skills?.implementation);
+  const weakIndependence = isWeak(skills?.independence);
+  const weakRetention = isWeak(skills?.retention);
+  const strongRecognition = isStrong(skills?.recognition);
+  const hasDominantConfusion = Boolean(learner?.dominantConfusion);
+  // Weak reasoning means the learner needs more support, not less - don't
+  // let an independent/optional-coaching step go out under-supported.
+  const effectiveCoachStyle = weakReasoning ? atLeastGuided(coachStyle) : coachStyle;
+
+  // Forgetting is the priority signal when it's flagged: recall a review
+  // for THIS pattern specifically over an unrelated one that happens to be
+  // due, since that's the more urgent gap right now.
+  const priorityReview = weakRetention
+    ? dueReviews.find((review) => review.problemId && review.patternLabel === patternLabel)
+    : undefined;
+  const firstDueReview = priorityReview ?? dueReviews.find((review) => review.problemId);
   if (firstDueReview?.problemId) {
     steps.push({
       id: "recall",
@@ -93,17 +143,26 @@ export function buildDailySession(day: CurriculumDay, dueReviews: DueReviewInput
     });
   };
 
+  // Strong recognition but weak implementation means the gap is turning
+  // the plan into working code, not identifying the pattern - point the
+  // independent rep at that specifically rather than a generic repeat.
+  const implementationFocus = strongRecognition && weakImplementation;
+
   const pushIndependent = (minutes: number) => {
     if (!secondaryProblemId) return;
+    const baseTitle = `On your own: ${problemTitleFor(secondaryProblemId) ?? "Problem"}`;
     steps.push({
       id: "independent",
       type: "independent_problem",
-      title: `On your own: ${problemTitleFor(secondaryProblemId) ?? "Problem"}`,
-      estimatedMinutes: minutes,
+      title: implementationFocus ? `${baseTitle} (focus: working code, not just the pattern)` : baseTitle,
+      estimatedMinutes: implementationFocus ? minutes + 3 : minutes,
       problemId: secondaryProblemId,
       problemTitle: problemTitleFor(secondaryProblemId),
       patternId: day.patternId ?? undefined,
       patternLabel,
+      // Independent steps stay minimal-coaching by design (support fades on
+      // purpose) - weak independence means this rep matters even more, not
+      // that it should get more help.
       coachStyle: "optional"
     });
   };
@@ -127,7 +186,7 @@ export function buildDailySession(day: CurriculumDay, dueReviews: DueReviewInput
         problemTitle: problemTitleFor(primaryProblemId),
         patternId: day.patternId ?? undefined,
         patternLabel,
-        coachStyle
+        coachStyle: effectiveCoachStyle
       });
     }
     pushContrast();
@@ -151,7 +210,7 @@ export function buildDailySession(day: CurriculumDay, dueReviews: DueReviewInput
         problemTitle: problemTitleFor(primaryProblemId),
         patternId: day.patternId ?? undefined,
         patternLabel,
-        coachStyle
+        coachStyle: effectiveCoachStyle
       });
     }
     pushContrast();
@@ -167,9 +226,13 @@ export function buildDailySession(day: CurriculumDay, dueReviews: DueReviewInput
         problemTitle: problemTitleFor(primaryProblemId),
         patternId: day.patternId ?? undefined,
         patternLabel,
-        coachStyle
+        coachStyle: effectiveCoachStyle
       });
     }
+    // "practice" mode doesn't normally include a contrast step, but a
+    // recognition weakness or a recurring mix-up on this pattern is
+    // exactly what contrast steps are for - surface one anyway.
+    if (weakRecognition || hasDominantConfusion) pushContrast();
     pushIndependent(10);
     steps.push({
       id: "reflection",
@@ -181,6 +244,10 @@ export function buildDailySession(day: CurriculumDay, dueReviews: DueReviewInput
     });
   } else {
     pushContrast();
+    // This fallback day has no independent step by default, but weak
+    // independence is exactly the case where a lower-assistance retry
+    // matters most - add one if there's a problem to attach it to.
+    if (weakIndependence) pushIndependent(8);
     steps.push({
       id: "reflection",
       type: "reflection",

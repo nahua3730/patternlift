@@ -1,4 +1,6 @@
 import { allProblems, patternOptions } from "@/lib/product";
+import { buildSkillVector, type TechniqueSkillVector } from "@/lib/skill-vector";
+import { diagnoseAttempt, type AttemptDiagnosis } from "@/lib/diagnosis";
 
 export type MasteryAttempt = {
   problemId: string;
@@ -7,6 +9,10 @@ export type MasteryAttempt = {
   actualPatternLabel?: string;
   outcome: "solid" | "partial" | "confused";
   score?: number;
+  // The DB's dedicated explanation-quality signal (distinct from `score`,
+  // which is the attempt's overall local score) - optional because older
+  // rows predate the column and callers that don't need it can omit it.
+  explanationScore?: number;
   hintsUsed?: number;
   codePassed?: boolean | null;
   confidence?: number;
@@ -17,14 +23,23 @@ export type MasteryAttempt = {
 export type PatternMastery = {
   id: string;
   label: string;
+  // Legacy fields, kept byte-for-byte compatible for existing consumers
+  // (progress-panel.tsx, mastery-agent.ts, coach-agent.ts) - both are now
+  // DERIVED from `skills`/`diagnosisDetail` rather than computed separately,
+  // so the richer model and the simple number can never silently diverge.
   mastery: number;
+  diagnosis: string;
   attempts: number;
   correctRecognitions: number;
   averageHints: number;
   status: "new" | "building" | "strong" | "mastered";
-  diagnosis: string;
   recommendedProblemId: string | null;
   recommendedProblemTitle: string | null;
+  // New in V2.2: the six-dimension breakdown behind `mastery`, and a
+  // structured diagnosis (from the most recent attempt on this pattern)
+  // behind the `diagnosis` summary string.
+  skills: TechniqueSkillVector;
+  diagnosisDetail: AttemptDiagnosis | null;
 };
 
 export type ConfusionPair = {
@@ -37,24 +52,27 @@ function clamp(value: number, minimum = 0, maximum = 100) {
   return Math.min(maximum, Math.max(minimum, value));
 }
 
-function getAttemptScore(attempt: MasteryAttempt) {
-  const recognized = attempt.selectedPatternLabel === attempt.actualPatternLabel;
-  const recognitionScore = recognized ? 100 : 20;
-  const outcomeScore = attempt.outcome === "solid" ? 100 : attempt.outcome === "partial" ? 62 : 24;
-  const explanationScore = attempt.score ?? outcomeScore;
-  const hintScore = clamp(100 - (attempt.hintsUsed ?? 0) * 18, 28, 100);
-  const codeScore = attempt.codePassed == null ? 60 : attempt.codePassed ? 100 : 35;
-  const confidence = attempt.confidence ?? 2;
-  const calibrationPenalty = !recognized && confidence === 3 ? 12 : 0;
+const RETENTION_GAP_MS = 3 * 86_400_000;
 
-  return clamp(
-    recognitionScore * 0.4 +
-      explanationScore * 0.25 +
-      outcomeScore * 0.15 +
-      hintScore * 0.1 +
-      codeScore * 0.1 -
-      calibrationPenalty
-  );
+// Retention context for the diagnosis engine: was this the learner's most
+// recent attempt on this pattern happening well after their first one
+// (a genuine delayed retry, not a same-session repeat), and did an earlier
+// attempt land solid? Mirrors the gap definition in skill-vector.ts.
+// Exported so the attempts POST route can compute the same context at
+// submission time, before the new attempt is even persisted.
+export function retentionContextFor(patternAttempts: MasteryAttempt[]) {
+  const dated = patternAttempts
+    .filter((attempt) => attempt.createdAt)
+    .map((attempt) => ({ attempt, time: new Date(attempt.createdAt as string).getTime() }))
+    .sort((a, b) => a.time - b.time);
+  if (dated.length < 2) return undefined;
+
+  const earliest = dated[0];
+  const latest = dated[dated.length - 1];
+  return {
+    isDelayedRetry: latest.time - earliest.time >= RETENTION_GAP_MS,
+    priorOutcomeWasSolid: dated.slice(0, -1).some((entry) => entry.attempt.outcome === "solid")
+  };
 }
 
 export function buildMasteryModel(attempts: MasteryAttempt[]) {
@@ -86,16 +104,31 @@ export function buildMasteryModel(attempts: MasteryAttempt[]) {
     const patternAttempts = normalizedAttempts.filter(
       (attempt) => attempt.actualPatternLabel === pattern.label
     );
-    const weightedScores = patternAttempts.map((attempt, index) => ({
-      score: getAttemptScore(attempt),
-      weight: Math.max(0.55, 1 - index * 0.08)
-    }));
-    const totalWeight = weightedScores.reduce((sum, item) => sum + item.weight, 0);
-    const evidenceScore = totalWeight === 0
-      ? 0
-      : weightedScores.reduce((sum, item) => sum + item.score * item.weight, 0) / totalWeight;
-    const evidenceFactor = Math.min(1, patternAttempts.length / 4);
-    const masteryScore = Math.round(evidenceScore * (0.55 + evidenceFactor * 0.45));
+    const relatedConfusions = [...confusionMap.values()]
+      .filter((pair) => pair.actual === pattern.label)
+      .sort((left, right) => right.count - left.count);
+
+    const skills = buildSkillVector(normalizedAttempts, pattern.label, relatedConfusions);
+    const masteryScore = skills.overall;
+
+    // patternAttempts is newest-first (matches loadRecentAttempts ordering
+    // and the recency weighting above), so element 0 is the latest rep.
+    const mostRecent = patternAttempts[0];
+    const diagnosisDetail = mostRecent
+      ? diagnoseAttempt(
+          {
+            selectedPatternLabel: mostRecent.selectedPatternLabel,
+            actualPatternLabel: pattern.label,
+            outcome: mostRecent.outcome,
+            explanationScore: mostRecent.explanationScore,
+            codePassed: mostRecent.codePassed,
+            hintsUsed: mostRecent.hintsUsed,
+            confidence: mostRecent.confidence
+          },
+          retentionContextFor(patternAttempts)
+        )
+      : null;
+
     const correctRecognitions = patternAttempts.filter(
       (attempt) => attempt.selectedPatternLabel === pattern.label
     ).length;
@@ -103,9 +136,6 @@ export function buildMasteryModel(attempts: MasteryAttempt[]) {
       ? 0
       : patternAttempts.reduce((sum, attempt) => sum + (attempt.hintsUsed ?? 0), 0) /
         patternAttempts.length;
-    const relatedConfusions = [...confusionMap.values()]
-      .filter((pair) => pair.actual === pattern.label)
-      .sort((left, right) => right.count - left.count);
     const attemptedIds = new Set(patternAttempts.map((attempt) => attempt.problemId));
     const recommendedProblem = allProblems.find(
       (problem) => problem.targetPatternId === pattern.id && !attemptedIds.has(problem.id)
@@ -118,27 +148,37 @@ export function buildMasteryModel(attempts: MasteryAttempt[]) {
         : masteryScore >= 70
           ? "strong"
           : "building";
+
+    // The latest attempt's specific diagnosis takes priority when it
+    // flags a real gap - that's the most actionable, concrete feedback.
+    // Otherwise fall back to pattern-level trend commentary (confusion
+    // pairs, hint dependency, transfer readiness), which stays useful
+    // even when the last rep itself was clean.
     const diagnosis = patternAttempts.length === 0
       ? "No evidence yet. Start with a recognition rep."
-      : relatedConfusions[0]
-        ? `Most often confused with ${relatedConfusions[0].predicted}. Practice explaining why that alternative does not fit.`
-        : averageHints >= 2
-          ? "Recognition is developing, but it still depends on multiple hints. Try a cold recall rep next."
-          : correctRecognitions === patternAttempts.length
-            ? "You are recognizing this pattern consistently. Test transfer on a fresh problem."
-            : "The signal is mixed. Name the invariant before you start coding.";
+      : diagnosisDetail?.primaryFailure
+        ? diagnosisDetail.learnerFacingSummary
+        : relatedConfusions[0]
+          ? `Most often confused with ${relatedConfusions[0].predicted}. Practice explaining why that alternative does not fit.`
+          : averageHints >= 2
+            ? "Recognition is developing, but it still depends on multiple hints. Try a cold recall rep next."
+            : correctRecognitions === patternAttempts.length
+              ? "You are recognizing this pattern consistently. Test transfer on a fresh problem."
+              : "The signal is mixed. Name the invariant before you start coding.";
 
     return {
       id: pattern.id,
       label: pattern.label,
       mastery: masteryScore,
+      diagnosis,
       attempts: patternAttempts.length,
       correctRecognitions,
       averageHints,
       status,
-      diagnosis,
       recommendedProblemId: recommendedProblem?.id ?? null,
-      recommendedProblemTitle: recommendedProblem?.title ?? null
+      recommendedProblemTitle: recommendedProblem?.title ?? null,
+      skills,
+      diagnosisDetail
     };
   });
 

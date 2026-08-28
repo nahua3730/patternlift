@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { dbAll, dbOne } from "@/lib/db";
-import { allProblems } from "@/lib/product";
+import { allProblems, patternOptions } from "@/lib/product";
 import { getRepCounts } from "@/lib/rep-counts";
 import { computeStreak } from "@/lib/streak";
 import type { CurriculumPlan } from "@/lib/curriculum-agent";
 import { buildDailySession } from "@/lib/session";
+import { buildMasteryModel } from "@/lib/mastery";
+import { loadRecentAttempts } from "@/lib/attempts-repo";
+import { dominantConfusionFor } from "@/lib/diagnosis";
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -82,7 +85,18 @@ export async function GET() {
     urgency: row.urgency
   }));
 
-  const session = buildDailySession(day, dueReviewsMapped, plan.coachStyle ?? "guided");
+  const patternLabel = day.patternLabel || patternOptions.find((option) => option.id === day.patternId)?.label;
+  const recentAttempts = await loadRecentAttempts(user.id, 60);
+  const masteryModel = buildMasteryModel(recentAttempts);
+  const todayMastery = patternLabel
+    ? masteryModel.mastery.find((pattern) => pattern.label === patternLabel)
+    : undefined;
+  const dominantConfusion = patternLabel ? dominantConfusionFor(patternLabel, masteryModel.confusions) : null;
+
+  const session = buildDailySession(day, dueReviewsMapped, plan.coachStyle ?? "guided", {
+    skills: todayMastery?.skills,
+    dominantConfusion
+  });
 
   return NextResponse.json({
     plan: {

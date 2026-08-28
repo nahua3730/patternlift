@@ -21,6 +21,21 @@ import { buildTechniqueBriefs, getSuggestedTechniques } from "@/lib/techniques";
 import Link from "next/link";
 import { AudioWaveform } from "@/components/audio-waveform";
 import { runPythonInBrowser } from "@/lib/browser-python-runner";
+import { diagnoseAttempt, type AttemptDiagnosis, type RecommendedAction } from "@/lib/diagnosis";
+
+// Plain-language labels for the immediate post-attempt nudge - never shown
+// as the raw enum value.
+const RECOMMENDED_ACTION_LABEL: Record<RecommendedAction, string> = {
+  recognition_drill: "Try a fresh recognition rep on this pattern.",
+  contrast_drill: "Compare this against the pattern you picked instead.",
+  concept_refresh: "Revisit the core idea before your next attempt.",
+  reasoning_drill: "Walk through the invariant step by step next time.",
+  guided_retry: "Try again with the coach set to step-by-step.",
+  implementation_rep: "Do another rep focused on turning the plan into code.",
+  independent_retry: "Try a similar problem with fewer hints.",
+  spaced_recall: "This is worth a cold recall rep soon.",
+  transfer_problem: "Try transferring this to a new problem."
+};
 
 type PatternId = (typeof patternOptions)[number]["id"];
 type CoachStyle = "beginner" | "guided" | "optional" | "off";
@@ -235,6 +250,7 @@ export function PracticeWorkspace({
   const [voiceStream, setVoiceStream] = useState<MediaStream | null>(null);
   const [hasLoggedAttempt, setHasLoggedAttempt] = useState(false);
   const [loggedOutcome, setLoggedOutcome] = useState<AttemptResult["outcome"] | null>(null);
+  const [attemptDiagnosis, setAttemptDiagnosis] = useState<AttemptDiagnosis | null>(null);
   const [confidence, setConfidence] = useState<1 | 2 | 3>(2);
   const [nextInputMethod, setNextInputMethod] = useState<"text" | "voice">("text");
   const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>("python");
@@ -717,6 +733,26 @@ export function PracticeWorkspace({
       selectedPattern !== null || selectedClues.length > 0 || selectedFirstStep !== null;
 
     if (!hasLoggedAttempt && hasAttemptEvidence) {
+      // Client-side, using the same deterministic engine the server
+      // persists - no need to wait on a round-trip for immediate feedback.
+      // Retention context (e.g. "you knew this before") needs cross-session
+      // history the client doesn't have handy here, so this reads that as a
+      // fresh attempt; the Progress page picks up the retention-aware view
+      // once the server has persisted it.
+      const clientDiagnosis = diagnoseAttempt({
+        selectedPatternLabel,
+        actualPatternLabel: correctPattern.label,
+        outcome,
+        explanationScore: score,
+        codePassed,
+        hintsUsed,
+        confidence
+      });
+      setAttemptDiagnosis(clientDiagnosis);
+      if (process.env.NODE_ENV !== "production") {
+        // eslint-disable-next-line no-console
+        console.debug("[diagnosis:client]", activeProblem.title, clientDiagnosis);
+      }
       onComplete({
         problemId: activeProblem.id,
         problemTitle: activeProblem.title,
@@ -1618,6 +1654,15 @@ export function PracticeWorkspace({
                       : loggedOutcome === "partial"
                         ? "Logged as partial — worth a review before it's fully solid."
                         : "Logged as needs work — this pattern will come back around soon."}
+                    {attemptDiagnosis?.primaryFailure ? (
+                      <>
+                        {" "}
+                        {attemptDiagnosis.learnerFacingSummary}
+                        {attemptDiagnosis.recommendedNextAction ? (
+                          <> {RECOMMENDED_ACTION_LABEL[attemptDiagnosis.recommendedNextAction]}</>
+                        ) : null}
+                      </>
+                    ) : null}
                   </span>
                 </div>
               ) : null}

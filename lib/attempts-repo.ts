@@ -9,6 +9,7 @@ export async function loadRecentAttempts(userId: string, limit = 24): Promise<Ma
     correct_pattern_label: string;
     outcome: "solid" | "partial" | "confused";
     score: number;
+    explanation_score: number | null;
     hints_used: number;
     code_passed: number | null;
     confidence: number;
@@ -17,7 +18,7 @@ export async function loadRecentAttempts(userId: string, limit = 24): Promise<Ma
   }>(
     `
       SELECT problem_id, problem_title, selected_pattern_label, correct_pattern_label,
-        outcome, score, hints_used, code_passed, confidence, confused_with, created_at
+        outcome, score, explanation_score, hints_used, code_passed, confidence, confused_with, created_at
       FROM attempts
       WHERE user_id = ?
       ORDER BY created_at DESC
@@ -33,6 +34,10 @@ export async function loadRecentAttempts(userId: string, limit = 24): Promise<Ma
     actualPatternLabel: row.correct_pattern_label,
     outcome: row.outcome,
     score: row.score,
+    // 0 is stored as a real "no explanation given" signal in some older
+    // rows, indistinguishable from a genuine zero score - treat it as
+    // present either way and let scoreConcept's evidence weighting handle it.
+    explanationScore: row.explanation_score ?? undefined,
     hintsUsed: row.hints_used,
     codePassed: row.code_passed == null ? null : row.code_passed === 1,
     confidence: row.confidence,

@@ -186,6 +186,11 @@ async function runPostgresMigrations(sql: NeonClient) {
     // above is a no-op against an already-existing table, so the column needs
     // its own idempotent ADD for deployments where the table already exists.
     "ALTER TABLE review_items ADD COLUMN IF NOT EXISTS problem_id TEXT",
+    // V2.2 failure-diagnosis columns, same idempotent-ADD pattern.
+    "ALTER TABLE attempts ADD COLUMN IF NOT EXISTS primary_failure_type TEXT",
+    "ALTER TABLE attempts ADD COLUMN IF NOT EXISTS secondary_failure_type TEXT",
+    "ALTER TABLE attempts ADD COLUMN IF NOT EXISTS diagnosis_confidence REAL",
+    "ALTER TABLE attempts ADD COLUMN IF NOT EXISTS diagnosis_payload TEXT",
   ];
 
   for (const statement of statements) {
@@ -291,6 +296,10 @@ function runSqliteMigrations(db: DatabaseSync) {
     ensureSqliteColumn(db, "attempts", "explanation_score", "INTEGER NOT NULL DEFAULT 0");
     ensureSqliteColumn(db, "attempts", "confused_with", "TEXT");
     ensureSqliteColumn(db, "attempts", "input_method", "TEXT NOT NULL DEFAULT 'text'");
+    ensureSqliteColumn(db, "attempts", "primary_failure_type", "TEXT");
+    ensureSqliteColumn(db, "attempts", "secondary_failure_type", "TEXT");
+    ensureSqliteColumn(db, "attempts", "diagnosis_confidence", "REAL");
+    ensureSqliteColumn(db, "attempts", "diagnosis_payload", "TEXT");
     ensureSqliteColumn(db, "review_items", "user_id", "TEXT");
     ensureSqliteColumn(db, "review_items", "problem_id", "TEXT");
     ensureSqliteColumn(db, "review_items", "due_at", "TEXT");

@@ -3,7 +3,9 @@ import type { AttemptResult } from "@/components/practice-workspace";
 import { getCurrentUser } from "@/lib/auth";
 import { createId, dbExecute, dbOne } from "@/lib/db";
 import { buildHistoryItem, buildReviewItem } from "@/lib/persistence";
-import { getReviewSchedule } from "@/lib/mastery";
+import { getReviewSchedule, retentionContextFor, type MasteryAttempt } from "@/lib/mastery";
+import { loadRecentAttempts } from "@/lib/attempts-repo";
+import { diagnoseAttempt } from "@/lib/diagnosis";
 
 export async function POST(request: Request) {
   const user = await getCurrentUser();
@@ -23,6 +25,50 @@ export async function POST(request: Request) {
   );
   const schedule = getReviewSchedule(body.outcome, previousReview?.interval_days ?? 0);
 
+  // Same deterministic engine the Progress page uses, computed here so the
+  // diagnosis is persisted as a stable record of what the learner was told
+  // at the time - independent of the mastery formula evolving later.
+  const priorAttempts = await loadRecentAttempts(user.id, 60);
+  const currentAttempt: MasteryAttempt = {
+    problemId: body.problemId,
+    problemTitle: body.problemTitle,
+    selectedPatternLabel: body.selectedPatternLabel,
+    actualPatternLabel: body.correctPatternLabel,
+    outcome: body.outcome,
+    explanationScore: body.explanationScore,
+    hintsUsed: body.hintsUsed,
+    codePassed: body.codePassed,
+    confidence: body.confidence,
+    createdAt: new Date().toISOString()
+  };
+  const priorPatternAttempts = priorAttempts.filter(
+    (attempt) => attempt.actualPatternLabel === body.correctPatternLabel
+  );
+  const retention = retentionContextFor([currentAttempt, ...priorPatternAttempts]);
+  const diagnosis = diagnoseAttempt(
+    {
+      selectedPatternLabel: body.selectedPatternLabel,
+      actualPatternLabel: body.correctPatternLabel,
+      outcome: body.outcome,
+      explanationScore: body.explanationScore,
+      codePassed: body.codePassed,
+      hintsUsed: body.hintsUsed,
+      confidence: body.confidence
+    },
+    retention
+  );
+
+  if (process.env.NODE_ENV !== "production") {
+    // eslint-disable-next-line no-console
+    console.debug("[diagnosis]", body.problemTitle, {
+      selected: body.selectedPatternLabel,
+      actual: body.correctPatternLabel,
+      outcome: body.outcome,
+      retention,
+      diagnosis
+    });
+  }
+
   await dbExecute(
     `
       INSERT INTO attempts (
@@ -40,8 +86,12 @@ export async function POST(request: Request) {
         confidence,
         explanation_score,
         confused_with,
-        input_method
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        input_method,
+        primary_failure_type,
+        secondary_failure_type,
+        diagnosis_confidence,
+        diagnosis_payload
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
   , [
     createId("attempt"),
@@ -58,7 +108,11 @@ export async function POST(request: Request) {
     body.confidence,
     body.explanationScore,
     body.confusedWith,
-    body.inputMethod
+    body.inputMethod,
+    diagnosis.primaryFailure,
+    diagnosis.secondaryFailure ?? null,
+    diagnosis.confidence,
+    JSON.stringify(diagnosis)
   ]);
 
   await dbExecute(`DELETE FROM review_items WHERE user_id = ? AND problem_title = ?`, [
@@ -108,5 +162,5 @@ export async function POST(request: Request) {
     [createId("checkin"), user.id, todayKey, user.id, todayKey]
   );
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, diagnosis });
 }
