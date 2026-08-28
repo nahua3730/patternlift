@@ -49,99 +49,81 @@ export function ProblemRow({ problemId, reps, muted = false }: { problemId: stri
   );
 }
 
+function episodeDone(ep: FundamentalsEpisode, reps: Record<string, number>) {
+  return [...ep.problemIds, ...(ep.relatedProblemIds ?? [])].some((id) => (reps[id] ?? 0) > 0);
+}
+
 export function FundamentalsSeriesView({ reps }: { reps: Record<string, number> }) {
-  const matchedProblemCount = fundamentalsSeries.reduce((sum, ep) => sum + ep.problemIds.length, 0);
-  const practicedCount = fundamentalsSeries.reduce(
-    (sum, ep) => sum + ep.problemIds.filter((id) => (reps[id] ?? 0) > 0).length,
-    0
-  );
+  const doneCount = fundamentalsSeries.filter((ep) => episodeDone(ep, reps)).length;
+  const nextEpisode = fundamentalsSeries.find((ep) => !episodeDone(ep, reps));
 
   return (
     <div className="grid gap-6">
-      <section className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
-        <div className="uiverse-panel p-6">
-          <p className="text-sm font-semibold uppercase tracking-wide text-ember">Curated series</p>
-          <h1 className="mt-3 max-w-4xl text-4xl font-semibold leading-tight text-ink sm:text-5xl">
-            A guided walkthrough for beginners, step by step.
-          </h1>
-          <p className="mt-4 max-w-3xl text-base leading-7 text-black/72">
-            27 steps in a fixed order, each one built around a core technique. Watch the explainer, then
-            practice the matching problem here with the live coach - or jump straight to practicing if you
-            already know the idea.
-          </p>
-          <p className="mt-4 text-sm font-medium text-black/60">
-            {practicedCount} of {matchedProblemCount} matched problems practiced at least once
-          </p>
-        </div>
-
-        <div className="uiverse-panel p-6">
-          <p className="text-sm font-semibold uppercase tracking-wide text-lake">Source Note</p>
-          <p className="mt-4 text-sm leading-7 text-black/72">
-            This sequence follows the order of the &ldquo;基础算法精讲&rdquo; playlist by 灵茶山艾府 on
-            Bilibili. PatternLift doesn&apos;t reproduce or summarize the videos themselves - each step just
-            points at the matching problem already in our catalog (when one exists), plus a link back to the
-            original video so you can watch the explanation on Bilibili.
-          </p>
+      <div className="uiverse-panel p-6">
+        <p className="text-sm font-semibold uppercase tracking-wide text-ember">Curated series</p>
+        <h1 className="mt-2 text-3xl font-semibold leading-tight text-ink">
+          A guided walkthrough for beginners, step by step.
+        </h1>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-black/60">
+          One video, one matching problem, then the coach - in that order, 27 times. {doneCount} of{" "}
+          {fundamentalsSeries.length} done.{" "}
           <button
             type="button"
             onClick={() => openSideBySideWindow(fundamentalsSeriesUrl, "bilibili-playlist")}
-            className="mt-4 inline-flex rounded-full border border-black/10 bg-mist px-4 py-2 text-sm font-medium text-black/72 transition hover:border-black/24"
+            className="underline"
           >
-            Open the playlist on Bilibili ↗
+            Source playlist ↗
           </button>
-        </div>
-      </section>
+        </p>
 
-      <section className="grid gap-4">
-        {fundamentalsSeries.map((ep) => (
-          <article key={ep.episode} className="uiverse-panel p-5">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-wide text-black/50">
-                  Step {ep.episode} of {fundamentalsSeries.length}
-                </p>
-                <h2 className="mt-1 text-lg font-semibold text-ink">{ep.titleCn}</h2>
-                <p className="text-sm text-black/60">{ep.titleEn}</p>
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => openSideBySideWindow(episodeVideoUrl(ep), `bilibili-ep-${ep.episode}`)}
-                  className="rounded-full border border-black/10 bg-mist px-3 py-2 text-xs font-medium text-black/72 transition hover:border-black/24"
-                >
-                  Open on Bilibili ↗
-                </button>
-                <Link
-                  href={`/fundamentals/${ep.episode}`}
-                  className="rounded-full bg-ink px-3 py-2 text-xs font-semibold text-white transition hover:opacity-85"
-                >
-                  Watch & discuss →
-                </Link>
-              </div>
+        {nextEpisode ? (
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-ink px-5 py-4">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-white/50">
+                Continue - step {nextEpisode.episode} of {fundamentalsSeries.length}
+              </p>
+              <p className="mt-0.5 truncate text-base font-semibold text-white">{nextEpisode.titleEn}</p>
             </div>
+            <Link
+              href={`/fundamentals/${nextEpisode.episode}`}
+              className="shrink-0 rounded-full bg-white px-4 py-2 text-sm font-semibold text-ink transition hover:opacity-90"
+            >
+              Continue →
+            </Link>
+          </div>
+        ) : (
+          <p className="mt-5 rounded-2xl bg-emerald-50 px-5 py-4 text-sm font-medium text-emerald-800">
+            You&apos;ve been through all 27 steps. Revisit any of them below anytime.
+          </p>
+        )}
+      </div>
 
-            {ep.note ? <p className="mt-3 text-sm leading-6 text-black/60">{ep.note}</p> : null}
-
-            {ep.problemIds.length > 0 ? (
-              <div className="mt-4 grid gap-2">
-                {ep.problemIds.map((problemId) => (
-                  <ProblemRow key={problemId} problemId={problemId} reps={reps} />
-                ))}
+      <section className="grid gap-3">
+        {fundamentalsSeries.map((ep) => {
+          const done = episodeDone(ep, reps);
+          return (
+            <Link
+              key={ep.episode}
+              href={`/fundamentals/${ep.episode}`}
+              className="uiverse-panel flex items-center justify-between gap-4 p-4 transition hover:border-black/20"
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <span
+                  className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-semibold ${
+                    done ? "bg-emerald-100 text-emerald-700" : "bg-mist text-black/50"
+                  }`}
+                >
+                  {done ? "✓" : ep.episode}
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-ink">{ep.titleCn}</p>
+                  <p className="truncate text-xs text-black/50">{ep.titleEn}</p>
+                </div>
               </div>
-            ) : null}
-
-            {ep.relatedProblemIds && ep.relatedProblemIds.length > 0 ? (
-              <div className="mt-4 grid gap-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-black/40">
-                  Related practice (different problem, same technique)
-                </p>
-                {ep.relatedProblemIds.map((problemId) => (
-                  <ProblemRow key={problemId} problemId={problemId} reps={reps} muted />
-                ))}
-              </div>
-            ) : null}
-          </article>
-        ))}
+              <span className="shrink-0 text-sm text-black/40">→</span>
+            </Link>
+          );
+        })}
       </section>
     </div>
   );

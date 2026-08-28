@@ -56,8 +56,8 @@ export function FundamentalsEpisodeView({
     };
   }, []);
 
-  const sendMessage = useCallback(async () => {
-    const text = draft.trim();
+  const sendMessage = useCallback(async (overrideText?: string) => {
+    const text = (overrideText ?? draft).trim();
     if (!text || isLoading) return;
 
     setDraft("");
@@ -283,9 +283,6 @@ export function FundamentalsEpisodeView({
 
         <div className="uiverse-panel flex max-h-[520px] flex-col p-4">
           <p className="text-sm font-semibold uppercase tracking-wide text-ember">Discuss this technique</p>
-          <p className="mt-1 text-xs text-black/50">
-            Pause the video anytime and ask right here - no tabs to switch.
-          </p>
           <div ref={conversationRef} className="mt-3 flex-1 space-y-3 overflow-y-auto pr-1">
             {messages.map((message) => (
               <div
@@ -299,6 +296,22 @@ export function FundamentalsEpisodeView({
             ))}
             {error ? <p className="text-xs text-red-600">{error}</p> : null}
           </div>
+          {messages.length === 1 ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {["What's the key idea?", "Walk me through it step by step", "What's the time complexity?"].map(
+                (question) => (
+                  <button
+                    key={question}
+                    type="button"
+                    onClick={() => void sendMessage(question)}
+                    className="rounded-full border border-black/10 bg-mist px-3 py-1.5 text-xs font-medium text-black/70 transition hover:border-black/24"
+                  >
+                    {question}
+                  </button>
+                )
+              )}
+            </div>
+          ) : null}
           <form
             onSubmit={(event) => {
               event.preventDefault();
@@ -375,6 +388,18 @@ export function FundamentalsEpisodeView({
             ))}
           </div>
         </section>
+      ) : null}
+
+      {nextEpisode ? (
+        <Link
+          href={`/fundamentals/${nextEpisode.episode}`}
+          className="flex items-center justify-between gap-3 rounded-2xl bg-ink px-5 py-4 text-white transition hover:opacity-90"
+        >
+          <span className="text-sm font-semibold">
+            Done here? Next: step {nextEpisode.episode} - {nextEpisode.titleEn}
+          </span>
+          <span className="shrink-0 text-sm">→</span>
+        </Link>
       ) : null}
     </div>
   );
