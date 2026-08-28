@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { TodayDashboard } from "@/components/today-dashboard";
+import { SessionRunner } from "@/components/session-runner";
 import { requireUser } from "@/lib/auth";
 import { dbOne } from "@/lib/db";
 
@@ -15,5 +15,5 @@ export default async function TodayPage() {
     redirect("/onboarding");
   }
 
-  return <TodayDashboard />;
+  return <SessionRunner />;
 }

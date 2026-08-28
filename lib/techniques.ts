@@ -1755,7 +1755,7 @@ export function buildTechniqueBriefs(techniques: readonly Technique[]): Techniqu
   }));
 }
 
-function mapPatternToTechniqueId(patternId: string | null): TechniqueId | null {
+export function mapPatternToTechniqueId(patternId: string | null): TechniqueId | null {
   if (!patternId) return null;
 
   switch (patternId) {
@@ -1779,6 +1779,8 @@ function mapPatternToTechniqueId(patternId: string | null): TechniqueId | null {
       return "heap";
     case "greedy":
       return "greedy";
+    case "binary-search":
+      return "binary-search";
     default:
       return null;
   }

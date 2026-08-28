@@ -7,22 +7,53 @@ import { GlobalCoachDock } from "@/components/global-coach-dock";
 import { LogoutButton } from "@/components/logout-button";
 import type { SessionUser } from "@/lib/auth";
 
-type NavIcon = "learn" | "recognize" | "practice" | "progress" | "review" | "roadmap" | "today" | "techniques" | "series";
+type NavIcon = "learn" | "recognize" | "practice" | "progress" | "roadmap" | "today" | "techniques" | "series";
 
-const navigation: Array<{ href: string; match: string; label: string; icon: NavIcon }> = [
-  { href: "/today", match: "/today", label: "Today", icon: "today" },
-  { href: "/roadmap", match: "/roadmap", label: "Roadmap", icon: "roadmap" },
-  { href: "/progress", match: "/progress", label: "Progress", icon: "progress" },
-  { href: "/review", match: "/review", label: "Review", icon: "review" },
-  { href: "/start", match: "/start", label: "Quick pick", icon: "practice" },
-  { href: "/learn/setup", match: "/learn", label: "My Path", icon: "learn" },
-  { href: "/recognize/setup", match: "/recognize", label: "Recognize", icon: "recognize" },
-  { href: "/techniques", match: "/techniques", label: "Techniques", icon: "techniques" },
-  { href: "/fundamentals", match: "/fundamentals", label: "Fundamentals Series", icon: "series" }
+type NavItem = { href: string; match: string; label: string; icon: NavIcon };
+
+// Four mental models, not nine equal-weight destinations: Today stays the
+// default entry point, Progress stays standalone, and everything else nests
+// under Learn (curriculum-oriented exploration) or Practice (user-directed
+// training) - old routes keep working, they're just no longer top-level
+// choices a beginner has to weigh against each other.
+type NavEntry =
+  | { kind: "link"; item: NavItem }
+  | { kind: "group"; label: string; icon: NavIcon; href: string; match: string; children: NavItem[] };
+
+const navGroups: NavEntry[] = [
+  { kind: "link", item: { href: "/today", match: "/today", label: "Today", icon: "today" } },
+  {
+    kind: "group",
+    label: "Learn",
+    icon: "learn",
+    href: "/learn/setup",
+    match: "/learn",
+    children: [
+      { href: "/learn/setup", match: "/learn", label: "My Path", icon: "learn" },
+      { href: "/techniques", match: "/techniques", label: "Techniques", icon: "techniques" },
+      { href: "/fundamentals", match: "/fundamentals", label: "Fundamentals Series", icon: "series" },
+      { href: "/roadmap", match: "/roadmap", label: "Roadmap", icon: "roadmap" }
+    ]
+  },
+  {
+    kind: "group",
+    label: "Practice",
+    icon: "practice",
+    href: "/start",
+    match: "/start",
+    children: [
+      { href: "/start", match: "/start", label: "Quick Pick", icon: "practice" },
+      { href: "/recognize/setup", match: "/recognize", label: "Recognize", icon: "recognize" }
+    ]
+  },
+  { kind: "link", item: { href: "/progress", match: "/progress", label: "Progress", icon: "progress" } }
 ];
 
-const PRACTICE_NAV_COUNT = 2;
-const INSIGHTS_NAV_COUNT = 2;
+// Same four destinations, collapsed to their group entry point - mobile gets
+// exactly four tabs, never nine.
+const mobileNavItems: NavItem[] = navGroups.map((entry) =>
+  entry.kind === "link" ? entry.item : { href: entry.href, match: entry.match, label: entry.label, icon: entry.icon }
+);
 
 const pageMeta: Record<string, { eyebrow: string; title: string; backHref: string }> = {
   "/start": { eyebrow: "Quick pick", title: "Your next session", backHref: "/" },
@@ -91,24 +122,27 @@ export function AppShell({ children, currentUser }: { children: React.ReactNode;
             {railCollapsed ? "→" : "←"}
           </button>
         </div>
-        <div className="mt-10">
-          <p className={`rail-section-label ${railCollapsed ? "sr-only" : ""}`}>Practice</p>
-          <nav className="mt-3 space-y-1">
-            {navigation.slice(0, PRACTICE_NAV_COUNT).map((item) => <RailLink key={item.href} item={item} pathname={pathname} />)}
-          </nav>
-        </div>
-        <div className="mt-8">
-          <p className={`rail-section-label ${railCollapsed ? "sr-only" : ""}`}>Insights</p>
-          <nav className="mt-3 space-y-1">
-            {navigation.slice(PRACTICE_NAV_COUNT, PRACTICE_NAV_COUNT + INSIGHTS_NAV_COUNT).map((item) => <RailLink key={item.href} item={item} pathname={pathname} />)}
-          </nav>
-        </div>
-        <div className="mt-8">
-          <p className={`rail-section-label ${railCollapsed ? "sr-only" : ""}`}>More ways to practice</p>
-          <nav className="mt-3 space-y-1">
-            {navigation.slice(PRACTICE_NAV_COUNT + INSIGHTS_NAV_COUNT).map((item) => <RailLink key={item.href} item={item} pathname={pathname} />)}
-          </nav>
-        </div>
+        <nav className="mt-10 space-y-6">
+          {navGroups.map((entry) =>
+            entry.kind === "link" ? (
+              <RailLink key={entry.item.href} item={entry.item} pathname={pathname} />
+            ) : (
+              <div key={entry.href}>
+                <RailLink
+                  item={{ href: entry.href, match: entry.match, label: entry.label, icon: entry.icon }}
+                  pathname={pathname}
+                />
+                {!railCollapsed ? (
+                  <div className="mt-1 space-y-1 border-l border-black/8 pl-3">
+                    {entry.children.map((child) => (
+                      <RailLink key={child.href} item={child} pathname={pathname} nested />
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            )
+          )}
+        </nav>
         <div className="rail-account mt-auto">
           <div className="rail-avatar" aria-hidden="true">
             {(currentUser?.displayName || currentUser?.email || "P").slice(0, 1).toUpperCase()}
@@ -146,10 +180,10 @@ export function AppShell({ children, currentUser }: { children: React.ReactNode;
   );
 }
 
-function RailLink({ item, pathname }: { item: (typeof navigation)[number]; pathname: string }) {
+function RailLink({ item, pathname, nested = false }: { item: NavItem; pathname: string; nested?: boolean }) {
   const active = pathname === item.match || pathname.startsWith(`${item.match}/`);
   return (
-    <Link href={item.href} className={`rail-link ${active ? "rail-link-active" : ""}`}>
+    <Link href={item.href} className={`rail-link ${nested ? "rail-link-nested" : ""} ${active ? "rail-link-active" : ""}`}>
       <NavGlyph icon={item.icon} />
       <span className="rail-link-label">{item.label}</span>
       {active ? <span className="ml-auto h-1.5 w-1.5 rounded-full bg-indigo-500" /> : null}
@@ -172,7 +206,7 @@ function Brand({ dark, compact = false }: { dark: boolean; compact?: boolean }) 
 function MobileTabBar({ pathname }: { pathname: string }) {
   return (
     <nav className="mobile-tab-bar lg:hidden" aria-label="Primary navigation">
-      {navigation.map((item) => {
+      {mobileNavItems.map((item) => {
         const active = pathname === item.match || pathname.startsWith(`${item.match}/`);
         return (
           <Link key={item.href} href={item.href} className={active ? "mobile-tab-active" : ""}>
@@ -191,7 +225,6 @@ function NavGlyph({ icon }: { icon: NavIcon }) {
     recognize: <><circle cx="12" cy="12" r="3" /><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" /></>,
     practice: <><path d="m8 16 8-8" /><path d="m14 6 4 4" /><path d="M6 18h4l9-9a2.8 2.8 0 0 0-4-4l-9 9v4Z" /></>,
     progress: <><path d="M4 19V9" /><path d="M10 19V5" /><path d="M16 19v-7" /><path d="M22 19V2" /></>,
-    review: <><path d="M4 5h16v14H4z" /><path d="M8 9h8M8 13h6" /></>,
     roadmap: <><rect x="3" y="4" width="18" height="5" rx="1.4" /><rect x="3" y="15" width="18" height="5" rx="1.4" /></>,
     today: <><path d="M3 10.5 10 4l7 6.5" /><path d="M5 9v7h10V9" /></>,
     techniques: <><path d="M9 18h6" /><path d="M10 21h4" /><path d="M12 3a6 6 0 0 0-6 6c0 2.5 1.5 3.5 2 5h8c.5-1.5 2-2.5 2-5a6 6 0 0 0-6-6Z" /></>,

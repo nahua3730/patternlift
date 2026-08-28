@@ -5,6 +5,7 @@ import { allProblems } from "@/lib/product";
 import { getRepCounts } from "@/lib/rep-counts";
 import { computeStreak } from "@/lib/streak";
 import type { CurriculumPlan } from "@/lib/curriculum-agent";
+import { buildDailySession } from "@/lib/session";
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -72,6 +73,17 @@ export async function GET() {
   const checkins = checkinRows.map((row) => row.checkin_date);
   const streak = computeStreak(checkins);
 
+  const dueReviewsMapped = dueReviews.map((row) => ({
+    id: row.id,
+    problemId: row.problem_id ?? undefined,
+    problemTitle: row.problem_title,
+    patternLabel: row.target_pattern_label,
+    reviewQuestion: row.review_question,
+    urgency: row.urgency
+  }));
+
+  const session = buildDailySession(day, dueReviewsMapped, plan.coachStyle ?? "guided");
+
   return NextResponse.json({
     plan: {
       headline: plan.headline,
@@ -88,15 +100,9 @@ export async function GET() {
       studyMode: day.studyMode,
       problems
     },
-    dueReviews: dueReviews.map((row) => ({
-      id: row.id,
-      problemId: row.problem_id ?? undefined,
-      problemTitle: row.problem_title,
-      patternLabel: row.target_pattern_label,
-      reviewQuestion: row.review_question,
-      urgency: row.urgency
-    })),
+    dueReviews: dueReviewsMapped,
     streak,
-    checkins
+    checkins,
+    session
   });
 }

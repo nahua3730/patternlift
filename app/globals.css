@@ -718,6 +718,17 @@ select {
   color: #1e293b;
 }
 
+.rail-link-nested {
+  height: 2.25rem;
+  font-size: 0.8125rem;
+  font-weight: 450;
+}
+
+.rail-link-nested svg {
+  height: 15px;
+  width: 15px;
+}
+
 .rail-link-active {
   border-color: rgba(99, 102, 241, 0.22);
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.14), rgba(34, 211, 238, 0.1));
