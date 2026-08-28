@@ -43,6 +43,6 @@ export function ReviewPageView() {
   return <ReviewQueue items={reviewQueue} history={history} />;
 }
 
-export function TechniquesPageView() {
-  return <TechniqueLibrary />;
+export function TechniquesPageView({ reps }: { reps: Record<string, number> }) {
+  return <TechniqueLibrary reps={reps} />;
 }

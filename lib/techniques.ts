@@ -16,6 +16,10 @@ type TechniqueSeed = {
   quickTipsCn: string[];
   coachMoves: string[];
   signalMatchers: string[];
+  // Real problems from PatternLift's own catalog that use this technique.
+  // Empty when the catalog genuinely has no clean match yet - never a
+  // forced/loose fit just to fill the field.
+  representativeProblemIds: string[];
 };
 
 export const techniqueLibrary = [
@@ -52,7 +56,8 @@ export const techniqueLibrary = [
       "Use this when duplicate, anagram, complement, or lookup language appears.",
       "Contrast one-pass hashing with sorting or nested loops."
     ],
-    signalMatchers: ["duplicate", "anagram", "complement", "lookup", "set", "frequency", "hash"]
+    signalMatchers: ["duplicate", "anagram", "complement", "lookup", "set", "frequency", "hash"],
+    representativeProblemIds: ["two-sum", "contains-duplicate", "official-group-anagrams"]
   },
   {
     id: "stack",
@@ -87,7 +92,8 @@ export const techniqueLibrary = [
       "Use it for matching, undo, and next-greater style problems.",
       "Contrast generic stack usage with monotonic-stack specialization."
     ],
-    signalMatchers: ["parentheses", "stack", "warmer", "next greater", "fleet", "undo", "latest"]
+    signalMatchers: ["parentheses", "stack", "warmer", "next greater", "fleet", "undo", "latest"],
+    representativeProblemIds: ["valid-parentheses", "official-min-stack", "official-evaluate-reverse-polish-notation"]
   },
   {
     id: "intervals",
@@ -122,7 +128,8 @@ export const techniqueLibrary = [
       "Use it when overlap, merge, insert, erase, or schedule language appears.",
       "Contrast merge-style interval handling with greedy removal logic."
     ],
-    signalMatchers: ["interval", "overlap", "merge", "insert interval", "erase", "meeting", "range"]
+    signalMatchers: ["interval", "overlap", "merge", "insert interval", "erase", "meeting", "range"],
+    representativeProblemIds: ["merge-intervals", "insert-interval", "non-overlapping-intervals"]
   },
   {
     id: "framework-thinking",
@@ -157,7 +164,8 @@ export const techniqueLibrary = [
       "Use this when the user is guessing patterns with no clear evidence.",
       "Steer attention toward traversal, state, and repeated work."
     ],
-    signalMatchers: ["prompt", "array", "graph", "tree", "search", "state"]
+    signalMatchers: ["prompt", "array", "graph", "tree", "search", "state"],
+    representativeProblemIds: []
   },
   {
     id: "recursion-perspective",
@@ -192,7 +200,8 @@ export const techniqueLibrary = [
       "Compare traversal recursion with decomposition recursion.",
       "Force the learner to state what a call returns."
     ],
-    signalMatchers: ["tree", "recursive", "subtree", "linked list", "dfs", "backtrack"]
+    signalMatchers: ["tree", "recursive", "subtree", "linked list", "dfs", "backtrack"],
+    representativeProblemIds: []
   },
   {
     id: "two-pointers",
@@ -235,7 +244,8 @@ export const techniqueLibrary = [
       "linked list",
       "cycle",
       "remove duplicate"
-    ]
+    ],
+    representativeProblemIds: ["three-sum", "official-two-sum-ii-input-array-is-sorted", "valid-palindrome"]
   },
   {
     id: "sliding-window",
@@ -279,7 +289,8 @@ export const techniqueLibrary = [
       "window",
       "at most",
       "at least"
-    ]
+    ],
+    representativeProblemIds: ["longest-substring-no-repeat", "minimum-window-substring", "official-permutation-in-string"]
   },
   {
     id: "binary-search",
@@ -323,7 +334,8 @@ export const techniqueLibrary = [
       "threshold",
       "search",
       "koko"
-    ]
+    ],
+    representativeProblemIds: ["binary-search", "koko-bananas", "official-search-in-rotated-sorted-array"]
   },
   {
     id: "bfs",
@@ -366,7 +378,8 @@ export const techniqueLibrary = [
       "open lock",
       "word ladder",
       "nearest"
-    ]
+    ],
+    representativeProblemIds: ["binary-tree-level-order", "rotting-oranges", "open-the-lock"]
   },
   {
     id: "dfs-backtracking",
@@ -410,7 +423,8 @@ export const techniqueLibrary = [
       "restore",
       "path",
       "choices"
-    ]
+    ],
+    representativeProblemIds: ["subsets", "combination-sum", "word-search"]
   },
   {
     id: "dynamic-programming",
@@ -454,7 +468,8 @@ export const techniqueLibrary = [
       "overlapping",
       "coins",
       "rob"
-    ]
+    ],
+    representativeProblemIds: ["house-robber", "official-climbing-stairs", "coin-change"]
   },
   {
     id: "greedy",
@@ -496,7 +511,8 @@ export const techniqueLibrary = [
       "can reach",
       "schedule",
       "erase overlap"
-    ]
+    ],
+    representativeProblemIds: ["jump-game", "best-time-stock", "official-gas-station"]
   },
   {
     id: "divide-conquer",
@@ -538,14 +554,15 @@ export const techniqueLibrary = [
       "right half",
       "split",
       "combine"
-    ]
+    ],
+    representativeProblemIds: ["official-median-of-two-sorted-arrays"]
   },
   {
     id: "binary-tree-recursion",
     title: "Binary Tree Recursion",
     titleCn: "二叉树递归",
     sourceTrack: "essential-technique",
-    aliases: ["tree dp", "tree traversal"],
+    aliases: ["tree traversal", "postorder aggregation"],
     whenToThink:
       "Use this when each node's answer depends on answers from its children or on context flowing from the root.",
     whenToThinkCn: "当每个节点的答案依赖于子节点的答案，或者依赖从根节点传下来的上下文时使用。",
@@ -571,16 +588,16 @@ export const techniqueLibrary = [
     coachMoves: [
       "Use it when the prompt is about tree structure rather than just graph search.",
       "Ask the learner to define the subtree contract.",
-      "Connect it back to recursion perspective."
+      "Connect it back to recursion perspective. If multiple mutually exclusive states are needed per node, point to Tree DP instead."
     ],
     signalMatchers: [
       "binary tree",
       "subtree",
       "lowest common ancestor",
-      "path sum",
-      "diameter",
-      "balanced tree"
-    ]
+      "balanced tree",
+      "invert"
+    ],
+    representativeProblemIds: ["max-depth-tree", "official-invert-binary-tree", "official-balanced-binary-tree"]
   },
   {
     id: "prefix-sum",
@@ -603,12 +620,12 @@ export const techniqueLibrary = [
     quickTips: [
       "Immutable range query language is a strong clue.",
       "Think of prefix sum as paying once up front to answer many queries cheaply.",
-      "It extends beyond sums if the operation has an inverse."
+      "It extends beyond sums if the operation has an inverse - prefix product works the same way for products."
     ],
     quickTipsCn: [
       "“数组不变、多次区间查询”是很强的信号。",
       "把前缀和想成“提前付一次代价，之后查询就很便宜”。",
-      "只要运算有逆运算，前缀和思路就不只局限于求和。"
+      "只要运算有逆运算，思路就不局限于求和——前缀积也是同样的道理。"
     ],
     coachMoves: [
       "Use it for repeated interval queries.",
@@ -621,8 +638,10 @@ export const techniqueLibrary = [
       "immutable",
       "submatrix sum",
       "interval sum",
-      "prefix"
-    ]
+      "prefix",
+      "except self"
+    ],
+    representativeProblemIds: ["official-product-of-array-except-self"]
   },
   {
     id: "difference-array",
@@ -664,7 +683,8 @@ export const techniqueLibrary = [
       "increment",
       "decrement",
       "batch update"
-    ]
+    ],
+    representativeProblemIds: []
   },
   {
     id: "monotonic-stack",
@@ -705,8 +725,10 @@ export const techniqueLibrary = [
       "daily temperatures",
       "histogram",
       "span",
-      "circular array"
-    ]
+      "circular array",
+      "car fleet"
+    ],
+    representativeProblemIds: ["daily-temperatures", "car-fleet", "official-largest-rectangle-in-histogram"]
   },
   {
     id: "monotonic-queue",
@@ -747,7 +769,8 @@ export const techniqueLibrary = [
       "deque",
       "window max",
       "window min"
-    ]
+    ],
+    representativeProblemIds: ["official-sliding-window-maximum"]
   },
   {
     id: "heap",
@@ -789,7 +812,8 @@ export const techniqueLibrary = [
       "stream",
       "merge k",
       "smallest pair"
-    ]
+    ],
+    representativeProblemIds: ["top-k-frequent-elements", "k-closest-points", "official-kth-largest-element-in-an-array"]
   },
   {
     id: "complexity",
@@ -831,7 +855,8 @@ export const techniqueLibrary = [
       "time limit",
       "optimize",
       "efficient"
-    ]
+    ],
+    representativeProblemIds: []
   },
   {
     id: "union-find",
@@ -872,8 +897,10 @@ export const techniqueLibrary = [
       "connected component",
       "redundant connection",
       "group",
-      "province"
-    ]
+      "province",
+      "graph valid tree"
+    ],
+    representativeProblemIds: ["official-redundant-connection", "official-number-of-connected-components-in-an-undirected-graph", "official-graph-valid-tree"]
   },
   {
     id: "trie",
@@ -908,7 +935,8 @@ export const techniqueLibrary = [
       "Use it for autocomplete, spell-check, and word-search-board problems.",
       "Contrast it with a plain hash set when prefix structure isn't actually needed."
     ],
-    signalMatchers: ["trie", "prefix", "autocomplete", "word search", "word dictionary"]
+    signalMatchers: ["trie", "prefix", "autocomplete", "word search", "word dictionary"],
+    representativeProblemIds: ["official-implement-trie-prefix-tree", "official-design-add-and-search-words-data-structure", "official-word-search-ii"]
   },
   {
     id: "topological-sort",
@@ -949,8 +977,10 @@ export const techniqueLibrary = [
       "topological",
       "build order",
       "dependency",
-      "in-degree"
-    ]
+      "in-degree",
+      "alien dictionary"
+    ],
+    representativeProblemIds: ["course-schedule", "official-course-schedule-ii", "official-alien-dictionary"]
   },
   {
     id: "graph-shortest-path",
@@ -992,7 +1022,44 @@ export const techniqueLibrary = [
       "cheapest flights",
       "weighted graph",
       "minimum cost path"
-    ]
+    ],
+    representativeProblemIds: ["network-delay-time", "official-cheapest-flights-within-k-stops"]
+  },
+  {
+    id: "minimum-spanning-tree",
+    title: "Minimum Spanning Tree",
+    titleCn: "最小生成树",
+    sourceTrack: "essential-technique",
+    aliases: ["prim's algorithm", "kruskal's algorithm", "mst"],
+    whenToThink:
+      "Use this when you need to connect all nodes in a graph with the least total edge cost, and cycles are wasteful.",
+    whenToThinkCn: "当需要用最小的总边权把图中所有节点连通，并且要避免多余的环时使用。",
+    coreIdea:
+      "Kruskal's: repeatedly add the cheapest edge that doesn't create a cycle (checked with union-find). Prim's: repeatedly grow a connected tree by adding the cheapest edge leaving it (checked with a min-heap).",
+    coreIdeaCn: "Kruskal 算法：不断加入不会形成环的最便宜的边（用并查集判断是否成环）。Prim 算法：不断从已连通的树向外扩展最便宜的一条边（用小顶堆维护候选边）。",
+    starterQuestion:
+      "Am I connecting all nodes with minimum total cost (MST), or finding the cheapest path between two specific nodes (shortest path)? These are different problems.",
+    starterQuestionCn: "我是要用最小总代价连通所有节点（最小生成树），还是要找两个特定节点间最便宜的路径（最短路径）？这是两个不同的问题。",
+    commonTrap:
+      "Confusing MST with shortest path - MST minimizes total edge weight across the whole tree, not the path between any two particular nodes.",
+    commonTrapCn: "把最小生成树和最短路径搞混——最小生成树最小化的是整棵树的边权总和，而不是任意两个节点之间的路径。",
+    quickTips: [
+      "Kruskal's is usually easier to code: sort edges by weight, then union-find to skip cycle-forming edges.",
+      "Prim's is closer in shape to Dijkstra: grow one connected component with a min-heap of frontier edges.",
+      "\"Connect all points/cities with minimum cost\" language is the signature clue."
+    ],
+    quickTipsCn: [
+      "Kruskal 算法通常更容易写：先按权重排序边，再用并查集跳过会成环的边。",
+      "Prim 算法在形式上更接近 Dijkstra：用小顶堆维护候选边，不断扩展一个连通分量。",
+      "“用最小代价连接所有点/城市”这类措辞是标志性信号。"
+    ],
+    coachMoves: [
+      "Ask whether the goal is connecting everything cheaply (MST) or reaching one target cheaply (shortest path).",
+      "Use it when the prompt mentions connecting all points/cities with minimum total cost.",
+      "Point out the union-find dependency for Kruskal's implementation."
+    ],
+    signalMatchers: ["minimum spanning tree", "mst", "connect all points", "prim", "kruskal"],
+    representativeProblemIds: ["official-min-cost-to-connect-all-points"]
   },
   {
     id: "bit-manipulation",
@@ -1027,7 +1094,8 @@ export const techniqueLibrary = [
       "Use it when the prompt mentions single number, subsets of a small set, or parity.",
       "Push the learner to explain what each bit represents before coding."
     ],
-    signalMatchers: ["xor", "bitmask", "single number", "bit", "parity", "and (n - 1)"]
+    signalMatchers: ["xor", "single number", "bit", "parity", "and (n - 1)", "missing number"],
+    representativeProblemIds: ["official-single-number", "official-number-of-1-bits", "official-sum-of-two-integers"]
   },
   {
     id: "fast-slow-pointers",
@@ -1062,7 +1130,8 @@ export const techniqueLibrary = [
       "Use it for middle-of-list, cycle-detection, and cycle-entry problems.",
       "Have the learner explain the meeting-point math in their own words."
     ],
-    signalMatchers: ["cycle", "middle node", "fast pointer", "slow pointer", "tortoise", "linked list cycle"]
+    signalMatchers: ["cycle", "middle node", "fast pointer", "slow pointer", "tortoise", "linked list cycle"],
+    representativeProblemIds: ["linked-list-cycle", "remove-nth-from-end"]
   },
   {
     id: "design-data-structure",
@@ -1097,7 +1166,8 @@ export const techniqueLibrary = [
       "Use it for LRU/LFU cache, design-twitter, and similar multi-operation design prompts.",
       "Push the learner to justify why a single structure can't satisfy every requirement alone."
     ],
-    signalMatchers: ["design", "lru", "lfu", "implement", "o(1) get", "cache"]
+    signalMatchers: ["design", "lru", "lfu", "implement", "o(1) get", "cache", "twitter"],
+    representativeProblemIds: ["official-lru-cache", "official-design-twitter", "official-find-median-from-data-stream"]
   },
   {
     id: "knapsack-dp",
@@ -1132,7 +1202,8 @@ export const techniqueLibrary = [
       "Use it when the prompt involves selecting a subset under a sum, weight, or count constraint.",
       "Check the capacity-loop direction explicitly once code is written."
     ],
-    signalMatchers: ["knapsack", "subset sum", "coin change", "partition equal", "target sum", "combination sum"]
+    signalMatchers: ["knapsack", "subset sum", "coin change", "partition equal", "target sum"],
+    representativeProblemIds: ["partition-equal-subset-sum", "coin-change", "official-target-sum"]
   },
   {
     id: "state-machine-dp",
@@ -1167,7 +1238,8 @@ export const techniqueLibrary = [
       "Use it for stock-trading problems and any process with a small set of named modes.",
       "Check that each extra constraint maps to a specific state or dimension, not a patch on the recurrence."
     ],
-    signalMatchers: ["buy and sell stock", "cooldown", "transaction fee", "hold", "state machine"]
+    signalMatchers: ["buy and sell stock", "cooldown", "transaction fee", "hold", "state machine"],
+    representativeProblemIds: ["best-time-stock", "official-best-time-to-buy-and-sell-stock-with-cooldown"]
   },
   {
     id: "interval-dp",
@@ -1202,7 +1274,8 @@ export const techniqueLibrary = [
       "Use it for palindrome subsequence, matrix chain, and burst-balloon style problems.",
       "Check the fill order of the DP table explicitly - this is where interval DP bugs usually hide."
     ],
-    signalMatchers: ["palindromic subsequence", "matrix chain", "burst balloon", "interval dp", "merge stones"]
+    signalMatchers: ["palindromic subsequence", "matrix chain", "burst balloon", "interval dp", "merge stones"],
+    representativeProblemIds: ["official-burst-balloons"]
   },
   {
     id: "tree-dp",
@@ -1237,7 +1310,8 @@ export const techniqueLibrary = [
       "Use it for house robber on a tree, tree diameter, and camera/coverage problems.",
       "Distinguish tree DP from plain binary tree recursion by asking whether multiple mutually exclusive states are being tracked."
     ],
-    signalMatchers: ["house robber iii", "tree dp", "binary tree cameras", "diameter", "subtree state"]
+    signalMatchers: ["house robber iii", "tree dp", "binary tree cameras", "diameter", "subtree state"],
+    representativeProblemIds: ["official-diameter-of-binary-tree", "official-binary-tree-maximum-path-sum"]
   },
   {
     id: "grid-traversal",
@@ -1272,7 +1346,260 @@ export const techniqueLibrary = [
       "Use it for island-counting, flood-fill, and grid shortest-path problems.",
       "Push the learner to define the boundary/visited check before writing the recursion or queue loop."
     ],
-    signalMatchers: ["grid", "island", "matrix", "flood fill", "rotting oranges", "connected region"]
+    signalMatchers: ["grid", "island", "matrix", "flood fill", "rotting oranges", "connected region"],
+    representativeProblemIds: ["number-of-islands", "rotting-oranges", "official-pacific-atlantic-water-flow"]
+  },
+  {
+    id: "bitmask-dp",
+    title: "Bitmask DP (State Compression)",
+    titleCn: "状压 DP",
+    sourceTrack: "essential-technique",
+    aliases: ["state compression dp", "traveling salesman dp"],
+    whenToThink:
+      "Use this when the state needs to track 'which subset of a small set of items has been used/visited so far', with roughly 20 or fewer items.",
+    whenToThinkCn: "当状态需要记录“一小组元素中哪些已经被使用/访问过”，且元素个数大约在 20 个以内时使用。",
+    coreIdea:
+      "Represent the subset of used items as an integer bitmask; the DP state becomes (mask, extra info), and transitions try adding one more unused item to the mask.",
+    coreIdeaCn: "把“已使用元素的子集”表示成一个整数位掩码；DP 状态变成（掩码, 额外信息），转移就是尝试把一个还没用过的元素加进掩码。",
+    starterQuestion:
+      "Is the answer built by choosing an order over, or a subset of, a small fixed set of items where the exact combination used so far matters?",
+    starterQuestionCn: "答案是不是要在一小组固定元素上选择顺序或子集，并且“目前已经用了哪些”这个具体组合会影响后续决策？",
+    commonTrap:
+      "Trying bitmask DP on a large item count - 2^n states only stays tractable for roughly n <= 20.",
+    commonTrapCn: "对元素数量很大的情况也硬用状压 DP——2^n 个状态只有在 n 大约不超过 20 时才可行。",
+    quickTips: [
+      "Traveling Salesman-style problems (visit every city, minimize cost) are the classic use case.",
+      "dp[mask][i] often means 'having visited exactly the cities in mask, currently at city i'.",
+      "Precompute popcount or use mask & (mask - 1) tricks to iterate over subsets efficiently."
+    ],
+    quickTipsCn: [
+      "旅行商问题风格的题目（走遍每个城市，最小化代价）是经典应用场景。",
+      "dp[mask][i] 通常表示“已经恰好访问过 mask 中的城市，目前在城市 i”。",
+      "可以预处理二进制中 1 的个数，或用 mask & (mask - 1) 技巧来高效遍历子集。"
+    ],
+    coachMoves: [
+      "Check the item count first - if it's much more than 20, bitmask DP won't fit in time.",
+      "Use it when the prompt involves visiting/assigning every item in a small fixed set exactly once.",
+      "Ask the learner to define exactly what each bit in the mask represents."
+    ],
+    signalMatchers: ["bitmask dp", "state compression", "traveling salesman", "visit every city", "assign each"],
+    representativeProblemIds: []
+  },
+  {
+    id: "digit-dp",
+    title: "Digit DP",
+    titleCn: "数位 DP",
+    sourceTrack: "essential-technique",
+    aliases: ["counting numbers with digit constraints"],
+    whenToThink:
+      "Use this when you need to count or sum over all numbers in a range [1, N] (or [L, R]) that satisfy some digit-level property.",
+    whenToThinkCn: "当需要统计或求和某个区间 [1, N]（或 [L, R]）内所有满足某种“数位性质”的数字时使用。",
+    coreIdea:
+      "Build the number digit by digit from the most significant digit, tracking whether the prefix built so far is still 'tight' (equal to N's prefix) or already strictly less - once loose, remaining digits are free to choose.",
+    coreIdeaCn: "从最高位开始逐位构造数字，用一个“是否贴着上界”的标记跟踪当前前缀是等于 N 的前缀，还是已经严格小于——一旦不贴着上界，后面的数位就可以自由选择。",
+    starterQuestion:
+      "Can I answer 'count numbers <= N with property P' and reuse it via count(R) - count(L - 1) for a range?",
+    starterQuestionCn: "能不能先解决“统计所有 <= N 且满足性质 P 的数字”，再用 count(R) - count(L-1) 来求区间答案？",
+    commonTrap:
+      "Iterating through every number in the range one by one instead of building digit-by-digit, which is fine for small N but breaks down once N has many digits.",
+    commonTrapCn: "逐个遍历区间内的每个数字，而不是按位构造——这种方法在 N 较小时能过，但一旦 N 位数很多就行不通了。",
+    quickTips: [
+      "The state is usually (position, tight-flag, plus whatever property you're tracking, like digit sum or last digit).",
+      "Memoize only on the non-tight states - the tight path is a single fixed sequence, not worth caching.",
+      "This is a niche but recognizable technique: 'count/sum numbers up to N with a digit property' is the giveaway phrasing."
+    ],
+    quickTipsCn: [
+      "状态通常是（位置, 是否贴着上界, 再加上你要追踪的性质，比如数位和或最后一位数字）。",
+      "只需要对“不贴上界”的状态做记忆化——贴着上界的路径是唯一固定的一条，不值得缓存。",
+      "这是一个比较小众但容易识别的技巧：“统计/求和不超过 N 且满足某数位性质的数字”就是标志性措辞。"
+    ],
+    coachMoves: [
+      "Confirm the problem is really about digit-level structure, not just any range-counting problem.",
+      "Use it when the prompt asks to count numbers up to N with a digit property.",
+      "Ask the learner to define the tight-flag transition explicitly before coding."
+    ],
+    signalMatchers: ["digit dp", "count numbers", "digit sum", "numbers up to n"],
+    representativeProblemIds: []
+  },
+  {
+    id: "game-theory-dp",
+    title: "Game Theory DP",
+    titleCn: "博弈 DP",
+    sourceTrack: "essential-technique",
+    aliases: ["minimax", "optimal play", "stone game"],
+    whenToThink:
+      "Use this when two players alternate optimal moves on a shared state, and you need to determine the outcome (winner, or optimal score difference) assuming both play perfectly.",
+    whenToThinkCn: "当两名玩家轮流在同一个状态上做出最优决策，需要在双方都完美博弈的前提下求出结果（谁赢，或最优分差）时使用。",
+    coreIdea:
+      "Define dp(state) as the best score the current player can guarantee from this state onward; each player's move tries to maximize their own advantage, which is equivalent to minimizing the opponent's.",
+    coreIdeaCn: "定义 dp(state) 为“当前玩家从这个状态开始，能保证获得的最优得分”；每个玩家的决策都在最大化自己的优势，这等价于最小化对手的优势。",
+    starterQuestion:
+      "If I define the state as 'whoever moves next', does the same recurrence work for both players by symmetry?",
+    starterQuestionCn: "如果我把状态定义为“轮到谁走”，同一个递推关系是否能因为对称性同时适用于两个玩家？",
+    commonTrap:
+      "Trying to simulate every possible sequence of moves explicitly instead of collapsing the problem to 'best achievable score from this state', which is what makes it a DP problem at all.",
+    commonTrapCn: "试图显式模拟每一种可能的走法序列，而不是把问题归约成“从这个状态出发能达到的最优得分”——后者才是这类问题能用 DP 解决的关键。",
+    quickTips: [
+      "The classic framing: dp(i, j) = best score difference the current player can achieve from subarray/substring [i, j].",
+      "Score difference (mine minus opponent's) is often a cleaner state than tracking each player's score separately.",
+      "This overlaps with interval DP in shape - many game-theory problems are solved with a range-based recurrence."
+    ],
+    quickTipsCn: [
+      "经典框架：dp(i, j) 表示当前玩家在子数组/子串 [i, j] 上能达到的最优得分差。",
+      "用“得分差”（自己减对手）作为状态，通常比分别追踪两个玩家的得分更简洁。",
+      "这类问题在形式上和区间 DP 很像——很多博弈类问题最终都是用基于区间的递推来解决。"
+    ],
+    coachMoves: [
+      "Ask the learner to define the state as score difference from the current player's perspective.",
+      "Use it when the prompt describes two players alternating optimal moves.",
+      "Point out the overlap with interval DP when the state is a subarray/substring range."
+    ],
+    signalMatchers: ["stone game", "predict the winner", "optimal play", "two players", "game theory"],
+    representativeProblemIds: []
+  },
+  {
+    id: "kmp-string-matching",
+    title: "KMP String Matching",
+    titleCn: "KMP 字符串匹配",
+    sourceTrack: "essential-technique",
+    aliases: ["pattern matching", "knuth-morris-pratt", "prefix function"],
+    whenToThink:
+      "Use this when you need to find all occurrences of a pattern string inside a text string faster than the naive O(nm) approach.",
+    whenToThinkCn: "当需要在文本串中查找模式串的所有出现位置，并且要比朴素 O(nm) 的方法更快时使用。",
+    coreIdea:
+      "Precompute a 'failure function' (longest proper prefix that is also a suffix, for every prefix of the pattern) so that on a mismatch, you skip ahead using what you already know about the pattern, instead of restarting the text pointer from scratch.",
+    coreIdeaCn: "预处理一个“失配函数”（模式串每个前缀的最长“既是前缀又是后缀”的长度），这样发生失配时，可以利用已经知道的信息跳过一部分比较，而不是把文本指针退回重新开始。",
+    starterQuestion:
+      "Am I searching for exact occurrences of one fixed pattern inside a text, potentially many times or on a long text?",
+    starterQuestionCn: "我是不是要在一段文本中查找一个固定模式串的精确出现位置，而且可能要查很多次或文本很长？",
+    commonTrap:
+      "Reaching for KMP on short inputs where the built-in substring search or a naive double loop is already fast enough and much simpler to write correctly under interview pressure.",
+    commonTrapCn: "在输入很短、内置的子串查找或朴素双重循环就已经足够快的情况下，还硬要用 KMP——面试压力下更容易写错，得不偿失。",
+    quickTips: [
+      "The failure function (often called 'next' or 'pi') never depends on the text, only on the pattern - compute it once.",
+      "On a mismatch at pattern position j, jump to failure[j-1] instead of resetting to 0.",
+      "This is a technique to recognize and reach for deliberately, not one to derive from scratch under time pressure - know where the failure-function logic lives."
+    ],
+    quickTipsCn: [
+      "失配函数（常叫 next 或 pi 数组）只依赖模式串本身，和文本无关——只需要预处理一次。",
+      "在模式串位置 j 处失配时，跳转到 failure[j-1]，而不是把指针归零重新开始。",
+      "这是一个应该识别并有意识调用的技巧，而不是要在时间压力下临场推导——平时要熟悉失配函数的写法。"
+    ],
+    coachMoves: [
+      "Ask whether input size actually justifies KMP over a simpler substring search.",
+      "Use it when the prompt is explicitly about repeated pattern matching in a string.",
+      "Check that the learner can explain what the failure function represents before debugging their code."
+    ],
+    signalMatchers: ["kmp", "pattern matching", "strstr", "prefix function", "shortest palindrome"],
+    representativeProblemIds: []
+  },
+  {
+    id: "segment-tree-bit",
+    title: "Segment Tree / Binary Indexed Tree",
+    titleCn: "线段树 / 树状数组",
+    sourceTrack: "data-structure",
+    aliases: ["fenwick tree", "range query with updates"],
+    whenToThink:
+      "Use this when you need both range queries (sum, min, max) AND point or range updates on a mutable array - prefix sum alone breaks down once updates enter the picture.",
+    whenToThinkCn: "当既需要区间查询（求和、最小值、最大值），又需要对可变数组做单点或区间更新时使用——一旦引入更新，单纯的前缀和就不够用了。",
+    coreIdea:
+      "A Binary Indexed Tree (Fenwick Tree) uses the binary representation of indices to update and query prefix sums in O(log n). A Segment Tree generalizes further to arbitrary range queries (not just prefix) and range updates, using a binary tree over the array where each node covers a range.",
+    coreIdeaCn: "树状数组（Fenwick Tree）利用下标的二进制表示，在 O(log n) 时间内完成前缀和的更新与查询。线段树进一步推广到任意区间查询（不只是前缀）和区间更新，用一棵二叉树覆盖数组，每个节点代表一个区间。",
+    starterQuestion:
+      "Do I need range sum/min/max queries interleaved with updates - if there were no updates, prefix sum alone would already solve this?",
+    starterQuestionCn: "我是不是需要区间求和/最值查询，同时穿插着更新——如果没有更新，单纯前缀和就已经能解决了？",
+    commonTrap:
+      "Reaching for a segment tree when the array is static (no updates) - prefix sum already solves that in less code with less risk of bugs.",
+    commonTrapCn: "在数组不会更新的情况下还上线段树——这种情况前缀和用更少的代码、更低的出错风险就能解决。",
+    quickTips: [
+      "Binary Indexed Tree is simpler to code and sufficient when you only need prefix sums with point updates.",
+      "Segment Tree is more general: range updates, range min/max, and custom merge operations all fit.",
+      "'Range sum query - mutable' is the textbook phrase that distinguishes this from plain prefix sum."
+    ],
+    quickTipsCn: [
+      "只需要“前缀和 + 单点更新”时，树状数组更简单、代码量更小。",
+      "线段树更通用：区间更新、区间最值、自定义合并操作都能支持。",
+      "“可变数组的区间求和”是区分这个技巧和单纯前缀和的标志性描述。"
+    ],
+    coachMoves: [
+      "Confirm updates actually happen - if not, redirect to plain prefix sum.",
+      "Use it when the prompt explicitly says 'mutable' alongside range queries.",
+      "Ask whether a Binary Indexed Tree's simpler scope (prefix sum + point update) is enough before reaching for a full segment tree."
+    ],
+    signalMatchers: ["segment tree", "binary indexed tree", "fenwick", "range sum query mutable", "range update query"],
+    representativeProblemIds: []
+  },
+  {
+    id: "simulation",
+    title: "Simulation",
+    titleCn: "模拟",
+    sourceTrack: "essential-technique",
+    aliases: ["direct simulation", "follow the rules"],
+    whenToThink:
+      "Use this when the problem describes an exact process or set of rules step by step, and the fastest path to a correct answer is to carefully model that process rather than search for a clever shortcut.",
+    whenToThinkCn: "当题目一步步描述了一个精确的过程或规则，而最快得到正确答案的方式是仔细建模这个过程，而不是寻找什么巧妙的捷径时使用。",
+    coreIdea:
+      "Translate the problem's described rules directly into code, state variable by state variable, rather than searching for a closed-form or pattern-based shortcut - correctness through careful bookkeeping, not cleverness.",
+    coreIdeaCn: "把题目描述的规则逐条、逐个状态变量地直接翻译成代码，而不是去找什么闭式解或规律性的捷径——靠的是仔细的状态记录，而不是巧思。",
+    starterQuestion:
+      "Is there actually a clever pattern here, or should I just carefully model exactly what the problem describes, one step at a time?",
+    starterQuestionCn: "这里是不是真的有什么巧妙规律，还是我应该老老实实按题目描述的过程一步步建模？",
+    commonTrap:
+      "Searching for a mathematical shortcut or pattern on a problem that's actually just testing careful, bug-free implementation of a described process.",
+    commonTrapCn: "在一道其实只是考察“能否仔细无误地实现一个既定过程”的题目上，硬去找数学捷径或规律。",
+    quickTips: [
+      "Matrix rotation, spiral traversal, and game-state stepping are classic simulation problems.",
+      "Draw out 2-3 steps by hand before coding to make sure you actually understand the rule.",
+      "Isolate each rule into its own small function or clearly-commented block - simulation bugs hide in tangled state updates."
+    ],
+    quickTipsCn: [
+      "矩阵旋转、螺旋遍历、游戏状态推进都是经典的模拟类问题。",
+      "写代码前先手动画出 2-3 步，确保自己真的理解了规则。",
+      "把每条规则拆成独立的小函数或清晰注释的代码块——模拟题的 bug 通常都藏在纠缠不清的状态更新里。"
+    ],
+    coachMoves: [
+      "Ask the learner to trace 2-3 steps by hand before writing code.",
+      "Use it when the prompt is a detailed, literal description of a process rather than an optimization question.",
+      "Push for isolating each rule into its own clearly-named step."
+    ],
+    signalMatchers: ["simulate", "spiral", "rotate matrix", "game state", "step by step"],
+    representativeProblemIds: ["official-spiral-matrix", "official-rotate-image", "official-set-matrix-zeroes"]
+  },
+  {
+    id: "math-geometry",
+    title: "Math & Geometry",
+    titleCn: "数学与几何",
+    sourceTrack: "essential-technique",
+    aliases: ["number theory", "modular arithmetic", "coordinate geometry"],
+    whenToThink:
+      "Use this when the problem is fundamentally about numeric properties (primality, GCD, modular arithmetic, digit manipulation) or 2D/matrix geometry (rotation, reflection, coordinate transforms) rather than a traversal or DP structure.",
+    whenToThinkCn: "当问题本质上是关于数字性质（质数、最大公约数、模运算、数位操作）或二维/矩阵几何（旋转、翻转、坐标变换），而不是遍历或 DP 结构时使用。",
+    coreIdea:
+      "Recognize the underlying mathematical property or geometric transform, then implement it directly - these problems are usually solved by knowing the right formula or transform, not by searching a state space.",
+    coreIdeaCn: "识别出背后的数学性质或几何变换，然后直接实现它——这类问题通常靠的是知道正确的公式或变换方式，而不是搜索一个状态空间。",
+    starterQuestion:
+      "Is there a known mathematical property (parity, divisibility, modular identity) or geometric transform (rotate, reflect, transpose) that directly solves this?",
+    starterQuestionCn: "这里是不是有一个已知的数学性质（奇偶性、整除性、模运算恒等式）或几何变换（旋转、翻转、转置）能直接解决问题？",
+    commonTrap:
+      "Reaching for a general search or DP approach when a direct formula or in-place geometric transform solves the problem in O(1) extra space and much less code.",
+    commonTrapCn: "在一个可以用公式或原地几何变换、以 O(1) 额外空间和更少代码解决的问题上，还去用通用搜索或 DP。",
+    quickTips: [
+      "For matrix rotation: transpose then reverse rows (or columns) is a reusable trick worth memorizing.",
+      "For number properties: work through a few small examples by hand to spot the pattern before coding.",
+      "Watch for overflow and off-by-one errors - math problems are unusually easy to get subtly wrong."
+    ],
+    quickTipsCn: [
+      "矩阵旋转：先转置再翻转每一行（或每一列），这是一个值得记住的通用技巧。",
+      "数字性质类问题：先手动算几个小例子，找出规律再写代码。",
+      "注意溢出和边界差一错误——数学类问题特别容易在细节上出微妙的错。"
+    ],
+    coachMoves: [
+      "Ask whether a known formula or transform applies before reaching for search or DP.",
+      "Use it when the prompt is about primes, GCD/LCM, modular arithmetic, or matrix/coordinate transforms.",
+      "Have the learner work a small example by hand to surface the underlying pattern."
+    ],
+    signalMatchers: ["prime", "gcd", "modular", "rotate matrix", "spiral matrix", "geometry", "happy number"],
+    representativeProblemIds: ["official-happy-number", "official-pow-x-n", "official-rotate-image"]
   }
 ] as const satisfies readonly TechniqueSeed[];
 

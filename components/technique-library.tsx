@@ -2,6 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { ProblemRow } from "@/components/fundamentals-series";
 import { techniqueLibrary, type Technique } from "@/lib/techniques";
 
 type Lang = "en" | "cn";
@@ -19,6 +20,8 @@ const LABELS = {
     starterQuestion: "Starter question",
     commonTrap: "Common trap",
     quickTips: "Quick tips",
+    recommended: "Recommended problems",
+    noRecommended: "No matching problem in our catalog yet - this technique is here for reference.",
     close: "Close",
     count: (n: number) => `${n} techniques`
   },
@@ -33,12 +36,14 @@ const LABELS = {
     starterQuestion: "第一个该问的问题",
     commonTrap: "常见误区",
     quickTips: "速记要点",
+    recommended: "推荐练习题",
+    noRecommended: "我们的题库里暂时没有匹配的题目——这个技巧仅供参考。",
     close: "关闭",
     count: (n: number) => `共 ${n} 个技巧`
   }
 } as const;
 
-export function TechniqueLibrary() {
+export function TechniqueLibrary({ reps }: { reps: Record<string, number> }) {
   const searchParams = useSearchParams();
   const [lang, setLang] = useState<Lang>("en");
   const [selected, setSelected] = useState<Technique | null>(null);
@@ -154,6 +159,19 @@ export function TechniqueLibrary() {
                   </span>
                 ))}
               </div>
+            </div>
+
+            <div className="mt-5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-black/40">{t.recommended}</p>
+              {selected.representativeProblemIds.length > 0 ? (
+                <div className="mt-2 grid gap-2">
+                  {selected.representativeProblemIds.map((problemId) => (
+                    <ProblemRow key={problemId} problemId={problemId} reps={reps} />
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-black/50">{t.noRecommended}</p>
+              )}
             </div>
           </div>
         </div>
