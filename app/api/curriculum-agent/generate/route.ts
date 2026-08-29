@@ -23,6 +23,12 @@ import {
   type ExperienceLevel,
   type OnboardingAnswers
 } from "@/lib/curriculum-agent";
+import {
+  PREPARATION_GOALS,
+  WEEKDAY_ORDER,
+  type PreparationGoal,
+  type WeekdayMinutes
+} from "@/lib/study-plan";
 
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -57,19 +63,46 @@ export async function POST(request: Request) {
     deadlineWeeks?: number | null;
     interviewDate?: string | null;
     dailyMinutes?: number;
+    goal?: PreparationGoal;
+    // Duration is now asked in days (7/14/30/custom) rather than weeks -
+    // converted to totalWeeks here so the existing week-based pacing math
+    // (weeksFromDeadline, expandWeeklyPlanToDays) needs no changes.
+    studyDurationDays?: number;
+    weekdayMinutes?: Partial<WeekdayMinutes>;
   };
+
+  const deadlineWeeksFromDays =
+    typeof body.studyDurationDays === "number" && body.studyDurationDays > 0
+      ? Math.max(1, Math.ceil(body.studyDurationDays / 7))
+      : null;
+
+  const goal: PreparationGoal = PREPARATION_GOALS.some((option) => option.value === body.goal)
+    ? (body.goal as PreparationGoal)
+    : "general_practice";
 
   const answers: OnboardingAnswers = {
     experienceLevel:
       body.experienceLevel === "new" || body.experienceLevel === "comfortable" ? body.experienceLevel : "rusty",
     deadlineWeeks:
-      typeof body.deadlineWeeks === "number" && body.deadlineWeeks > 0 ? body.deadlineWeeks : null,
+      deadlineWeeksFromDays ??
+      (typeof body.deadlineWeeks === "number" && body.deadlineWeeks > 0 ? body.deadlineWeeks : null),
     interviewDate:
       typeof body.interviewDate === "string" && ISO_DATE_PATTERN.test(body.interviewDate)
         ? body.interviewDate
         : null,
-    dailyMinutes: typeof body.dailyMinutes === "number" && body.dailyMinutes > 0 ? body.dailyMinutes : 45
+    dailyMinutes: typeof body.dailyMinutes === "number" && body.dailyMinutes > 0 ? body.dailyMinutes : 45,
+    goal
   };
+
+  // Every weekday needs a real, non-negative guaranteed-budget number -
+  // any missing/invalid entry falls back to the plan's overall daily
+  // average rather than silently zeroing that day out.
+  const weekdayMinutes: WeekdayMinutes = WEEKDAY_ORDER.reduce((acc, day) => {
+    const value = body.weekdayMinutes?.[day];
+    acc[day] = typeof value === "number" && value >= 0 ? value : answers.dailyMinutes;
+    return acc;
+  }, {} as WeekdayMinutes);
+  answers.weekdayMinutes = weekdayMinutes;
 
   const totalWeeks = weeksFromDeadline(resolveDeadlineWeeks(answers));
   const fallbackWeekly = buildFallbackWeeklyPlan(answers);
@@ -99,7 +132,9 @@ export async function POST(request: Request) {
   const plan: CurriculumPlan = expandWeeklyPlanToDays(
     coveredWeekly,
     DEFAULT_TRACK,
-    coachStyleForExperience(answers.experienceLevel)
+    coachStyleForExperience(answers.experienceLevel),
+    goal,
+    weekdayMinutes
   );
 
   await dbExecute(

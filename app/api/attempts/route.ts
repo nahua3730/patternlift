@@ -23,7 +23,22 @@ export async function POST(request: Request) {
     `SELECT interval_days, repetitions FROM review_items WHERE user_id = ? AND problem_title = ?`
     , [user.id, body.problemTitle]
   );
-  const schedule = getReviewSchedule(body.outcome, previousReview?.interval_days ?? 0);
+  // Study Plan Phase 1: an A-priority task gets the 1-3-7 seed schedule for
+  // its first couple of reviews instead of jumping straight to a 7-day
+  // interval - reuses the exact same getReviewSchedule path, just with
+  // this extra context. Not every attempt comes from a planned task (e.g.
+  // /practice, /start), so this is a best-effort lookup, not a hard
+  // requirement - no matching task just means the normal curve applies.
+  const priorityTask = body.problemId
+    ? await dbOne<{ priority: string }>(
+        `SELECT priority FROM study_tasks WHERE user_id = ? AND problem_id = ? ORDER BY created_at DESC LIMIT 1`,
+        [user.id, body.problemId]
+      )
+    : undefined;
+  const schedule = getReviewSchedule(body.outcome, previousReview?.interval_days ?? 0, {
+    isPriorityA: priorityTask?.priority === "A",
+    repetitions: previousReview?.repetitions ?? 0
+  });
 
   // Same deterministic engine the Progress page uses, computed here so the
   // diagnosis is persisted as a stable record of what the learner was told

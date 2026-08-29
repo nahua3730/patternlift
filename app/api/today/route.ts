@@ -9,14 +9,15 @@ import { buildDailySession } from "@/lib/session";
 import { buildMasteryModel } from "@/lib/mastery";
 import { loadRecentAttempts } from "@/lib/attempts-repo";
 import { dominantConfusionFor } from "@/lib/diagnosis";
+import { synthesizeTasksFromLegacyDay, type StudyTask } from "@/lib/study-plan";
 
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const run = await dbOne<{ output_json: string; accepted_at: string; headline: string }>(
+  const run = await dbOne<{ id: string; output_json: string; accepted_at: string; headline: string }>(
     `
-      SELECT output_json, accepted_at
+      SELECT id, output_json, accepted_at
       FROM study_plan_runs
       WHERE user_id = ? AND status = 'accepted'
       ORDER BY created_at DESC
@@ -114,6 +115,46 @@ export async function GET() {
     )
   };
 
+  // Persisted rows exist for any plan accepted after Phase 1 shipped (the
+  // accept route writes one row per task); older accepted plans have none,
+  // so fall back to synthesizing a same-looking checklist from the legacy
+  // patternId/studyMode/problemIds shape - /today never breaks for an
+  // already-in-flight plan.
+  const persistedTasks = await dbAll<{
+    id: string;
+    task_type: StudyTask["type"];
+    priority: StudyTask["priority"];
+    bucket: StudyTask["bucket"];
+    pattern_id: string | null;
+    problem_id: string | null;
+    title: string;
+    estimated_minutes: number;
+    status: "pending" | "done" | "skipped";
+  }>(
+    `
+      SELECT id, task_type, priority, bucket, pattern_id, problem_id, title, estimated_minutes, status
+      FROM study_tasks
+      WHERE plan_run_id = ? AND day_number = ?
+      ORDER BY created_at ASC
+    `,
+    [run.id, day.dayNumber]
+  );
+
+  const todayTasks =
+    persistedTasks.length > 0
+      ? persistedTasks.map((row) => ({
+          id: row.id,
+          type: row.task_type,
+          priority: row.priority,
+          bucket: row.bucket,
+          patternId: row.pattern_id,
+          problemId: row.problem_id,
+          title: row.title,
+          estimatedMinutes: row.estimated_minutes,
+          status: row.status
+        }))
+      : synthesizeTasksFromLegacyDay(day).map((task) => ({ ...task, status: "pending" as const }));
+
   return NextResponse.json({
     plan: {
       headline: plan.headline,
@@ -130,6 +171,7 @@ export async function GET() {
       studyMode: day.studyMode,
       problems
     },
+    todayTasks,
     dueReviews: dueReviewsMapped,
     streak,
     checkins,

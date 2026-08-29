@@ -14,6 +14,16 @@ import { getRemediationById, pickRemediation } from "@/lib/remediation";
 import { chooseSupportPlan, type SupportPlan } from "@/lib/support-plan";
 import type { TechniqueSkillVector } from "@/lib/skill-vector";
 import type { ScaffoldLevel } from "@/lib/scaffold";
+import { masteryGradeFor, type StudyTask } from "@/lib/study-plan";
+
+type TodayTask = StudyTask & { status: "pending" | "done" | "skipped" };
+
+const TASK_TYPE_LABEL: Record<StudyTask["type"], string> = {
+  learn: "Learn",
+  practice: "Practice",
+  recall: "Recall",
+  review: "Review"
+};
 
 type TodayResponse = {
   plan: {
@@ -34,6 +44,7 @@ type TodayResponse = {
   streak: number;
   checkins: string[];
   session: DailySession;
+  todayTasks: TodayTask[];
   todaySkills?: TechniqueSkillVector;
   todaySupport?: {
     recentScaffoldLevel?: number;
@@ -104,6 +115,17 @@ function pickFreshProblemId(usedProblemIds: string[], todayProblems: TodayRespon
   return fresh ?? null;
 }
 
+// Fire-and-forget - a synthesized legacy task's id won't match any row
+// (no-op server-side), and a failed request just means the checklist's
+// "done" state stays client-derived for that task, not a broken UI.
+function markTaskDone(taskId: string) {
+  void fetch(`/api/study-tasks/${taskId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status: "done" })
+  }).catch(() => {});
+}
+
 export function SessionRunner() {
   const { addAttempt } = usePatternLiftState();
   const [data, setData] = useState<TodayResponse | null>(null);
@@ -112,6 +134,16 @@ export function SessionRunner() {
   const [completedStepIds, setCompletedStepIds] = useState<string[]>([]);
   const [steps, setSteps] = useState<SessionStep[]>([]);
   const [lastDebugInfo, setLastDebugInfo] = useState<Record<string, unknown> | null>(null);
+  // Study Plan Phase 1: mastery grade per problemId, shown on the checklist
+  // once that problem's attempt is submitted. Core tasks' done state is
+  // derived from completedStepIds/steps below (the existing step flow is
+  // still what actually runs them); this only tracks the grade + which
+  // task ids have already been PATCHed done, and which Bonus task (if any)
+  // is currently open.
+  const [taskGrades, setTaskGrades] = useState<Record<string, 0 | 1 | 2 | 3>>({});
+  const [patchedTaskIds, setPatchedTaskIds] = useState<string[]>([]);
+  const [bonusRevealed, setBonusRevealed] = useState(false);
+  const [activeBonusTaskId, setActiveBonusTaskId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -138,6 +170,26 @@ export function SessionRunner() {
       cancelled = true;
     };
   }, []);
+
+  // A Core task is "done" once any completed step in the existing flow
+  // ran that same problemId - the task checklist is a summary view over
+  // the real step flow, not a second execution path. PATCH each newly-done
+  // task exactly once (patchedTaskIds guards re-firing on every render).
+  useEffect(() => {
+    if (!data) return;
+    const coreTasks = data.todayTasks.filter((task) => task.bucket === "core" && task.problemId);
+    const newlyDone = coreTasks.filter(
+      (task) =>
+        !patchedTaskIds.includes(task.id) &&
+        completedStepIds.some((stepId) => {
+          const step = steps.find((entry) => entry.id === stepId);
+          return step?.problemId === task.problemId;
+        })
+    );
+    if (newlyDone.length === 0) return;
+    newlyDone.forEach((task) => markTaskDone(task.id));
+    setPatchedTaskIds((current) => [...current, ...newlyDone.map((task) => task.id)]);
+  }, [data, completedStepIds, steps, patchedTaskIds]);
 
   if (error) {
     return (
@@ -192,6 +244,15 @@ export function SessionRunner() {
   // branches again, capping remediation at one cycle per original step.
   const handleAttemptForStep = (step: SessionStep, result: AttemptResult) => {
     addAttempt(result);
+
+    if (result.problemId) {
+      const grade = masteryGradeFor({
+        recognizedCorrectly: result.selectedPatternLabel === result.correctPatternLabel,
+        outcome: result.outcome,
+        highestHintLevel: result.highestHintLevel
+      });
+      setTaskGrades((current) => ({ ...current, [result.problemId]: grade }));
+    }
 
     const failureType = result.diagnosis?.primaryFailure;
     const alreadyRetried = Boolean(step.retryOfStepId);
@@ -255,8 +316,49 @@ export function SessionRunner() {
   const activeStep = steps.find((step) => !completedStepIds.includes(step.id)) ?? null;
   const allDone = steps.length > 0 && !activeStep;
 
+  const coreTasks = data.todayTasks.filter((task) => task.bucket === "core");
+  const bonusTasks = data.todayTasks.filter((task) => task.bucket === "bonus");
+  const isTaskDone = (task: TodayTask) =>
+    task.status === "done" ||
+    (task.problemId
+      ? completedStepIds.some((stepId) => steps.find((entry) => entry.id === stepId)?.problemId === task.problemId)
+      : allDone);
+  const coreDoneCount = coreTasks.filter(isTaskDone).length;
+  const coreMinutes = coreTasks.reduce((sum, task) => sum + task.estimatedMinutes, 0);
+  const bonusMinutes = bonusTasks.reduce((sum, task) => sum + task.estimatedMinutes, 0);
+  const activeBonusTask = bonusTasks.find((task) => task.id === activeBonusTaskId) ?? null;
+
   return (
     <div className="grid gap-5">
+      {coreTasks.length > 0 ? (
+        <TaskChecklist
+          coreTasks={coreTasks}
+          bonusTasks={bonusTasks}
+          coreDoneCount={coreDoneCount}
+          coreMinutes={coreMinutes}
+          bonusMinutes={bonusMinutes}
+          isTaskDone={isTaskDone}
+          taskGrades={taskGrades}
+          bonusRevealed={bonusRevealed}
+          onRevealBonus={() => setBonusRevealed(true)}
+          onStartBonus={(taskId) => setActiveBonusTaskId(taskId)}
+        />
+      ) : null}
+
+      {activeBonusTask ? (
+        <BonusTaskRunner
+          task={activeBonusTask}
+          data={data}
+          onGrade={(problemId, grade) => setTaskGrades((current) => ({ ...current, [problemId]: grade }))}
+          onAttempt={addAttempt}
+          onDone={() => {
+            markTaskDone(activeBonusTask.id);
+            setActiveBonusTaskId(null);
+          }}
+          onExit={() => setActiveBonusTaskId(null)}
+        />
+      ) : (
+      <>
       <div className="uiverse-panel p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
@@ -327,6 +429,8 @@ export function SessionRunner() {
           onAttempt={(result) => handleAttemptForStep(activeStep, result)}
         />
       ) : null}
+      </>
+      )}
 
       {process.env.NODE_ENV !== "production" && lastDebugInfo ? <DevDebugPanel info={lastDebugInfo} /> : null}
 
@@ -360,6 +464,215 @@ function DevDebugPanel({ info }: { info: Record<string, unknown> }) {
         {JSON.stringify(info, null, 2)}
       </pre>
     </details>
+  );
+}
+
+function formatMinutes(minutes: number) {
+  if (minutes <= 0) return "0m";
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (hours === 0) return `${rest}m`;
+  if (rest === 0) return `${hours}h`;
+  return `${hours}h ${rest}m`;
+}
+
+const PRIORITY_DOT: Record<StudyTask["priority"], string> = {
+  A: "bg-indigo-500",
+  B: "bg-sky-400",
+  C: "bg-black/25"
+};
+
+function TaskRow({
+  task,
+  done,
+  grade,
+  onStart
+}: {
+  task: TodayTask;
+  done: boolean;
+  grade?: 0 | 1 | 2 | 3;
+  onStart?: () => void;
+}) {
+  return (
+    <div
+      className={`flex items-center gap-3 rounded-xl border px-3.5 py-3 transition ${
+        done ? "border-emerald-200 bg-emerald-50/60" : "border-black/8 bg-white"
+      }`}
+    >
+      <span
+        className={`h-2 w-2 flex-none rounded-full ${PRIORITY_DOT[task.priority]}`}
+        aria-hidden="true"
+        title={`Priority ${task.priority}`}
+      />
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="rounded-full bg-mist px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-black/50">
+            {TASK_TYPE_LABEL[task.type]}
+          </span>
+          <span className={`truncate text-sm font-medium ${done ? "text-black/45 line-through" : "text-ink"}`}>
+            {task.title}
+          </span>
+        </div>
+      </div>
+      <span className="flex-none text-xs font-medium text-black/40">{formatMinutes(task.estimatedMinutes)}</span>
+      {done ? (
+        typeof grade === "number" ? (
+          <span className="flex-none rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
+            {grade}/3
+          </span>
+        ) : (
+          <span className="flex-none text-emerald-600" aria-hidden="true">✓</span>
+        )
+      ) : onStart ? (
+        <button
+          type="button"
+          onClick={onStart}
+          className="flex-none rounded-full border border-black/10 bg-white px-3 py-1.5 text-xs font-semibold text-black/70 transition hover:border-black/24"
+        >
+          Start
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function TaskChecklist({
+  coreTasks,
+  bonusTasks,
+  coreDoneCount,
+  coreMinutes,
+  bonusMinutes,
+  isTaskDone,
+  taskGrades,
+  bonusRevealed,
+  onRevealBonus,
+  onStartBonus
+}: {
+  coreTasks: TodayTask[];
+  bonusTasks: TodayTask[];
+  coreDoneCount: number;
+  coreMinutes: number;
+  bonusMinutes: number;
+  isTaskDone: (task: TodayTask) => boolean;
+  taskGrades: Record<string, 0 | 1 | 2 | 3>;
+  bonusRevealed: boolean;
+  onRevealBonus: () => void;
+  onStartBonus: (taskId: string) => void;
+}) {
+  return (
+    <div className="uiverse-panel p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-ember">Today&apos;s Core</p>
+          <h2 className="mt-1 text-lg font-semibold text-ink">{formatMinutes(coreMinutes)}</h2>
+        </div>
+        <span className="text-xs font-medium text-black/45">
+          {coreDoneCount} / {coreTasks.length} done
+        </span>
+      </div>
+      <div className="mt-3 grid gap-2">
+        {coreTasks.map((task) => (
+          <TaskRow key={task.id} task={task} done={isTaskDone(task)} grade={task.problemId ? taskGrades[task.problemId] : undefined} />
+        ))}
+      </div>
+
+      {bonusTasks.length > 0 ? (
+        bonusRevealed ? (
+          <div className="mt-4 border-t border-black/8 pt-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-black/45">
+              Bonus if you have time — {formatMinutes(bonusMinutes)}
+            </p>
+            <div className="mt-3 grid gap-2">
+              {bonusTasks.map((task) => (
+                <TaskRow
+                  key={task.id}
+                  task={task}
+                  done={isTaskDone(task)}
+                  grade={task.problemId ? taskGrades[task.problemId] : undefined}
+                  onStart={() => onStartBonus(task.id)}
+                />
+              ))}
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={onRevealBonus}
+            className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600"
+          >
+            + Continue studying
+          </button>
+        )
+      ) : null}
+    </div>
+  );
+}
+
+function BonusTaskRunner({
+  task,
+  data,
+  onGrade,
+  onAttempt,
+  onDone,
+  onExit
+}: {
+  task: TodayTask;
+  data: TodayResponse;
+  onGrade: (problemId: string, grade: 0 | 1 | 2 | 3) => void;
+  onAttempt: (result: AttemptResult) => void;
+  onDone: () => void;
+  onExit: () => void;
+}) {
+  const supportPlan = useMemo(
+    () =>
+      chooseSupportPlan({
+        skills: data.todaySkills,
+        defaultCoachStyle: data.plan.coachStyle,
+        recentScaffoldLevel: data.todaySupport?.recentScaffoldLevel as ScaffoldLevel | undefined,
+        recentOutcomeWasSolid: data.todaySupport?.recentOutcomeWasSolid,
+        recentFailureAfterPriorMastery: data.todaySupport?.recentFailureAfterPriorMastery
+      }),
+    [data]
+  );
+
+  if (!task.problemId) return null;
+
+  return (
+    <div className="grid gap-3">
+      <div className="uiverse-panel flex items-center justify-between p-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-ember">
+            Bonus · {TASK_TYPE_LABEL[task.type]}
+          </p>
+          <p className="mt-1 text-sm text-black/60">Extra practice - optional, no pressure.</p>
+        </div>
+        <button type="button" onClick={onExit} className="text-xs font-medium text-black/45 hover:text-ink">
+          ← Back to today
+        </button>
+      </div>
+      <PracticeWorkspace
+        key={`bonus-${task.id}-${task.problemId}`}
+        initialProblemId={task.problemId}
+        mode="practice"
+        coachStyle={supportPlan.coachStyle}
+        scaffoldLevel={supportPlan.scaffoldLevel}
+        maxHintLevel={supportPlan.maxHintLevel}
+        onAttempt={(result) => {
+          onAttempt(result);
+          if (result.problemId) {
+            onGrade(
+              result.problemId,
+              masteryGradeFor({
+                recognizedCorrectly: result.selectedPatternLabel === result.correctPatternLabel,
+                outcome: result.outcome,
+                highestHintLevel: result.highestHintLevel
+              })
+            );
+          }
+        }}
+        onComplete={onDone}
+      />
+    </div>
   );
 }
 

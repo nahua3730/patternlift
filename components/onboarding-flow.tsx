@@ -3,8 +3,17 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { CurriculumPlan, ExperienceLevel } from "@/lib/curriculum-agent";
+import {
+  PREPARATION_GOALS,
+  WEEKDAY_LABEL,
+  WEEKDAY_ORDER,
+  defaultWeekdayMinutes,
+  type PreparationGoal,
+  type WeekdayKey,
+  type WeekdayMinutes
+} from "@/lib/study-plan";
 
-type Step = "experience" | "deadline" | "time" | "generating" | "reveal" | "error";
+type Step = "goal" | "experience" | "duration" | "time" | "generating" | "reveal" | "error";
 
 type Message = { id: string; speaker: "coach" | "user"; text: string };
 
@@ -16,17 +25,24 @@ const EXPERIENCE_OPTIONS: { value: ExperienceLevel; label: string }[] = [
   { value: "comfortable", label: "Fairly comfortable" }
 ];
 
-const DEADLINE_OPTIONS: { value: number | null; label: string }[] = [
-  { value: 2, label: "~2 weeks" },
-  { value: 4, label: "~1 month" },
-  { value: 8, label: "~2 months" },
-  { value: null, label: "No deadline yet" }
+// Duration is asked in days now (7/14/30/custom) rather than weeks - kept
+// alongside an exact-date option for anyone who prefers naming their
+// actual interview date. Both convert to totalWeeks server-side.
+const DURATION_OPTIONS: { days: number; label: string }[] = [
+  { days: 7, label: "7 days" },
+  { days: 14, label: "14 days" },
+  { days: 30, label: "30 days" }
 ];
 
-const TIME_OPTIONS: { value: number; label: string }[] = [
-  { value: 30, label: "~30 min" },
-  { value: 50, label: "~45–60 min" },
-  { value: 120, label: "2h+" }
+// Each preset's VALUE is the lower bound of its range - stored as the
+// guaranteed Core budget for that weekday, per the approved "guaranteed
+// budget = lower bound, extra time becomes Bonus" design.
+const WEEKDAY_TIME_PRESETS: { value: number; label: string }[] = [
+  { value: 0, label: "Off" },
+  { value: 60, label: "1–2h" },
+  { value: 120, label: "2–3h" },
+  { value: 180, label: "3–4h" },
+  { value: 240, label: "4–5h" }
 ];
 
 const STUDY_MODE_LABEL: Record<string, string> = {
@@ -38,24 +54,28 @@ const STUDY_MODE_LABEL: Record<string, string> = {
 
 export function OnboardingFlow({ hasExistingPlan = false }: { hasExistingPlan?: boolean }) {
   const router = useRouter();
-  const [step, setStep] = useState<Step>("experience");
+  const [step, setStep] = useState<Step>("goal");
   const [messages, setMessages] = useState<Message[]>([
     ...(hasExistingPlan
       ? [
           {
             id: "q0",
             speaker: "coach" as const,
-            text: "You've already got a plan running — let's rebuild it. Same three quick questions, and your new plan replaces it once you start Day 1."
+            text: "You've already got a plan running — let's rebuild it. Same quick questions, and your new plan replaces it once you start Day 1."
           }
         ]
       : []),
-    { id: "q1", speaker: "coach", text: "Have you solved LeetCode-style problems before, even a few?" }
+    { id: "q1", speaker: "coach", text: "What's your main goal right now?" }
   ]);
+  const [goal, setGoal] = useState<PreparationGoal | null>(null);
   const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel | null>(null);
-  const [deadlineWeeks, setDeadlineWeeks] = useState<number | null | undefined>(undefined);
+  const [studyDurationDays, setStudyDurationDays] = useState<number | null>(null);
   const [interviewDate, setInterviewDate] = useState<string | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [pickedDate, setPickedDate] = useState("");
+  const [showCustomDays, setShowCustomDays] = useState(false);
+  const [customDays, setCustomDays] = useState("");
+  const [weekdayMinutes, setWeekdayMinutes] = useState<WeekdayMinutes>(() => defaultWeekdayMinutes(60));
   const [result, setResult] = useState<GenerateResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [launching, setLaunching] = useState(false);
@@ -64,27 +84,41 @@ export function OnboardingFlow({ hasExistingPlan = false }: { hasExistingPlan?: 
     setMessages((current) => [...current, message]);
   }
 
+  function answerGoal(value: PreparationGoal, label: string) {
+    setGoal(value);
+    pushMessage({ id: `a-goal-${value}`, speaker: "user", text: label });
+    pushMessage({ id: "q1b", speaker: "coach", text: "Have you solved LeetCode-style problems before, even a few?" });
+    setStep("experience");
+  }
+
   function answerExperience(value: ExperienceLevel, label: string) {
     setExperienceLevel(value);
     pushMessage({ id: `a-${value}`, speaker: "user", text: label });
     pushMessage({
       id: "q2",
       speaker: "coach",
-      text: "Got it. Do you have an interview coming up, or is this open-ended?"
+      text: "Got it. How long are you preparing for?"
     });
-    setStep("deadline");
+    setStep("duration");
   }
 
-  function answerDeadline(value: number | null, label: string) {
-    setDeadlineWeeks(value);
+  function answerDuration(days: number, label: string) {
+    setStudyDurationDays(days);
     setInterviewDate(null);
-    pushMessage({ id: `a-deadline-${label}`, speaker: "user", text: label });
+    setShowCustomDays(false);
+    pushMessage({ id: `a-duration-${days}`, speaker: "user", text: label });
     pushMessage({
       id: "q3",
       speaker: "coach",
-      text: "Last one — how long can you realistically study each day?"
+      text: "Last one — how much time can you study each day? Adjust any day that's different, then continue."
     });
     setStep("time");
+  }
+
+  function confirmCustomDays() {
+    const parsed = Number(customDays);
+    if (!Number.isFinite(parsed) || parsed <= 0) return;
+    answerDuration(Math.round(parsed), `${Math.round(parsed)} days`);
   }
 
   function confirmInterviewDate() {
@@ -95,19 +129,25 @@ export function OnboardingFlow({ hasExistingPlan = false }: { hasExistingPlan?: 
       year: "numeric"
     });
     setInterviewDate(pickedDate);
-    setDeadlineWeeks(null);
+    setStudyDurationDays(null);
     setShowDatePicker(false);
     pushMessage({ id: `a-deadline-date`, speaker: "user", text: label });
     pushMessage({
       id: "q3",
       speaker: "coach",
-      text: "Last one — how long can you realistically study each day?"
+      text: "Last one — how much time can you study each day? Adjust any day that's different, then continue."
     });
     setStep("time");
   }
 
-  async function answerTime(value: number, label: string) {
-    pushMessage({ id: `a-time-${label}`, speaker: "user", text: label });
+  function setWeekdayValue(day: WeekdayKey, value: number) {
+    setWeekdayMinutes((current) => ({ ...current, [day]: value }));
+  }
+
+  async function confirmWeekdayTime() {
+    const totalWeeklyMinutes = WEEKDAY_ORDER.reduce((sum, day) => sum + weekdayMinutes[day], 0);
+    const summaryLabel = `About ${Math.round(totalWeeklyMinutes / 60)}h / week`;
+    pushMessage({ id: "a-time", speaker: "user", text: summaryLabel });
     setStep("generating");
     setError(null);
 
@@ -117,9 +157,11 @@ export function OnboardingFlow({ hasExistingPlan = false }: { hasExistingPlan?: 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           experienceLevel,
-          deadlineWeeks: deadlineWeeks ?? null,
+          goal,
+          studyDurationDays,
           interviewDate,
-          dailyMinutes: value
+          dailyMinutes: Math.round(totalWeeklyMinutes / 7),
+          weekdayMinutes
         })
       });
 
@@ -291,6 +333,21 @@ export function OnboardingFlow({ hasExistingPlan = false }: { hasExistingPlan?: 
           ) : null}
         </div>
 
+        {step === "goal" ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {PREPARATION_GOALS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => answerGoal(option.value, option.label)}
+                className="uiverse-chip px-4 py-2.5 text-sm font-semibold text-slate-700"
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+
         {step === "experience" ? (
           <div className="mt-4 flex flex-wrap gap-2">
             {EXPERIENCE_OPTIONS.map((option) => (
@@ -306,14 +363,14 @@ export function OnboardingFlow({ hasExistingPlan = false }: { hasExistingPlan?: 
           </div>
         ) : null}
 
-        {step === "deadline" ? (
+        {step === "duration" ? (
           <>
             <div className="mt-4 flex flex-wrap gap-2">
-              {DEADLINE_OPTIONS.map((option) => (
+              {DURATION_OPTIONS.map((option) => (
                 <button
                   key={option.label}
                   type="button"
-                  onClick={() => answerDeadline(option.value, option.label)}
+                  onClick={() => answerDuration(option.days, option.label)}
                   className="uiverse-chip px-4 py-2.5 text-sm font-semibold text-slate-700"
                 >
                   {option.label}
@@ -321,12 +378,46 @@ export function OnboardingFlow({ hasExistingPlan = false }: { hasExistingPlan?: 
               ))}
               <button
                 type="button"
-                onClick={() => setShowDatePicker((current) => !current)}
+                onClick={() => {
+                  setShowCustomDays((current) => !current);
+                  setShowDatePicker(false);
+                }}
+                className={`uiverse-chip px-4 py-2.5 text-sm font-semibold ${showCustomDays ? "uiverse-chip-active" : "text-slate-700"}`}
+              >
+                Custom
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDatePicker((current) => !current);
+                  setShowCustomDays(false);
+                }}
                 className={`uiverse-chip px-4 py-2.5 text-sm font-semibold ${showDatePicker ? "uiverse-chip-active" : "text-slate-700"}`}
               >
                 Pick an exact date
               </button>
             </div>
+
+            {showCustomDays ? (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <input
+                  type="number"
+                  min={1}
+                  value={customDays}
+                  onChange={(event) => setCustomDays(event.target.value)}
+                  placeholder="Days"
+                  className="uiverse-field w-28 px-3.5 py-2.5 text-sm text-ink"
+                />
+                <button
+                  type="button"
+                  onClick={confirmCustomDays}
+                  disabled={!customDays}
+                  className="uiverse-button px-4 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Confirm
+                </button>
+              </div>
+            ) : null}
 
             {showDatePicker ? (
               <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -351,17 +442,37 @@ export function OnboardingFlow({ hasExistingPlan = false }: { hasExistingPlan?: 
         ) : null}
 
         {step === "time" ? (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {TIME_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => answerTime(option.value, option.label)}
-                className="uiverse-chip px-4 py-2.5 text-sm font-semibold text-slate-700"
-              >
-                {option.label}
-              </button>
-            ))}
+          <div className="mt-4">
+            <div className="grid gap-2">
+              {WEEKDAY_ORDER.map((day) => (
+                <div key={day} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5">
+                  <span className="w-20 text-sm font-semibold text-slate-700">{WEEKDAY_LABEL[day]}</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {WEEKDAY_TIME_PRESETS.map((preset) => (
+                      <button
+                        key={preset.value}
+                        type="button"
+                        onClick={() => setWeekdayValue(day, preset.value)}
+                        className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                          weekdayMinutes[day] === preset.value
+                            ? "bg-ink text-white"
+                            : "border border-black/10 bg-mist text-black/60 hover:border-black/24"
+                        }`}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => void confirmWeekdayTime()}
+              className="uiverse-button mt-4 px-4 py-2.5 text-sm font-semibold"
+            >
+              Continue →
+            </button>
           </div>
         ) : null}
       </div>

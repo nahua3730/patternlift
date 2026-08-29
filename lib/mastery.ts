@@ -195,7 +195,28 @@ export function buildMasteryModel(attempts: MasteryAttempt[]) {
   };
 }
 
-export function getReviewSchedule(outcome: MasteryAttempt["outcome"], previousInterval = 0) {
+export function getReviewSchedule(
+  outcome: MasteryAttempt["outcome"],
+  previousInterval = 0,
+  options?: { isPriorityA?: boolean; repetitions?: number }
+) {
+  // Study Plan Phase 1: seed the first two intervals for an A-priority
+  // task at 3 then 4 days (landing at day 3, then day 7 from the original
+  // attempt) instead of jumping straight to the usual 7-day interval -
+  // matches the "1-3-7" spaced-recall ask by reusing this same scheduling
+  // path, not a parallel system. Only applies on a genuinely solid
+  // outcome; confused/partial outcomes fall through to the existing logic
+  // below regardless of priority - a shaky recall should come back sooner,
+  // not follow a fixed seed schedule. Default behavior (no options) is
+  // unchanged from before this addition.
+  if (options?.isPriorityA && outcome === "solid" && (options.repetitions ?? 0) < 2) {
+    const seedIntervals = [3, 4];
+    const intervalDays = seedIntervals[options.repetitions ?? 0];
+    const dueAt = new Date();
+    dueAt.setDate(dueAt.getDate() + intervalDays);
+    return { intervalDays, dueAt: dueAt.toISOString() };
+  }
+
   const intervalDays = outcome === "confused"
     ? 1
     : outcome === "partial"

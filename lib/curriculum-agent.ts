@@ -5,6 +5,15 @@ import {
   type RoadmapTrack
 } from "@/lib/product";
 import { hasNativeProblemCodeConfig } from "@/lib/problem-code";
+import {
+  WEEKDAY_ORDER,
+  assignPriority,
+  bucketTasks,
+  defaultWeekdayMinutes,
+  type PreparationGoal,
+  type StudyTask,
+  type WeekdayMinutes
+} from "@/lib/study-plan";
 
 export type ExperienceLevel = "new" | "rusty" | "comfortable";
 export type StudyMode = "learn" | "recognize" | "practice" | "review";
@@ -19,6 +28,11 @@ export type OnboardingAnswers = {
   deadlineWeeks: number | null;
   interviewDate: string | null;
   dailyMinutes: number;
+  // Phase 1 additions. Both optional so anything constructing
+  // OnboardingAnswers without them (there's nothing left that does, but
+  // this keeps the type honest about its own history) still compiles.
+  goal?: PreparationGoal;
+  weekdayMinutes?: WeekdayMinutes;
 };
 
 export type CurriculumWeeklyPlan = {
@@ -40,7 +54,14 @@ export type CurriculumDay = {
   patternId: string | null;
   patternLabel: string;
   studyMode: StudyMode;
+  // problemIds stays exactly as before - it's a summary of this day's
+  // CORE tasks (tasks[].bucket === "core"), so every existing reader
+  // (session.ts's buildDailySession, /api/today) keeps working unchanged.
   problemIds: string[];
+  // Phase 1: optional so old accepted plans (persisted before this
+  // change) parse into this type with tasks simply absent - /api/today
+  // synthesizes a fallback for those, see lib/study-plan.ts.
+  tasks?: StudyTask[];
 };
 
 export type CurriculumPlan = {
@@ -283,18 +304,61 @@ function pickProblem(patternId: string, track: RoadmapTrack, used: Set<string>) 
 const MINUTES_PER_PROBLEM = 25;
 const MAX_PROBLEMS_PER_DAY = 5;
 
+// Slot index within a week doubles as a weekday index (slot 0 = Monday,
+// matching DAY_TEMPLATE's own week-shaped layout) purely so a day's
+// guaranteed budget can be looked up from the learner's weekdayMinutes -
+// the plan doesn't track which real calendar date a slot lands on.
+function buildDayTasks(
+  dayNumber: number,
+  studyMode: StudyMode,
+  patternId: string | null,
+  problemIds: string[],
+  goal: PreparationGoal,
+  guaranteedMinutes: number
+): StudyTask[] {
+  const pattern = patternId ? patternOptions.find((entry) => entry.id === patternId) : undefined;
+
+  if (studyMode === "review" || problemIds.length === 0) {
+    const raw = [
+      {
+        id: `task-${dayNumber}-review`,
+        type: "review" as const,
+        priority: "A" as const,
+        patternId: null,
+        problemId: null,
+        title: "Mixed pattern review",
+        estimatedMinutes: Math.max(15, Math.min(30, guaranteedMinutes || 20))
+      }
+    ];
+    return bucketTasks(raw, guaranteedMinutes).map((task) => ({ ...task }));
+  }
+
+  const priority = assignPriority(patternId, goal);
+  const raw = problemIds.map((problemId, index) => {
+    const problem = allProblems.find((entry) => entry.id === problemId);
+    return {
+      id: `task-${dayNumber}-${index}`,
+      type: (studyMode === "learn" && index === 0 ? "learn" : "practice") as StudyTask["type"],
+      priority,
+      patternId,
+      problemId,
+      title: problem ? `${pattern?.label ?? "Practice"} — ${problem.title}` : (pattern?.label ?? "Practice"),
+      estimatedMinutes: MINUTES_PER_PROBLEM
+    };
+  });
+  return bucketTasks(raw, guaranteedMinutes).map((task) => ({ ...task }));
+}
+
 export function expandWeeklyPlanToDays(
   weeklyPlan: CurriculumWeeklyPlan,
   track: RoadmapTrack,
-  coachStyle: CoachStyle
+  coachStyle: CoachStyle,
+  goal: PreparationGoal = "general_practice",
+  weekdayMinutes: WeekdayMinutes = defaultWeekdayMinutes(weeklyPlan.dailyMinutes)
 ): CurriculumPlan {
   const used = new Set<string>();
   const days: CurriculumDay[] = [];
   let dayNumber = 0;
-  const problemsPerDay = Math.min(
-    MAX_PROBLEMS_PER_DAY,
-    Math.max(1, Math.round(weeklyPlan.dailyMinutes / MINUTES_PER_PROBLEM))
-  );
 
   for (const week of weeklyPlan.weeks) {
     for (let slot = 0; slot < 7; slot += 1) {
@@ -302,27 +366,43 @@ export function expandWeeklyPlanToDays(
       const studyMode = DAY_TEMPLATE[slot];
       const patternId = week.focusPatternIds[slot % week.focusPatternIds.length];
       const pattern = patternOptions.find((entry) => entry.id === patternId);
+      const guaranteedMinutes = weekdayMinutes[WEEKDAY_ORDER[slot]] ?? weeklyPlan.dailyMinutes;
 
       if (studyMode === "review") {
+        const tasks = buildDayTasks(dayNumber, "review", null, [], goal, guaranteedMinutes);
         days.push({
           dayNumber,
           weekNumber: week.weekNumber,
           patternId: null,
           patternLabel: "Mixed review",
           studyMode: "review",
-          problemIds: []
+          problemIds: [],
+          tasks
         });
         continue;
       }
 
+      // One extra problem beyond what the guaranteed budget fits, so
+      // there's real content available for the Bonus bucket rather than
+      // Bonus always being empty.
+      const problemsPerDay = Math.min(
+        MAX_PROBLEMS_PER_DAY,
+        Math.max(1, Math.round(guaranteedMinutes / MINUTES_PER_PROBLEM)) + 1
+      );
       const problemIds = Array.from({ length: problemsPerDay }, () => pickProblem(patternId, track, used).id);
+      const tasks = buildDayTasks(dayNumber, studyMode, patternId, problemIds, goal, guaranteedMinutes);
+      const coreProblemIds = tasks.filter((task) => task.bucket === "core" && task.problemId).map((task) => task.problemId as string);
+
       days.push({
         dayNumber,
         weekNumber: week.weekNumber,
         patternId,
         patternLabel: pattern?.label ?? "Pattern practice",
         studyMode,
-        problemIds
+        // Kept to exactly what today's session flow (session.ts) actually
+        // consumes - the day's CORE work, not the Bonus extras.
+        problemIds: coreProblemIds.length > 0 ? coreProblemIds : problemIds.slice(0, 1),
+        tasks
       });
     }
   }

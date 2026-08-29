@@ -175,6 +175,23 @@ async function runPostgresMigrations(sql: NeonClient) {
       statement_json TEXT NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
     )`,
+    // Study Plan Phase 1: one row per task in an accepted plan.
+    `CREATE TABLE IF NOT EXISTS study_tasks (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      plan_run_id TEXT NOT NULL REFERENCES study_plan_runs(id) ON DELETE CASCADE,
+      day_number INTEGER NOT NULL,
+      task_type TEXT NOT NULL,
+      priority TEXT NOT NULL,
+      bucket TEXT NOT NULL,
+      pattern_id TEXT,
+      problem_id TEXT,
+      title TEXT NOT NULL,
+      estimated_minutes INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      completed_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
     "CREATE INDEX IF NOT EXISTS sessions_user_id_idx ON sessions(user_id)",
     "CREATE INDEX IF NOT EXISTS attempts_user_created_idx ON attempts(user_id, created_at DESC)",
     "CREATE INDEX IF NOT EXISTS review_items_user_due_idx ON review_items(user_id, due_at)",
@@ -182,6 +199,7 @@ async function runPostgresMigrations(sql: NeonClient) {
     "CREATE INDEX IF NOT EXISTS study_plan_runs_user_created_idx ON study_plan_runs(user_id, created_at DESC)",
     "CREATE INDEX IF NOT EXISTS daily_checkins_user_date_idx ON daily_checkins(user_id, checkin_date DESC)",
     "CREATE INDEX IF NOT EXISTS problem_marks_user_problem_idx ON problem_marks(user_id, problem_id)",
+    "CREATE INDEX IF NOT EXISTS study_tasks_plan_day_idx ON study_tasks(plan_run_id, day_number)",
     // review_items predates the problem_id column - CREATE TABLE IF NOT EXISTS
     // above is a no-op against an already-existing table, so the column needs
     // its own idempotent ADD for deployments where the table already exists.
@@ -292,6 +310,22 @@ function runSqliteMigrations(db: DatabaseSync) {
         problem_id TEXT NOT NULL UNIQUE,
         model TEXT NOT NULL,
         statement_json TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS study_tasks (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        plan_run_id TEXT NOT NULL,
+        day_number INTEGER NOT NULL,
+        task_type TEXT NOT NULL,
+        priority TEXT NOT NULL,
+        bucket TEXT NOT NULL,
+        pattern_id TEXT,
+        problem_id TEXT,
+        title TEXT NOT NULL,
+        estimated_minutes INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        completed_at TEXT,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
     `);
