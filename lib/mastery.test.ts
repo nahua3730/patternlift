@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { getReviewSchedule } from "@/lib/mastery";
+import { getReviewSchedule } from "@/lib/review-schedule";
 
 test("getReviewSchedule: default behavior (no options) is unchanged - confused/partial/solid curve", () => {
   assert.equal(getReviewSchedule("confused").intervalDays, 1);

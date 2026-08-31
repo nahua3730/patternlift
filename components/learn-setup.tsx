@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { patternOptions } from "@/lib/product";
+import { patternOptions } from "@/lib/pattern-catalog";
 
 const recommendedIds = ["sliding-window", "two-pointers", "hashing"];
 

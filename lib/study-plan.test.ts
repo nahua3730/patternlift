@@ -5,6 +5,7 @@ import {
   bucketTasks,
   masteryGradeFor,
   synthesizeTasksFromLegacyDay,
+  transferImplementationFor,
   type Priority
 } from "@/lib/study-plan";
 
@@ -137,4 +138,28 @@ test("masteryGradeFor: three different learner profiles land on three different 
   const shaky = masteryGradeFor({ recognizedCorrectly: true, outcome: "solid", highestHintLevel: 2 });
   const missed = masteryGradeFor({ recognizedCorrectly: false, outcome: "confused" });
   assert.equal(new Set([strong, shaky, missed]).size, 3);
+});
+
+test("Phase 2A: passing no-help code is a strong implementation even when recognition was wrong", () => {
+  assert.deepEqual(
+    transferImplementationFor({
+      codePassed: true,
+      hintsUsed: 0,
+      highestHintLevel: 0,
+      fallbackOutcome: "partial"
+    }),
+    { outcome: "solid", grade: 3 }
+  );
+});
+
+test("Phase 2A: passing code with meaningful help remains a helped implementation", () => {
+  assert.deepEqual(
+    transferImplementationFor({
+      codePassed: true,
+      hintsUsed: 2,
+      highestHintLevel: 2,
+      fallbackOutcome: "solid"
+    }),
+    { outcome: "partial", grade: 1 }
+  );
 });

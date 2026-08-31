@@ -74,7 +74,15 @@ type ProgressPanelProps = {
   masteryModel: ReturnType<typeof buildMasteryModel>;
   reps: Record<string, number>;
   recentAttempts: MasteryAttempt[];
+  // Phase 2A: per-pattern Transfer evidence. Absent/zero-total entries
+  // render as "Not enough data" rather than a misleading percentage.
+  recognitionAccuracyByPattern: Record<string, { correct: number; total: number }>;
+  transferSuccessByPattern: Record<string, { solid: number; total: number }>;
 };
+
+// Same spirit as skill-vector.ts's evidenceConfidence() - a percentage
+// built on too little evidence reads as more certain than it is.
+const MIN_TRANSFER_EVIDENCE = 2;
 
 const STATUS_COPY: Record<
   "new" | "building" | "strong" | "mastered",
@@ -93,7 +101,9 @@ export function ProgressPanel({
   streak,
   masteryModel,
   reps,
-  recentAttempts
+  recentAttempts,
+  recognitionAccuracyByPattern,
+  transferSuccessByPattern
 }: ProgressPanelProps) {
   const accuracy = totalAttempts === 0 ? 0 : Math.round((solidAttempts / totalAttempts) * 100);
   const masteryById = new Map(masteryModel.mastery.map((pattern) => [pattern.id, pattern]));
@@ -129,7 +139,9 @@ export function ProgressPanel({
       recommendedProblemId: evidence?.recommendedProblemId ?? null,
       skills: evidence?.skills,
       bottleneck: bottleneckFor(evidence?.skills),
-      supportTrend: supportTrendFor(recentAttempts, pattern.label)
+      supportTrend: supportTrendFor(recentAttempts, pattern.label),
+      recognitionAccuracy: recognitionAccuracyByPattern[pattern.id],
+      transferSuccess: transferSuccessByPattern[pattern.id]
     };
   });
 
@@ -231,6 +243,10 @@ export function ProgressPanel({
                       </span>
                     ) : null}
                     {pattern.skills ? <SkillBreakdown skills={pattern.skills} /> : null}
+                    <TransferEvidence
+                      recognitionAccuracy={pattern.recognitionAccuracy}
+                      transferSuccess={pattern.transferSuccess}
+                    />
                   </>
                 }
                 trailing={
@@ -349,6 +365,44 @@ function SkillBreakdown({ skills }: { skills: TechniqueSkillVector }) {
         })}
       </div>
     </details>
+  );
+}
+
+// Phase 2A: Recognition Accuracy and Transfer Solve Success, kept as two
+// separate lines - never collapsed into the existing single skills score.
+// Recognition Accuracy comes from pattern_predictions (a structured blind
+// guess, made before any help was available); Transfer Solve Success
+// comes from the independent solve that followed. Both stay silent
+// ("Not enough data") below a small evidence threshold rather than
+// showing a percentage built on 1 data point.
+function TransferEvidence({
+  recognitionAccuracy,
+  transferSuccess
+}: {
+  recognitionAccuracy?: { correct: number; total: number };
+  transferSuccess?: { solid: number; total: number };
+}) {
+  if (!recognitionAccuracy && !transferSuccess) return null;
+
+  return (
+    <div className="mt-3 grid gap-1 text-xs text-black/58">
+      <div className="flex items-center justify-between">
+        <span>Recognition accuracy (Transfer)</span>
+        <span className="font-semibold text-black/70">
+          {recognitionAccuracy && recognitionAccuracy.total >= MIN_TRANSFER_EVIDENCE
+            ? `${Math.round((recognitionAccuracy.correct / recognitionAccuracy.total) * 100)}% (${recognitionAccuracy.correct}/${recognitionAccuracy.total})`
+            : "Not enough data"}
+        </span>
+      </div>
+      <div className="flex items-center justify-between">
+        <span>Transfer solve success</span>
+        <span className="font-semibold text-black/70">
+          {transferSuccess && transferSuccess.total >= MIN_TRANSFER_EVIDENCE
+            ? `${Math.round((transferSuccess.solid / transferSuccess.total) * 100)}% (${transferSuccess.solid}/${transferSuccess.total})`
+            : "Not enough data"}
+        </span>
+      </div>
+    </div>
   );
 }
 

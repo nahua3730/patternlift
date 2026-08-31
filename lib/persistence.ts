@@ -1,6 +1,6 @@
 import type { AttemptResult } from "@/components/practice-workspace";
 import type { HistoryItem, ReviewItem } from "@/components/patternlift-state";
-import { getReviewSchedule } from "@/lib/mastery";
+import { getReviewSchedule } from "@/lib/review-schedule";
 
 export type PersistenceSnapshot = {
   history: HistoryItem[];

@@ -3,8 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { parseCoachAgentStream, type CoachRequest } from "@/lib/coach";
-import { allProblems, patternOptions } from "@/lib/product";
-import { buildTechniqueBriefs, getSuggestedTechniques } from "@/lib/techniques";
+import { patternOptions } from "@/lib/pattern-catalog";
 import { mimeTypeToExtension, pickRecordingMimeType } from "@/lib/voice-recording";
 
 type DockMessage = {
@@ -102,8 +101,6 @@ export function GlobalCoachDock() {
   }, [pathname]);
 
   const activeProblemId = searchParams.get("problem");
-  const activeProblem =
-    allProblems.find((problem) => problem.id === activeProblemId) ?? null;
 
   const selectedPatternIds = searchParams
     .get("patterns")
@@ -111,15 +108,8 @@ export function GlobalCoachDock() {
     .filter(Boolean) ?? [];
 
   const primaryPattern =
-    (activeProblem
-      ? patternOptions.find((pattern) => pattern.id === activeProblem.targetPatternId)
-      : null) ??
     patternOptions.find((pattern) => pattern.id === selectedPatternIds[0]) ??
     null;
-
-  const contrastPattern = activeProblem
-    ? patternOptions.find((pattern) => pattern.id === activeProblem.contrastPatternId) ?? null
-    : null;
 
   const coachStyle =
     (searchParams.get("coach") as CoachRequest["coachStyle"] | null) ?? "guided";
@@ -133,8 +123,9 @@ export function GlobalCoachDock() {
     return "recognize";
   })();
 
-  const contextProblemPrompt = activeProblem?.prompt ??
+  const contextProblemPrompt =
     [
+      activeProblemId ? `Current problem id: ${activeProblemId}.` : null,
       `Current page: ${pageTitles[pageKind]}.`,
       primaryPattern ? `Current pattern focus: ${primaryPattern.label}.` : null,
       pageKind === "home"
@@ -144,17 +135,20 @@ export function GlobalCoachDock() {
       .filter(Boolean)
       .join(" ");
 
-  const suggestedTechniques = buildTechniqueBriefs(
-    getSuggestedTechniques({
-      primaryPatternId: primaryPattern?.id ?? null,
-      contrastPatternId: contrastPattern?.id ?? null,
-      problemPrompt: contextProblemPrompt
-    })
-  );
+  const suggestedTechniques = primaryPattern
+    ? [{
+        title: primaryPattern.label,
+        whyItFits: primaryPattern.coachPrompt,
+        starterQuestion: primaryPattern.firstSteps[0],
+        commonTrap: "Do not commit until the prompt's strongest clue matches the invariant.",
+        quickTips: [...primaryPattern.firstSteps],
+        coachMoves: [primaryPattern.coachPrompt]
+      }]
+    : [];
 
   const introMessage = useMemo(() => {
-    if (pageKind === "practice" && activeProblem) {
-      return `We’re on ${activeProblem.title}. Ask for a hint, a pattern check, a code-direction sanity check, or a cleaner path when you want one.`;
+    if (pageKind === "practice" && activeProblemId) {
+      return "We’re on the selected problem. Ask for a hint, a pattern check, a code-direction sanity check, or a cleaner path when you want one.";
     }
 
     if (pageKind === "learn" && primaryPattern) {
@@ -174,12 +168,12 @@ export function GlobalCoachDock() {
     }
 
     return "Tell me what feels hardest right now, and I’ll help you pick the best way to study next.";
-  }, [activeProblem, pageKind, primaryPattern]);
+  }, [activeProblemId, pageKind, primaryPattern]);
 
   useEffect(() => {
     setMessages([
       {
-        id: `${pageKind}-${activeProblem?.id ?? primaryPattern?.id ?? "home"}-intro`,
+        id: `${pageKind}-${activeProblemId ?? primaryPattern?.id ?? "home"}-intro`,
         speaker: "coach",
         text: introMessage
       }
@@ -187,7 +181,7 @@ export function GlobalCoachDock() {
     setDraft("");
     setError(null);
     setComposerOpen(false);
-  }, [activeProblem?.id, introMessage, pageKind, primaryPattern?.id]);
+  }, [activeProblemId, introMessage, pageKind, primaryPattern?.id]);
 
   useEffect(() => {
     setIsOpen(false);
@@ -227,7 +221,7 @@ export function GlobalCoachDock() {
     const requestBody: CoachRequest = {
       studyMode,
       coachStyle,
-      problemTitle: activeProblem?.title ?? pageTitles[pageKind],
+      problemTitle: pageTitles[pageKind],
       problemPrompt: contextProblemPrompt,
       userResponse: nextText,
       conversationHistory: nextConversation.map((message) => ({
@@ -236,7 +230,7 @@ export function GlobalCoachDock() {
       })),
       selectedPatternLabel: primaryPattern?.label ?? "Still choosing a pattern",
       correctPatternLabel: primaryPattern?.label ?? "General interview prep",
-      contrastPatternLabel: contrastPattern?.label ?? "Neighboring pattern",
+      contrastPatternLabel: "Neighboring pattern",
       suggestedTechniques,
       selectedClues: [],
       selectedFirstStep: null,
@@ -244,12 +238,10 @@ export function GlobalCoachDock() {
       currentCode: "",
       localOutcome: "partial",
       localScore: 50,
-      reviewQuestion:
-        activeProblem?.reviewQuestion ??
-        "What clue should you remember next time so the right pattern becomes easier to spot?",
-      problemId: activeProblem?.id,
+      reviewQuestion: "What clue should you remember next time so the right pattern becomes easier to spot?",
+      problemId: activeProblemId ?? undefined,
       patternId: primaryPattern?.id,
-      contrastPatternId: contrastPattern?.id
+      contrastPatternId: undefined
     };
 
     const coachMessageId = `coach-${Date.now()}`;

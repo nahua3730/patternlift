@@ -6,18 +6,15 @@ import type { editor as MonacoEditor } from "monaco-editor";
 import { parseCoachAgentStream, type CoachRequest } from "@/lib/coach";
 import { SessionActionBar } from "@/components/session-action-bar";
 import { compareValues } from "@/lib/compare-values";
-import {
-  allProblems,
-  patternOptions
-} from "@/lib/product";
+import type { AppProblem } from "@/lib/product";
+import { patternOptions } from "@/lib/pattern-catalog";
 import {
   getAvailableLanguages,
-  getProblemCodeConfig,
   getStarterCode,
-  hasNativeProblemCodeConfig,
   type CompareMode,
+  type ProblemCodeConfig,
   type SupportedLanguage
-} from "@/lib/problem-code";
+} from "@/lib/problem-code-client";
 import {
   buildTechniqueBriefs,
   getSuggestedTechniques,
@@ -169,6 +166,13 @@ export type AttemptResult = {
   // lets the server record whether the remediation actually helped.
   isRetryAfterRemediation?: boolean;
   remediationUsed?: string[];
+  // Phase 2A: which StudyTask this attempt belongs to, when known - set
+  // by session-runner.tsx (which has the active SessionStep's studyTaskId
+  // in scope), not by PracticeWorkspace itself. Persisted on the attempts
+  // row so it can be joined back to study_tasks (e.g. for Transfer solve
+  // success on the Progress page) without an ambiguous (user, problemId)
+  // lookup.
+  studyTaskId?: string;
 };
 
 type PracticeWorkspaceProps = {
@@ -182,6 +186,12 @@ type PracticeWorkspaceProps = {
   // because the standalone /practice page has no "next step" to advance to.
   onComplete?: () => void;
   initialProblemId?: string;
+  // A task-scoped runtime hydrated by the server. Transfer callers may only
+  // obtain this after an authoritative prediction exists.
+  problemRuntime?: AppProblem;
+  problemCodeConfig?: ProblemCodeConfig;
+  hasNativeCodeConfig?: boolean;
+  studyTaskId?: string;
   mode?: "learn" | "recognize" | "practice";
   coachStyle?: CoachStyle;
   selectedPatternIds?: string[];
@@ -274,10 +284,62 @@ const modeCopy = {
   }
 } as const;
 
-export function PracticeWorkspace({
+export function PracticeWorkspace(props: PracticeWorkspaceProps) {
+  const { initialProblemId = "two-sum", problemRuntime, problemCodeConfig, hasNativeCodeConfig, studyTaskId } = props;
+  const [runtime, setRuntime] = useState<{
+    problem: AppProblem;
+    codeConfig: ProblemCodeConfig;
+    hasNativeCodeConfig: boolean;
+  } | null>(problemRuntime && problemCodeConfig && hasNativeCodeConfig != null
+    ? { problem: problemRuntime, codeConfig: problemCodeConfig, hasNativeCodeConfig }
+    : null);
+  const [runtimeError, setRuntimeError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (problemRuntime && problemCodeConfig && hasNativeCodeConfig != null) {
+      setRuntime({ problem: problemRuntime, codeConfig: problemCodeConfig, hasNativeCodeConfig });
+      setRuntimeError(null);
+      return;
+    }
+    let cancelled = false;
+    const suffix = studyTaskId ? `?studyTaskId=${encodeURIComponent(studyTaskId)}` : "";
+    fetch(`/api/problem-runtime/${encodeURIComponent(initialProblemId)}${suffix}`)
+      .then(async (response) => {
+        const body = (await response.json()) as {
+          problem?: AppProblem;
+          codeConfig?: ProblemCodeConfig;
+          hasNativeCodeConfig?: boolean;
+          error?: string;
+        };
+        if (!response.ok || !body.problem || !body.codeConfig || body.hasNativeCodeConfig == null) {
+          throw new Error(body.error || "Could not load this problem.");
+        }
+        return { problem: body.problem, codeConfig: body.codeConfig, hasNativeCodeConfig: body.hasNativeCodeConfig };
+      })
+      .then((loadedRuntime) => {
+        if (!cancelled) setRuntime(loadedRuntime);
+      })
+      .catch((error) => {
+        if (!cancelled) setRuntimeError(error instanceof Error ? error.message : "Could not load this problem.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [hasNativeCodeConfig, initialProblemId, problemCodeConfig, problemRuntime, studyTaskId]);
+
+  if (runtimeError) return <div className="uiverse-panel p-6 text-sm text-red-500">{runtimeError}</div>;
+  if (!runtime) return <div className="uiverse-panel p-6 text-sm text-black/40">Loading workspace…</div>;
+
+  return <LoadedPracticeWorkspace {...props} problemRuntime={runtime.problem} problemCodeConfig={runtime.codeConfig} hasNativeCodeConfig={runtime.hasNativeCodeConfig} />;
+}
+
+function LoadedPracticeWorkspace({
   onAttempt,
   onComplete,
   initialProblemId,
+  problemRuntime,
+  problemCodeConfig,
+  hasNativeCodeConfig = false,
   mode = "recognize",
   coachStyle = "guided",
   selectedPatternIds = [],
@@ -289,9 +351,9 @@ export function PracticeWorkspace({
   isRetryAfterRemediation = false,
   remediationUsed = [],
   continueLabel
-}: PracticeWorkspaceProps) {
-  const [problemId, setProblemId] = useState<string>(initialProblemId ?? allProblems[0].id);
-  const [problemText, setProblemText] = useState(allProblems[0].prompt);
+}: PracticeWorkspaceProps & { problemRuntime: AppProblem; problemCodeConfig: ProblemCodeConfig }) {
+  const problemId = problemRuntime.id;
+  const [problemText, setProblemText] = useState(problemRuntime.prompt);
   const [activeCoachStyle, setActiveCoachStyle] = useState<CoachStyle>(coachStyle);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [coachDraft, setCoachDraft] = useState("");
@@ -377,10 +439,7 @@ export function PracticeWorkspace({
   const voiceInputTargetRef = useRef<"drawer" | "inline">("drawer");
   const activeProblemIdRef = useRef(problemId);
 
-  const activeProblem = useMemo(
-    () => allProblems.find((problem) => problem.id === problemId) ?? allProblems[0],
-    [problemId]
-  );
+  const activeProblem = problemRuntime;
   activeProblemIdRef.current = activeProblem.id;
   const correctPattern = useMemo(
     () => patternOptions.find((pattern) => pattern.id === activeProblem.targetPatternId)!,
@@ -396,11 +455,7 @@ export function PracticeWorkspace({
     const techniqueId = mapPatternToTechniqueId(activeProblem.targetPatternId);
     return techniqueId ? getTechniqueById(techniqueId) : null;
   }, [activeProblem.targetPatternId]);
-  const activeCodeConfig = useMemo(
-    () => getProblemCodeConfig(activeProblem),
-    [activeProblem]
-  );
-  const hasNativeCodeConfig = hasNativeProblemCodeConfig(activeProblem.id);
+  const activeCodeConfig = problemCodeConfig;
   const availableLanguages = useMemo(
     () => getAvailableLanguages(activeCodeConfig),
     [activeCodeConfig]
@@ -572,12 +627,6 @@ export function PracticeWorkspace({
       }),
     [activeProblem.contrastPatternId, activeProblem.targetPatternId, problemText]
   );
-
-  useEffect(() => {
-    if (initialProblemId && allProblems.some((problem) => problem.id === initialProblemId)) {
-      setProblemId(initialProblemId);
-    }
-  }, [initialProblemId]);
 
   useEffect(() => {
     const container = chatScrollRef.current;
@@ -1631,27 +1680,6 @@ export function PracticeWorkspace({
     return `/learn?${params.toString()}`;
   }, [activeCoachStyle, mode, selectedPatternIds]);
 
-  if (!allProblems.some((problem) => problem.id === problemId)) {
-    return (
-      <div className="uiverse-panel p-10 text-center">
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-ember">Problem workspace</p>
-        <h2 className="mt-3 text-2xl font-semibold text-ink">We couldn&apos;t find that problem.</h2>
-        <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-black/60">
-          The link you followed points to a problem id (&ldquo;{problemId}&rdquo;) that doesn&apos;t exist here. It may
-          have been renamed or removed.
-        </p>
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
-          <Link href="/practice/select?mode=learn&coach=guided" className="text-sm font-semibold text-lake">
-            Pick a problem →
-          </Link>
-          <Link href="/today" className="text-sm font-semibold text-lake">
-            Go to today&apos;s plan →
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="session-workspace flex min-h-[calc(100vh-1.5rem)] w-full flex-col gap-0">
       <section className="session-command-bar">
@@ -2632,4 +2660,3 @@ function mimeTypeToExtension(mimeType: string) {
   if (mimeType.includes("mpeg")) return "mp3";
   return "webm";
 }
-

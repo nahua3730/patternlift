@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { createId, dbExecute, dbOne } from "@/lib/db";
+import { dbExecute, dbOne } from "@/lib/db";
 import type { CurriculumPlan } from "@/lib/curriculum-agent";
 
 export async function POST(request: Request) {
@@ -39,7 +39,13 @@ export async function POST(request: Request) {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
           `,
           [
-            createId("task"),
+            // Reuse the task's own id from the plan JSON (globally unique
+            // since Phase 1.1 - it embeds the plan run's id) rather than
+            // minting a fresh one here. session.ts tags each generated
+            // step with this exact same task.id as its studyTaskId, so
+            // the persisted row's id MUST match it verbatim for the
+            // client's studyTaskId-based completion matching to work.
+            task.id,
             user.id,
             run.id,
             day.dayNumber,

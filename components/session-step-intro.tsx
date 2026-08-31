@@ -48,6 +48,21 @@ function introFor(step: SessionStep): { title: string; body: string } {
         title: `Learn · ${step.patternLabel ?? "this pattern"}`,
         body: "A quick orientation before you practice - read it, then continue."
       };
+    case "blind_prediction":
+      return {
+        title: "Pattern prediction",
+        body: "What pattern would you try first? Lock in your guess before you start solving."
+      };
+    case "transfer_result":
+      return {
+        title: "Recognition & solve result",
+        body: "Here's how your prediction and your solve compare - kept as two separate results."
+      };
+    case "transfer_encounter":
+      return {
+        title: "Pattern challenge",
+        body: "Lock in the pattern you would try before the solve workspace is unlocked."
+      };
   }
 }
 

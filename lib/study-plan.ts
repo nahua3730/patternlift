@@ -14,7 +14,12 @@ export const PREPARATION_GOALS: { value: PreparationGoal; label: string }[] = [
   { value: "general_practice", label: "General Practice" }
 ];
 
-export type TaskType = "learn" | "practice" | "recall" | "review";
+// Phase 2A: "transfer" is the first first-class task type added since
+// Phase 1 - an unseen/sufficiently-unfamiliar problem where the learner
+// predicts the pattern BEFORE any pattern-specific help is available.
+// "recall" stays unused by task generation (recall still flows entirely
+// through the separate due-review pipeline in session.ts, unchanged).
+export type TaskType = "learn" | "practice" | "recall" | "review" | "transfer";
 export type Priority = "A" | "B" | "C";
 export type TaskBucket = "core" | "bonus";
 
@@ -40,6 +45,16 @@ export function defaultWeekdayMinutes(flatMinutes = 60): WeekdayMinutes {
   }, {} as WeekdayMinutes);
 }
 
+// Pilot Foundation: a generic external Learn resource (a Carl/代码随想录
+// lesson today, some other guided curriculum's lesson later) - deliberately
+// NOT coupled to any one video host. Optional because most tasks (every
+// generated-plan task, and any guided Practice/Review task) have none.
+export type LearnResource = {
+  title: string;
+  url: string;
+  provider?: string;
+};
+
 export type StudyTask = {
   id: string;
   type: TaskType;
@@ -49,6 +64,7 @@ export type StudyTask = {
   problemId: string | null;
   title: string;
   estimatedMinutes: number;
+  learnResource?: LearnResource;
 };
 
 // Deterministic, explainable, and goal-aware - not difficulty, not user
@@ -188,3 +204,47 @@ export function masteryGradeFor(input: MasteryGradeInput): 0 | 1 | 2 | 3 {
   // hesitation/debugging along the way (used a hint or two).
   return 2;
 }
+
+// Phase 2A: implementation is deliberately independent from recognition.
+// Do not reuse masteryGradeFor here because its first gate is the learner's
+// pattern recognition by design.
+export function transferImplementationFor(input: {
+  codePassed: boolean | null;
+  hintsUsed: number;
+  highestHintLevel?: number;
+  fallbackOutcome: "solid" | "partial" | "confused";
+}): { outcome: "solid" | "partial" | "confused"; grade: 0 | 1 | 2 | 3 } {
+  const helpDepth = input.highestHintLevel ?? 0;
+
+  if (input.codePassed === true) {
+    if (helpDepth >= 2 || input.hintsUsed >= 2) return { outcome: "partial", grade: 1 };
+    if (helpDepth === 1 || input.hintsUsed === 1) return { outcome: "partial", grade: 2 };
+    return { outcome: "solid", grade: 3 };
+  }
+
+  if (input.codePassed === false) {
+    return { outcome: input.fallbackOutcome === "confused" ? "confused" : "partial", grade: 0 };
+  }
+
+  return {
+    outcome: input.fallbackOutcome,
+    grade: input.fallbackOutcome === "solid" ? 2 : input.fallbackOutcome === "partial" ? 1 : 0
+  };
+}
+
+// Phase 2A: the structured, authoritative record of a learner's pre-solve
+// pattern guess on a Transfer task - independent of, and persisted
+// separately from, the eventual coding attempt (AttemptResult). A null
+// predictedPatternId means "I'm not sure," which is itself a valid,
+// honest answer, not a missing one. No userId here - implicit via auth,
+// same convention as StudyTask/AttemptResult on the client side.
+export type PatternPrediction = {
+  id: string;
+  studyTaskId: string;
+  problemId: string;
+  predictedPatternId: string | null;
+  actualPatternId: string;
+  reasoning?: string;
+  wasCorrect: boolean;
+  createdAt: string;
+};

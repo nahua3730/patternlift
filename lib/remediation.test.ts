@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { pickRemediation } from "@/lib/remediation";
-import { buildRemediationBranch } from "@/lib/session";
+import { buildRemediationBranch } from "@/lib/session-runtime";
 import type { SessionStep } from "@/lib/session";
 import type { SupportPlan } from "@/lib/support-plan";
 import type { FailureCategory } from "@/lib/diagnosis";

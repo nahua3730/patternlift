@@ -3,8 +3,8 @@ import { allProblems, patternOptions } from "@/lib/product";
 import type { TechniqueSkillVector, DimensionScore } from "@/lib/skill-vector";
 import type { ConfusionPair } from "@/lib/mastery";
 import type { FailureCategory } from "@/lib/diagnosis";
-import type { RemediationActivity } from "@/lib/remediation";
 import type { SupportPlan } from "@/lib/support-plan";
+import type { StudyTask, LearnResource } from "@/lib/study-plan";
 
 // What the session orchestrator knows about the learner's standing on
 // TODAY's pattern - optional, so callers without this data (or patterns
@@ -16,7 +16,6 @@ export type SessionLearnerContext = {
 
 const WEAK_THRESHOLD = 60;
 const STRONG_THRESHOLD = 70;
-
 // Only treat a dimension as "weak" when there's real evidence behind it -
 // a fresh pattern with zero attempts isn't weak, it's just unknown.
 function isWeak(dimension?: DimensionScore) {
@@ -38,7 +37,19 @@ export type SessionStepType =
   | "contrast"
   | "independent_problem"
   | "reflection"
-  | "remediation";
+  | "remediation"
+  // Phase 2A: the two Transfer-specific step types. blind_prediction is
+  // DELIBERATELY minimal (see the SessionStep field comment below) - it
+  // is the one step type whose object must never carry answer-adjacent
+  // fields. transfer_result renders the recognition-vs-solve split after
+  // the independent_problem solve (reused, no new step type needed for
+  // solving itself) completes.
+  | "blind_prediction"
+  | "transfer_result"
+  // Phase 2A.1: the only Transfer representation allowed in /api/today.
+  // Post-prediction solve/remediation/result runtime is hydrated through a
+  // task-scoped endpoint and never preconstructed in the daily payload.
+  | "transfer_encounter";
 
 export type SessionStep = {
   id: string;
@@ -64,6 +75,26 @@ export type SessionStep = {
   remediationId?: string;
   retryOfStepId?: string;
   supportPlan?: SupportPlan;
+  // Study Plan Phase 1.1: which StudyTask (day.tasks[]) this step belongs
+  // to, when the day was generated in the task-driven shape. This is the
+  // deterministic link the UI uses to mark a task done - never inferred
+  // from problemId, since the same problem can appear under different
+  // task types (e.g. a future recall task revisiting a problem learned
+  // earlier) and problemId matching would attribute the wrong step.
+  studyTaskId?: string;
+  // Pilot Foundation: a guided curriculum's topic ("Linked List"), display
+  // ONLY, never mastery-bearing. When set, the "learn" step's heading
+  // prefers this over patternLabel - an anchor problem's authoritative
+  // pattern (e.g. "Two Pointers" for Reverse Linked List) stays correct
+  // for technique content and mastery evidence, but must not evict the
+  // curriculum topic as the primary thing the learner sees before they've
+  // even reached that problem. Undefined for generated plans (unchanged
+  // behavior - patternLabel is already the right heading there).
+  curriculumContext?: string;
+  // Pilot Foundation: present only on a "learn" step whose task carries a
+  // guided-curriculum lesson. Rendering shows a resource link + explicit
+  // "Mark complete" instead of (or alongside) the static pattern intro.
+  learnResource?: LearnResource;
 };
 
 export type DailySession = {
@@ -74,6 +105,14 @@ export type DailySession = {
   steps: SessionStep[];
 };
 
+// Phase 1.1 follow-up: session-runner.tsx persists completed-step ids and
+// any inserted remediation branch in localStorage, keyed by this. It must
+// include planRunId, not just dayNumber, so one account's Day 1 progress
+// can never leak into another account's Day 1 (or into a newer plan the
+// SAME account later re-generates) sharing the same browser. planRunId
+// alone already uniquely identifies both the user and the specific
+// accepted plan - each accepted run belongs to exactly one user - so no
+// separate user id needs to be threaded through just for this.
 export type DueReviewInput = {
   id: string;
   problemId?: string;
@@ -105,7 +144,15 @@ export function buildDailySession(
   const steps: SessionStep[] = [];
   const patternLabel = day.patternLabel || patternLabelFor(day.patternId);
   const [primaryProblemId, secondaryProblemId] = day.problemIds;
-  const contrast = contrastFor(primaryProblemId);
+  // Study Plan Phase 1.1: when a day carries Core StudyTasks, they are the
+  // source of truth for today's work - every one of them must turn into an
+  // executable step, not just the first two problemIds. Days without tasks
+  // (legacy accepted plans, pre-Study-Plan) fall back to the original
+  // primary/secondary composition below, byte-for-byte unchanged.
+  const coreTasks = (day.tasks ?? []).filter((task) => task.bucket === "core");
+  const usingTaskDrivenFlow = coreTasks.length > 0;
+  const contrastAnchorProblemId = usingTaskDrivenFlow ? coreTasks[0]?.problemId ?? undefined : primaryProblemId;
+  const contrast = contrastFor(contrastAnchorProblemId);
 
   const skills = learner?.skills;
   const weakRecognition = isWeak(skills?.recognition);
@@ -141,7 +188,11 @@ export function buildDailySession(
   }
 
   const pushContrast = () => {
-    if (!contrast?.id) return;
+    // A guided day with no single day-level pattern (topic day covering
+    // several patterns) has nothing coherent to contrast against - "Arrays
+    // or Two Pointers?" isn't a real recognition question. Skip rather
+    // than ask a broken one.
+    if (!contrast?.id || !day.patternId) return;
     steps.push({
       id: "contrast",
       type: "contrast",
@@ -177,6 +228,183 @@ export function buildDailySession(
       coachStyle: "optional"
     });
   };
+
+  // Task-driven equivalent of pushIndependent - one step per StudyTask
+  // instead of a single fixed "secondary" slot, so a 3rd/4th/5th Core task
+  // gets a real, executable step instead of being silently dropped.
+  const pushIndependentForTask = (task: StudyTask) => {
+    if (!task.problemId) return;
+    const taskPatternLabel = patternLabelFor(task.patternId);
+    const baseTitle = `On your own: ${problemTitleFor(task.problemId) ?? task.title}`;
+    steps.push({
+      id: `independent-${task.id}`,
+      type: "independent_problem",
+      studyTaskId: task.id,
+      title: implementationFocus ? `${baseTitle} (focus: working code, not just the pattern)` : baseTitle,
+      estimatedMinutes: implementationFocus ? task.estimatedMinutes + 3 : task.estimatedMinutes,
+      problemId: task.problemId,
+      problemTitle: problemTitleFor(task.problemId),
+      patternId: task.patternId ?? undefined,
+      patternLabel: taskPatternLabel,
+      coachStyle: "optional"
+    });
+  };
+
+  const reflectionStep = (title: string, prompt: string, studyTaskId?: string): SessionStep => ({
+    id: "reflection",
+    type: "reflection",
+    studyTaskId,
+    title,
+    estimatedMinutes: 2,
+    patternLabel,
+    prompt
+  });
+
+  // Phase 2A.1: /api/today receives exactly one opaque encounter step.
+  // The browser cannot recover future solve/result answer metadata from a
+  // step that has never been constructed or serialized. Core and Bonus both
+  // hand this same task identity to TransferTaskRunner after this point.
+  const pushTransferEncounter = (task: StudyTask) => {
+    if (!task.problemId) return;
+    steps.push({
+      id: `transfer-encounter-${task.id}`,
+      type: "transfer_encounter",
+      studyTaskId: task.id,
+      problemId: task.problemId,
+      title: "Pattern Challenge",
+      estimatedMinutes: task.estimatedMinutes
+    });
+  };
+
+  if (usingTaskDrivenFlow) {
+    const learnTask = coreTasks.find((task) => task.type === "learn");
+    const practiceTasks = coreTasks.filter((task) => task.type === "practice");
+    const reviewTask = coreTasks.find((task) => task.type === "review");
+    const transferTask = coreTasks.find((task) => task.type === "transfer");
+
+    if (day.studyMode === "learn") {
+      if (learnTask) {
+        // A task-driven step derives its own pattern from the TASK, never
+        // from the day - a guided day's patternId is null (mixed topics),
+        // and even on a generated day this is strictly more correct than
+        // borrowing the day's pattern (task-driven-flow-wide invariant,
+        // matched by pushIndependentForTask below).
+        const learnPatternId = learnTask.patternId ?? day.patternId ?? undefined;
+        const learnPatternLabel = learnTask.patternId ? patternLabelFor(learnTask.patternId) : patternLabel;
+        steps.push({
+          id: `learn-${learnTask.id}`,
+          type: "learn",
+          studyTaskId: learnTask.id,
+          title: `Learn: ${learnTask.learnResource?.title ?? learnPatternLabel}`,
+          estimatedMinutes: 5,
+          patternId: learnPatternId,
+          patternLabel: learnPatternLabel,
+          // day.topicLabel exists only for a guided curriculum day - a
+          // generated day has none, so curriculumContext stays undefined
+          // and LearnStep's heading falls back to patternLabel exactly as
+          // before (no behavior change for generated plans).
+          curriculumContext: day.topicLabel,
+          learnResource: learnTask.learnResource
+        });
+        if (learnTask.problemId) {
+          // learnTask.patternId is already authoritative for this exact
+          // problem (set by whoever built the StudyTask - buildDayTasks for
+          // a generated plan, the guided-curriculum adapter for a guided
+          // one) - no need to re-derive it from the catalog a second time.
+          steps.push({
+            id: `guided-${learnTask.id}`,
+            type: "guided_problem",
+            studyTaskId: learnTask.id,
+            title: `Guided: ${problemTitleFor(learnTask.problemId) ?? learnTask.title}`,
+            estimatedMinutes: Math.max(9, learnTask.estimatedMinutes),
+            problemId: learnTask.problemId,
+            problemTitle: problemTitleFor(learnTask.problemId),
+            patternId: learnPatternId,
+            patternLabel: learnPatternLabel,
+            coachStyle: effectiveCoachStyle
+          });
+        }
+      }
+      pushContrast();
+      practiceTasks.forEach(pushIndependentForTask);
+      steps.push(
+        reflectionStep(
+          "Explain it back",
+          `Explain ${patternLabel} to someone who has never seen it, in 2-3 sentences.`,
+          reviewTask?.id
+        )
+      );
+    } else if (day.studyMode === "recognize") {
+      const [firstPractice, ...restPractice] = practiceTasks;
+      if (firstPractice?.problemId) {
+        steps.push({
+          id: `recognize-${firstPractice.id}`,
+          type: "guided_problem",
+          studyTaskId: firstPractice.id,
+          title: `Recognize: ${problemTitleFor(firstPractice.problemId) ?? firstPractice.title}`,
+          estimatedMinutes: Math.max(6, firstPractice.estimatedMinutes),
+          problemId: firstPractice.problemId,
+          problemTitle: problemTitleFor(firstPractice.problemId),
+          patternId: firstPractice.patternId ?? day.patternId ?? undefined,
+          patternLabel: firstPractice.patternId ? patternLabelFor(firstPractice.patternId) : patternLabel,
+          coachStyle: effectiveCoachStyle
+        });
+      }
+      pushContrast();
+      restPractice.forEach(pushIndependentForTask);
+    } else if (day.studyMode === "practice") {
+      const [firstPractice, ...restPractice] = practiceTasks;
+      if (firstPractice?.problemId) {
+        steps.push({
+          id: `guided-${firstPractice.id}`,
+          type: "guided_problem",
+          studyTaskId: firstPractice.id,
+          title: `Warm-up: ${problemTitleFor(firstPractice.problemId) ?? firstPractice.title}`,
+          estimatedMinutes: Math.max(8, firstPractice.estimatedMinutes),
+          problemId: firstPractice.problemId,
+          problemTitle: problemTitleFor(firstPractice.problemId),
+          patternId: firstPractice.patternId ?? day.patternId ?? undefined,
+          patternLabel: firstPractice.patternId ? patternLabelFor(firstPractice.patternId) : patternLabel,
+          coachStyle: effectiveCoachStyle
+        });
+      }
+      // "practice" mode doesn't normally include a contrast step, but a
+      // recognition weakness or a recurring mix-up on this pattern is
+      // exactly what contrast steps are for - surface one anyway.
+      if (weakRecognition || hasDominantConfusion) pushContrast();
+      restPractice.forEach(pushIndependentForTask);
+      steps.push(
+        reflectionStep(
+          "Reflection",
+          "What almost tripped you up today, and how did you catch it?",
+          reviewTask?.id
+        )
+      );
+    } else {
+      pushContrast();
+      // This fallback day has no independent step by default, but weak
+      // independence is exactly the case where a lower-assistance retry
+      // matters most - add one if there's a problem to attach it to.
+      if (weakIndependence) practiceTasks.forEach(pushIndependentForTask);
+      steps.push(reflectionStep("Reflection", "Which pattern from this week still feels shaky?", reviewTask?.id));
+    }
+
+    // A fail-closed legacy Transfer may be exposed as an ordinary practice
+    // task instead of a scored recognition encounter. Ensure every such
+    // task still receives a runnable step even on a mixed-review host day.
+    const representedTaskIds = new Set(steps.map((step) => step.studyTaskId).filter(Boolean));
+    practiceTasks.filter((task) => !representedTaskIds.has(task.id)).forEach(pushIndependentForTask);
+
+    if (transferTask) pushTransferEncounter(transferTask);
+
+    return {
+      dayNumber: day.dayNumber,
+      weekNumber: day.weekNumber,
+      headline: patternLabel,
+      estimatedMinutes: steps.reduce((sum, step) => sum + step.estimatedMinutes, 0),
+      steps
+    };
+  }
 
   if (day.studyMode === "learn") {
     steps.push({
@@ -276,59 +504,4 @@ export function buildDailySession(
     estimatedMinutes: steps.reduce((sum, step) => sum + step.estimatedMinutes, 0),
     steps
   };
-}
-
-// V2.3 dynamic branching. Called client-side (session-runner.tsx) right
-// after a problem step completes - deterministic, rule-based, and bounded:
-// it never regenerates the session, it only ever inserts at most one
-// remediation + one retry step immediately after the step that triggered
-// it. A step already marked retryOfStepId never branches again, which is
-// what caps remediation at one cycle per original step (Part 12/20-G).
-export function buildRemediationBranch(params: {
-  originalStep: SessionStep;
-  activity: RemediationActivity;
-  supportPlan: SupportPlan;
-  freshProblemId?: string;
-  freshProblemTitle?: string;
-}): SessionStep[] {
-  const { originalStep, activity, supportPlan, freshProblemId, freshProblemTitle } = params;
-
-  const remediationStep: SessionStep = {
-    id: `${originalStep.id}-remediation-${activity.id}`,
-    type: "remediation",
-    title: activity.title,
-    estimatedMinutes: activity.estimatedMinutes,
-    patternId: originalStep.patternId,
-    patternLabel: originalStep.patternLabel,
-    problemId: originalStep.problemId,
-    problemTitle: originalStep.problemTitle,
-    failureType: activity.failureType,
-    remediationId: activity.id
-  };
-
-  const retryProblemId = activity.nextAction === "fresh_problem" && freshProblemId ? freshProblemId : originalStep.problemId;
-  const retryProblemTitle =
-    activity.nextAction === "fresh_problem" && freshProblemTitle ? freshProblemTitle : originalStep.problemTitle;
-  const retryType: SessionStepType = activity.nextAction === "fresh_recognition_prompt" ? "recall" : originalStep.type;
-
-  const retryStep: SessionStep = {
-    id: `${originalStep.id}-retry`,
-    type: retryType,
-    title:
-      activity.nextAction === "fresh_recognition_prompt"
-        ? `Fresh recognition: ${retryProblemTitle ?? "Problem"}`
-        : activity.nextAction === "fresh_problem"
-          ? `Transfer: ${retryProblemTitle ?? "Problem"}`
-          : `Retry: ${retryProblemTitle ?? "Problem"}`,
-    estimatedMinutes: originalStep.estimatedMinutes,
-    patternId: originalStep.patternId,
-    patternLabel: originalStep.patternLabel,
-    problemId: retryProblemId,
-    problemTitle: retryProblemTitle,
-    coachStyle: supportPlan.coachStyle,
-    retryOfStepId: originalStep.id,
-    supportPlan
-  };
-
-  return [remediationStep, retryStep];
 }

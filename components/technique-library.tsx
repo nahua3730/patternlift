@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ProblemRow } from "@/components/fundamentals-series";
 import { techniqueLibrary, type Technique } from "@/lib/techniques";
+import { representativeProblemIdsFor } from "@/lib/technique-representatives";
 
 type Lang = "en" | "cn";
 
@@ -163,9 +164,9 @@ export function TechniqueLibrary({ reps }: { reps: Record<string, number> }) {
 
             <div className="mt-5">
               <p className="text-xs font-semibold uppercase tracking-wide text-black/40">{t.recommended}</p>
-              {selected.representativeProblemIds.length > 0 ? (
+              {representativeProblemIdsFor(selected.id).length > 0 ? (
                 <div className="mt-2 grid gap-2">
-                  {selected.representativeProblemIds.map((problemId) => (
+                  {representativeProblemIdsFor(selected.id).map((problemId) => (
                     <ProblemRow key={problemId} problemId={problemId} reps={reps} />
                   ))}
                 </div>

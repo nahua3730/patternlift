@@ -5,27 +5,35 @@ import { useEffect, useMemo, useState } from "react";
 import { PracticeWorkspace, type AttemptResult } from "@/components/practice-workspace";
 import { RemediationStepView } from "@/components/remediation-step";
 import { SessionStepIntro } from "@/components/session-step-intro";
+import { PatternPredictor } from "@/components/pattern-predictor";
+import { TransferResult } from "@/components/transfer-result";
+import { TransferTaskRunner } from "@/components/transfer-task-runner";
 import { usePatternLiftState } from "@/components/patternlift-state";
-import { patternOptions } from "@/lib/product";
+import { patternOptions } from "@/lib/pattern-catalog";
 import type { DailySession, SessionStep } from "@/lib/session";
-import { buildRemediationBranch } from "@/lib/session";
+import { buildRemediationBranch, sessionStorageKey } from "@/lib/session-runtime";
 import { getTechniqueById, mapPatternToTechniqueId } from "@/lib/techniques";
 import { getRemediationById, pickRemediation } from "@/lib/remediation";
 import { chooseSupportPlan, type SupportPlan } from "@/lib/support-plan";
 import type { TechniqueSkillVector } from "@/lib/skill-vector";
 import type { ScaffoldLevel } from "@/lib/scaffold";
 import { masteryGradeFor, type StudyTask } from "@/lib/study-plan";
+import type { BlindTransferTaskPayload, TodayStudyTaskPayload } from "@/lib/transfer-contract";
 
-type TodayTask = StudyTask & { status: "pending" | "done" | "skipped" };
+type TodayTask = TodayStudyTaskPayload;
 
 const TASK_TYPE_LABEL: Record<StudyTask["type"], string> = {
   learn: "Learn",
   practice: "Practice",
   recall: "Recall",
-  review: "Review"
+  review: "Review",
+  transfer: "Pattern Challenge"
 };
 
 type TodayResponse = {
+  planRunId: string;
+  scheduleStatus: "active";
+  carryover: { active: TodayTask[]; queued: TodayTask[] };
   plan: {
     headline: string;
     rationale: string;
@@ -53,8 +61,24 @@ type TodayResponse = {
   };
 };
 
+// Pilot Foundation: the nominal N-day calendar window has elapsed - either
+// real Core work is still outstanding (schedule_complete) or the whole
+// plan is genuinely done (complete). Neither replays the final curriculum
+// day as if it were fresh Today content.
+type ScheduleCompleteResponse = {
+  planRunId: string;
+  scheduleStatus: "schedule_complete" | "complete";
+  plan: TodayResponse["plan"];
+  remainingCore: TodayTask[];
+};
+
+function isScheduleCompletePayload(payload: TodayResponse | ScheduleCompleteResponse): payload is ScheduleCompleteResponse {
+  return payload.scheduleStatus !== "active";
+}
+
 const STORAGE_PREFIX = "patternlift-session-";
 const STEPS_STORAGE_PREFIX = "patternlift-session-steps-";
+const SESSION_PAYLOAD_REVISION = "v2a1";
 
 function lastFourteenDays() {
   const days: string[] = [];
@@ -72,18 +96,21 @@ function techniqueFor(patternId?: string) {
   return id ? getTechniqueById(id) : null;
 }
 
-function readCompletedSteps(dayNumber: number): string[] {
+function readCompletedSteps(planRunId: string, dayNumber: number): string[] {
   try {
-    const saved = window.localStorage.getItem(`${STORAGE_PREFIX}${dayNumber}`);
-    return saved ? (JSON.parse(saved) as string[]) : [];
+    const saved = window.localStorage.getItem(`${STORAGE_PREFIX}${sessionStorageKey(planRunId, dayNumber)}`);
+    const parsed: unknown = saved ? JSON.parse(saved) : null;
+    // Fail safe rather than crash the session on a malformed/stale entry
+    // (e.g. left over from an older client shape).
+    return Array.isArray(parsed) ? (parsed as string[]) : [];
   } catch {
     return [];
   }
 }
 
-function saveCompletedSteps(dayNumber: number, ids: string[]) {
+function saveCompletedSteps(planRunId: string, dayNumber: number, ids: string[]) {
   try {
-    window.localStorage.setItem(`${STORAGE_PREFIX}${dayNumber}`, JSON.stringify(ids));
+    window.localStorage.setItem(`${STORAGE_PREFIX}${sessionStorageKey(planRunId, dayNumber)}`, JSON.stringify(ids));
   } catch {
     // localStorage unavailable - progress just won't survive a refresh, not fatal.
   }
@@ -93,26 +120,67 @@ function saveCompletedSteps(dayNumber: number, ids: string[]) {
 // branching can INSERT steps (remediation + retry) that didn't exist in
 // the server-planned session - without this, a refresh mid-remediation
 // would silently drop the branch and jump back to the original plan.
-function readSteps(dayNumber: number): SessionStep[] | null {
+function readSteps(planRunId: string, dayNumber: number): SessionStep[] | null {
   try {
-    const saved = window.localStorage.getItem(`${STEPS_STORAGE_PREFIX}${dayNumber}`);
-    return saved ? (JSON.parse(saved) as SessionStep[]) : null;
+    const saved = window.localStorage.getItem(
+      `${STEPS_STORAGE_PREFIX}${SESSION_PAYLOAD_REVISION}:${sessionStorageKey(planRunId, dayNumber)}`
+    );
+    const parsed: unknown = saved ? JSON.parse(saved) : null;
+    return Array.isArray(parsed) ? (parsed as SessionStep[]) : null;
   } catch {
     return null;
   }
 }
 
-function saveSteps(dayNumber: number, steps: SessionStep[]) {
+function saveSteps(planRunId: string, dayNumber: number, steps: SessionStep[]) {
   try {
-    window.localStorage.setItem(`${STEPS_STORAGE_PREFIX}${dayNumber}`, JSON.stringify(steps));
+    window.localStorage.setItem(
+      `${STEPS_STORAGE_PREFIX}${SESSION_PAYLOAD_REVISION}:${sessionStorageKey(planRunId, dayNumber)}`,
+      JSON.stringify(steps)
+    );
   } catch {
     // Not fatal - branch just won't survive a refresh.
   }
 }
 
+// Phase 2A follow-up: without this, a refresh between locking in a
+// Transfer prediction and submitting the solve would silently drop
+// transferPredictions (plain in-memory state) - the subsequent solve
+// attempt would then skip the recognition-signal override entirely and
+// send whatever the coach chat inferred (or nothing) instead of the
+// learner's actual locked-in prediction, corrupting the very signal this
+// feature exists to capture correctly. Persisted the same way completed
+// steps/branches already are, for the same reason.
 function pickFreshProblemId(usedProblemIds: string[], todayProblems: TodayResponse["today"]["problems"]) {
   const fresh = todayProblems.find((problem) => !usedProblemIds.includes(problem.id));
   return fresh ?? null;
+}
+
+// A Core task is "done" once EVERY step generated from it - not just
+// one - is complete. A "learn" task generates two steps (a pattern-intro
+// step + the actual guided problem); marking it done after only the
+// intro would show a checkmark before the learner has touched the
+// problem at all. studyTaskId is the deterministic link (Phase 1.1); a
+// legacy day whose steps predate that field (no .tasks[] on the
+// CurriculumDay - every step's studyTaskId is undefined) falls back to
+// problemId matching, then to "the whole session finished" for a
+// legacy null-problemId task - the exact heuristics this checklist used
+// before Phase 1.1.
+function isTaskDone(
+  task: { id: string; problemId: string | null; status: "pending" | "done" | "skipped" },
+  steps: SessionStep[],
+  completedStepIds: string[],
+  stepsAllDone: boolean
+): boolean {
+  if (task.status === "done") return true;
+  const stepsForTask = steps.filter((step) => step.studyTaskId === task.id);
+  if (stepsForTask.length > 0) {
+    return stepsForTask.every((step) => completedStepIds.includes(step.id));
+  }
+  if (task.problemId) {
+    return completedStepIds.some((stepId) => steps.find((entry) => entry.id === stepId)?.problemId === task.problemId);
+  }
+  return stepsAllDone;
 }
 
 // Fire-and-forget - a synthesized legacy task's id won't match any row
@@ -126,9 +194,108 @@ function markTaskDone(taskId: string) {
   }).catch(() => {});
 }
 
+// Pilot Foundation: explicit "I already solved this before, don't make me
+// redo it" - reuses the exact same status endpoint as markTaskDone, just
+// with the other already-supported status value. No new state machine.
+function markTaskSkipped(taskId: string) {
+  void fetch(`/api/study-tasks/${taskId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status: "skipped" })
+  }).catch(() => {});
+}
+
+// Pilot Foundation: one row for a Carryover/catch-up task, used both in
+// the normal Today view's Carryover section and the schedule-complete
+// screen's remaining-Core list - deliberately NOT routed through the
+// sequential session/step flow (same "open independently" pattern Bonus
+// tasks already use). A Learn task with a resource completes inline via
+// Mark Complete; anything with a problemId opens in ordinary Practice.
+function CarryoverTaskRow({
+  task,
+  onRemoved
+}: {
+  task: TodayTask;
+  onRemoved: (taskId: string) => void;
+}) {
+  if (task.kind !== "normal") return null;
+  const practiceHref = task.problemId
+    ? `/practice?mode=practice&coach=guided&problem=${encodeURIComponent(task.problemId)}`
+    : null;
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-black/8 bg-white/60 px-4 py-3">
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium text-ink">
+          {task.title}
+          {task.dayNumber ? <span className="ml-2 text-xs font-normal text-black/45">from Day {task.dayNumber}</span> : null}
+        </p>
+        <p className="text-xs text-black/50">
+          {TASK_TYPE_LABEL[task.type]} · {task.estimatedMinutes}m
+          {task.reps ? ` · Solved before (×${task.reps})` : ""}
+        </p>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        {task.learnResource ? (
+          <>
+            <a
+              href={task.learnResource.url}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-full bg-black/5 px-3 py-2 text-xs font-semibold text-ink transition hover:bg-black/10"
+            >
+              Watch lesson
+            </a>
+            <button
+              type="button"
+              onClick={() => {
+                markTaskDone(task.id);
+                onRemoved(task.id);
+              }}
+              className="rounded-full bg-ink px-3 py-2 text-xs font-semibold text-white transition hover:opacity-85"
+            >
+              Mark complete
+            </button>
+          </>
+        ) : practiceHref ? (
+          <Link
+            href={practiceHref}
+            className="rounded-full bg-ink px-3 py-2 text-xs font-semibold text-white transition hover:opacity-85"
+          >
+            Start →
+          </Link>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              markTaskDone(task.id);
+              onRemoved(task.id);
+            }}
+            className="rounded-full bg-ink px-3 py-2 text-xs font-semibold text-white transition hover:opacity-85"
+          >
+            Mark complete
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => {
+            markTaskSkipped(task.id);
+            onRemoved(task.id);
+          }}
+          className="rounded-full border border-black/10 px-3 py-2 text-xs font-semibold text-black/60 transition hover:bg-black/5"
+          title="Already done this one elsewhere"
+        >
+          Skip
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function SessionRunner() {
   const { addAttempt } = usePatternLiftState();
   const [data, setData] = useState<TodayResponse | null>(null);
+  const [scheduleComplete, setScheduleComplete] = useState<ScheduleCompleteResponse | null>(null);
   const [notScheduled, setNotScheduled] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [completedStepIds, setCompletedStepIds] = useState<string[]>([]);
@@ -144,6 +311,10 @@ export function SessionRunner() {
   const [patchedTaskIds, setPatchedTaskIds] = useState<string[]>([]);
   const [bonusRevealed, setBonusRevealed] = useState(false);
   const [activeBonusTaskId, setActiveBonusTaskId] = useState<string | null>(null);
+  // Pilot Foundation: optimistic client-side removal for Carryover/catch-up
+  // rows once marked done/skipped - avoids a full refetch just to hide a
+  // row the server already has correctly recorded.
+  const [removedCarryoverIds, setRemovedCarryoverIds] = useState<string[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -154,13 +325,17 @@ export function SessionRunner() {
           return null;
         }
         if (!response.ok) throw new Error("Unable to load today's plan.");
-        return (await response.json()) as TodayResponse;
+        return (await response.json()) as TodayResponse | ScheduleCompleteResponse;
       })
       .then((payload) => {
         if (cancelled || !payload) return;
+        if (isScheduleCompletePayload(payload)) {
+          setScheduleComplete(payload);
+          return;
+        }
         setData(payload);
-        setCompletedStepIds(readCompletedSteps(payload.today.dayNumber));
-        const savedSteps = readSteps(payload.today.dayNumber);
+        setCompletedStepIds(readCompletedSteps(payload.planRunId, payload.today.dayNumber));
+        const savedSteps = readSteps(payload.planRunId, payload.today.dayNumber);
         setSteps(savedSteps && savedSteps.length > 0 ? savedSteps : payload.session.steps);
       })
       .catch((fetchError) => {
@@ -171,20 +346,16 @@ export function SessionRunner() {
     };
   }, []);
 
-  // A Core task is "done" once any completed step in the existing flow
-  // ran that same problemId - the task checklist is a summary view over
-  // the real step flow, not a second execution path. PATCH each newly-done
-  // task exactly once (patchedTaskIds guards re-firing on every render).
+  // Mirrors isTaskDone below (module scope, so it can run in this earlier
+  // effect too) - PATCH each newly-done task exactly once (patchedTaskIds
+  // guards re-firing on every render). stepsAllDone is inlined here since
+  // it isn't computed until after the early returns below.
   useEffect(() => {
     if (!data) return;
-    const coreTasks = data.todayTasks.filter((task) => task.bucket === "core" && task.problemId);
+    const stepsAllDoneForEffect = steps.length > 0 && !steps.some((step) => !completedStepIds.includes(step.id));
+    const coreTasks = data.todayTasks.filter((task) => task.bucket === "core");
     const newlyDone = coreTasks.filter(
-      (task) =>
-        !patchedTaskIds.includes(task.id) &&
-        completedStepIds.some((stepId) => {
-          const step = steps.find((entry) => entry.id === stepId);
-          return step?.problemId === task.problemId;
-        })
+      (task) => !patchedTaskIds.includes(task.id) && isTaskDone(task, steps, completedStepIds, stepsAllDoneForEffect)
     );
     if (newlyDone.length === 0) return;
     newlyDone.forEach((task) => markTaskDone(task.id));
@@ -213,17 +384,52 @@ export function SessionRunner() {
     );
   }
 
+  if (scheduleComplete) {
+    const remaining = scheduleComplete.remainingCore.filter((task) => !removedCarryoverIds.includes(task.id));
+    if (remaining.length === 0) {
+      return (
+        <div className="mx-auto max-w-2xl py-16 text-center">
+          <p className="text-lg font-semibold text-ink">Plan complete 🎉</p>
+          <p className="mt-2 text-sm text-black/60">Every Core task in {scheduleComplete.plan.headline} is done.</p>
+          <Link href="/onboarding" className="mt-6 inline-block font-semibold text-indigo-600">
+            Start a new plan →
+          </Link>
+        </div>
+      );
+    }
+    return (
+      <div className="mx-auto max-w-2xl space-y-4 py-10">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-wide text-ember">Scheduled curriculum complete</p>
+          <h2 className="mt-1 text-xl font-semibold text-ink">
+            {remaining.length} unfinished Core task{remaining.length === 1 ? "" : "s"} remain
+          </h2>
+        </div>
+        <div className="space-y-2">
+          {remaining.map((task) => (
+            <CarryoverTaskRow
+              key={task.id}
+              task={task}
+              onRemoved={(taskId) => setRemovedCarryoverIds((current) => [...current, taskId])}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   if (!data) {
     return <div className="mx-auto max-w-2xl py-16 text-center text-sm text-black/40">Loading today&apos;s session…</div>;
   }
 
   const dayNumber = data.today.dayNumber;
+  const planRunId = data.planRunId;
 
   const markStepComplete = (stepId: string) => {
     setCompletedStepIds((current) => {
       if (current.includes(stepId)) return current;
       const next = [...current, stepId];
-      saveCompletedSteps(dayNumber, next);
+      saveCompletedSteps(planRunId, dayNumber, next);
       return next;
     });
   };
@@ -233,7 +439,7 @@ export function SessionRunner() {
       const index = current.findIndex((step) => step.id === originalStep.id);
       if (index === -1) return current;
       const next = [...current.slice(0, index + 1), ...branchSteps, ...current.slice(index + 1)];
-      saveSteps(dayNumber, next);
+      saveSteps(planRunId, dayNumber, next);
       return next;
     });
   };
@@ -242,15 +448,18 @@ export function SessionRunner() {
   // attempt is recorded, before the step is marked complete. Deterministic
   // and bounded: a step that's already a retry (retryOfStepId set) never
   // branches again, capping remediation at one cycle per original step.
-  const handleAttemptForStep = (step: SessionStep, result: AttemptResult) => {
+  const handleAttemptForStep = (step: SessionStep, rawResult: AttemptResult) => {
+    const result: AttemptResult = { ...rawResult, studyTaskId: step.studyTaskId };
+
     addAttempt(result);
 
     if (result.problemId) {
-      const grade = masteryGradeFor({
-        recognizedCorrectly: result.selectedPatternLabel === result.correctPatternLabel,
-        outcome: result.outcome,
-        highestHintLevel: result.highestHintLevel
-      });
+      const grade =
+        masteryGradeFor({
+          recognizedCorrectly: result.selectedPatternLabel === result.correctPatternLabel,
+          outcome: result.outcome,
+          highestHintLevel: result.highestHintLevel
+        });
       setTaskGrades((current) => ({ ...current, [result.problemId]: grade }));
     }
 
@@ -263,7 +472,11 @@ export function SessionRunner() {
     // the branch insertion idempotent per original step.
     const alreadyBranched = steps.some((entry) => entry.id.startsWith(`${step.id}-remediation-`));
 
-    if (failureType && !alreadyRetried && !alreadyBranched) {
+    // Keep a recognition-gap diagnosis/confusion as evidence, but do not
+    // force implementation remediation when the Transfer solve itself was
+    // independently solid.
+    const needsImplementationRemediation = result.outcome !== "solid";
+    if (failureType && needsImplementationRemediation && !alreadyRetried && !alreadyBranched) {
       const techniqueId = mapPatternToTechniqueId(step.patternId ?? null);
       const activity = pickRemediation(techniqueId, failureType);
 
@@ -314,22 +527,60 @@ export function SessionRunner() {
   };
 
   const activeStep = steps.find((step) => !completedStepIds.includes(step.id)) ?? null;
-  const allDone = steps.length > 0 && !activeStep;
+  const stepsAllDone = steps.length > 0 && !activeStep;
 
   const coreTasks = data.todayTasks.filter((task) => task.bucket === "core");
   const bonusTasks = data.todayTasks.filter((task) => task.bucket === "bonus");
-  const isTaskDone = (task: TodayTask) =>
-    task.status === "done" ||
-    (task.problemId
-      ? completedStepIds.some((stepId) => steps.find((entry) => entry.id === stepId)?.problemId === task.problemId)
-      : allDone);
-  const coreDoneCount = coreTasks.filter(isTaskDone).length;
+  const taskDone = (task: TodayTask) => isTaskDone(task, steps, completedStepIds, stepsAllDone);
+  const coreDoneCount = coreTasks.filter(taskDone).length;
+  // Phase 1.1 completion rule: the day is only "done" once every Core
+  // task is done AND the step flow has run out of steps - Bonus tasks
+  // are never part of coreTasks, so an incomplete Bonus never blocks this.
+  const allDone = stepsAllDone && (coreTasks.length === 0 || coreDoneCount === coreTasks.length);
   const coreMinutes = coreTasks.reduce((sum, task) => sum + task.estimatedMinutes, 0);
   const bonusMinutes = bonusTasks.reduce((sum, task) => sum + task.estimatedMinutes, 0);
   const activeBonusTask = bonusTasks.find((task) => task.id === activeBonusTaskId) ?? null;
 
+  const carryoverActive = data.carryover.active.filter((task) => !removedCarryoverIds.includes(task.id));
+  const carryoverQueued = data.carryover.queued.filter((task) => !removedCarryoverIds.includes(task.id));
+  const carryoverTotalMinutes =
+    carryoverActive.reduce((sum, task) => sum + task.estimatedMinutes, 0) +
+    carryoverQueued.reduce((sum, task) => sum + task.estimatedMinutes, 0);
+
   return (
     <div className="grid gap-5">
+      {carryoverActive.length > 0 || carryoverQueued.length > 0 ? (
+        <div className="uiverse-panel space-y-3 border-amber-200 bg-amber-50/60 p-5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+            Carryover — {carryoverTotalMinutes} min remaining
+          </p>
+          {carryoverActive.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-black/35">Do first today</p>
+              {carryoverActive.map((task) => (
+                <CarryoverTaskRow
+                  key={task.id}
+                  task={task}
+                  onRemoved={(taskId) => setRemovedCarryoverIds((current) => [...current, taskId])}
+                />
+              ))}
+            </div>
+          ) : null}
+          {carryoverQueued.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-black/35">Still queued</p>
+              {carryoverQueued.map((task) => (
+                <CarryoverTaskRow
+                  key={task.id}
+                  task={task}
+                  onRemoved={(taskId) => setRemovedCarryoverIds((current) => [...current, taskId])}
+                />
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       {coreTasks.length > 0 ? (
         <TaskChecklist
           coreTasks={coreTasks}
@@ -337,7 +588,7 @@ export function SessionRunner() {
           coreDoneCount={coreDoneCount}
           coreMinutes={coreMinutes}
           bonusMinutes={bonusMinutes}
-          isTaskDone={isTaskDone}
+          isTaskDone={taskDone}
           taskGrades={taskGrades}
           bonusRevealed={bonusRevealed}
           onRevealBonus={() => setBonusRevealed(true)}
@@ -374,8 +625,13 @@ export function SessionRunner() {
             {data.streak} day streak
           </Link>
         </div>
+        {activeStep ? (
+          <p className="mt-3 text-xs font-medium text-black/55">{currentTaskLabel(activeStep, steps, data.todayTasks)}</p>
+        ) : null}
         {steps.length > 0 ? (
-          <div className="mt-4 flex flex-wrap gap-2">
+          <>
+          <p className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-black/35">Session steps</p>
+          <div className="mt-1.5 flex flex-wrap gap-2">
             {steps.map((step, index) => {
               const done = completedStepIds.includes(step.id);
               const active = activeStep?.id === step.id;
@@ -398,6 +654,7 @@ export function SessionRunner() {
               );
             })}
           </div>
+          </>
         ) : null}
       </div>
 
@@ -425,8 +682,13 @@ export function SessionRunner() {
           step={activeStep}
           steps={steps}
           data={data}
+          taskGrades={taskGrades}
           onComplete={() => markStepComplete(activeStep.id)}
           onAttempt={(result) => handleAttemptForStep(activeStep, result)}
+          onTransferAttempt={addAttempt}
+          onTransferGrade={(problemId, grade) =>
+            setTaskGrades((current) => ({ ...current, [problemId]: grade }))
+          }
         />
       ) : null}
       </>
@@ -482,6 +744,12 @@ const PRIORITY_DOT: Record<StudyTask["priority"], string> = {
   C: "bg-black/25"
 };
 
+const PRIORITY_TITLE: Record<StudyTask["priority"], string> = {
+  A: "Priority A — learning priority, not difficulty",
+  B: "Priority B — learning priority, not difficulty",
+  C: "Priority C — learning priority, not difficulty"
+};
+
 function TaskRow({
   task,
   done,
@@ -500,10 +768,11 @@ function TaskRow({
       }`}
     >
       <span
-        className={`h-2 w-2 flex-none rounded-full ${PRIORITY_DOT[task.priority]}`}
-        aria-hidden="true"
-        title={`Priority ${task.priority}`}
-      />
+        className={`flex h-5 w-5 flex-none items-center justify-center rounded-full text-[10px] font-bold text-white ${PRIORITY_DOT[task.priority]}`}
+        title={PRIORITY_TITLE[task.priority]}
+      >
+        {task.priority}
+      </span>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="rounded-full bg-mist px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-black/50">
@@ -570,6 +839,7 @@ function TaskChecklist({
           {coreDoneCount} / {coreTasks.length} done
         </span>
       </div>
+      <p className="mt-1 text-[10px] text-black/35">A/B/C = priority to learn next, not difficulty</p>
       <div className="mt-3 grid gap-2">
         {coreTasks.map((task) => (
           <TaskRow key={task.id} task={task} done={isTaskDone(task)} grade={task.problemId ? taskGrades[task.problemId] : undefined} />
@@ -637,6 +907,31 @@ function BonusTaskRunner({
 
   if (!task.problemId) return null;
 
+  if (task.kind === "blind_transfer") {
+    return (
+      <div className="grid gap-3">
+        <div className="uiverse-panel flex items-center justify-between p-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-ember">Bonus · Pattern Challenge</p>
+            <p className="mt-1 text-sm text-black/60">Extra practice - optional, no pressure.</p>
+          </div>
+          <button type="button" onClick={onExit} className="text-xs font-medium text-black/45 hover:text-ink">
+            ← Back to today
+          </button>
+        </div>
+        <TransferTaskRunner
+          task={task}
+          planRunId={data.planRunId}
+          dayNumber={data.today.dayNumber}
+          onAttempt={onAttempt}
+          onGrade={onGrade}
+          onComplete={onDone}
+          onExit={onExit}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="grid gap-3">
       <div className="uiverse-panel flex items-center justify-between p-4">
@@ -676,6 +971,18 @@ function BonusTaskRunner({
   );
 }
 
+// Progress UI hierarchy (Phase 1.1): Core task completion is the primary
+// indicator (the checklist above); this is the secondary, subordinate
+// detail - which task is active right now, and how far into ITS steps
+// (not the whole day's steps) the learner is.
+function currentTaskLabel(activeStep: SessionStep, steps: SessionStep[], todayTasks: TodayTask[]) {
+  const task = activeStep.studyTaskId ? todayTasks.find((entry) => entry.id === activeStep.studyTaskId) : undefined;
+  if (!task) return `Now: ${stepShortLabel(activeStep)}`;
+  const stepsForTask = steps.filter((step) => step.studyTaskId === task.id);
+  const indexWithinTask = stepsForTask.findIndex((step) => step.id === activeStep.id) + 1;
+  return `Current task: ${task.title} · Step ${indexWithinTask} of ${stepsForTask.length}`;
+}
+
 function stepShortLabel(step: SessionStep) {
   if (step.retryOfStepId) return "Retry";
   switch (step.type) {
@@ -693,6 +1000,12 @@ function stepShortLabel(step: SessionStep) {
       return "Reflect";
     case "remediation":
       return "Repair";
+    case "blind_prediction":
+      return "Predict";
+    case "transfer_result":
+      return "Result";
+    case "transfer_encounter":
+      return "Pattern challenge";
   }
 }
 
@@ -700,14 +1013,20 @@ function StepRenderer({
   step,
   steps,
   data,
+  taskGrades,
   onComplete,
-  onAttempt
+  onAttempt,
+  onTransferAttempt,
+  onTransferGrade
 }: {
   step: SessionStep;
   steps: SessionStep[];
   data: TodayResponse;
+  taskGrades: Record<string, 0 | 1 | 2 | 3>;
   onComplete: () => void;
   onAttempt: (result: AttemptResult) => void;
+  onTransferAttempt: (result: AttemptResult) => void;
+  onTransferGrade: (problemId: string, grade: 0 | 1 | 2 | 3) => void;
 }) {
   const supportPlan: SupportPlan | undefined = useMemo(() => {
     if (step.type !== "recall" && step.type !== "guided_problem" && step.type !== "independent_problem") {
@@ -755,6 +1074,46 @@ function StepRenderer({
     );
   }
 
+  // Phase 2A: blind_prediction is intentionally NOT handled by the
+  // recall/guided_problem/independent_problem branch above - PatternPredictor
+  // is a separate, coach-free component (no PracticeWorkspace, no chat),
+  // matching the step object's own sanitized data (no patternId/
+  // contrastPatternId/etc reach this branch to accidentally pass through).
+  if (step.type === "blind_prediction") {
+    if (!step.problemId || !step.studyTaskId) return null;
+    return (
+      <PatternPredictor
+        problemId={step.problemId}
+        studyTaskId={step.studyTaskId}
+        onSubmitted={() => onComplete()}
+      />
+    );
+  }
+
+  if (step.type === "transfer_result") {
+    if (!step.studyTaskId) return null;
+    const solveGrade = step.problemId ? taskGrades[step.problemId] : undefined;
+    return <TransferResult studyTaskId={step.studyTaskId} solveGrade={solveGrade} onComplete={onComplete} />;
+  }
+
+  if (step.type === "transfer_encounter") {
+    if (!step.studyTaskId) return null;
+    const task = data.todayTasks.find(
+      (entry): entry is BlindTransferTaskPayload => entry.id === step.studyTaskId && entry.kind === "blind_transfer"
+    );
+    if (!task) return null;
+    return (
+      <TransferTaskRunner
+        task={task}
+        planRunId={data.planRunId}
+        dayNumber={data.today.dayNumber}
+        onAttempt={onTransferAttempt}
+        onGrade={onTransferGrade}
+        onComplete={onComplete}
+      />
+    );
+  }
+
   if (step.type === "learn") {
     return <LearnStep step={step} onComplete={onComplete} />;
   }
@@ -791,11 +1150,35 @@ function StepPrompt({ step }: { step: SessionStep }) {
 function LearnStep({ step, onComplete }: { step: SessionStep; onComplete: () => void }) {
   const technique = techniqueFor(step.patternId);
   const patternOption = patternOptions.find((option) => option.id === step.patternId);
+  const hasStaticContent = Boolean(technique || patternOption);
+  // Pilot Foundation: curriculumContext (a guided plan's topic, e.g.
+  // "Linked List") is the heading when present - the anchor problem's
+  // authoritative pattern (e.g. "Two Pointers") stays correct for the
+  // technique content below, but must not evict what curriculum chapter
+  // the learner is actually in. Shown as a small "Pattern:" line only when
+  // it differs from the heading - on a generated plan (no curriculumContext)
+  // this renders nothing extra, unchanged from before.
+  const heading = step.curriculumContext ?? step.patternLabel;
+  const showPatternLine = Boolean(step.curriculumContext && step.patternLabel && step.curriculumContext !== step.patternLabel);
 
   return (
     <div className="uiverse-panel p-6">
       <p className="text-sm font-semibold uppercase tracking-wide text-ember">Learn</p>
-      <h2 className="mt-2 text-2xl font-semibold text-ink">{step.patternLabel}</h2>
+      <h2 className="mt-2 text-2xl font-semibold text-ink">{heading}</h2>
+      {showPatternLine ? <p className="mt-1 text-xs font-medium text-black/45">Pattern: {step.patternLabel}</p> : null}
+      {step.learnResource ? (
+        <div className="mt-4 space-y-3">
+          <p className="text-sm leading-7 text-black/72">{step.learnResource.title}</p>
+          <a
+            href={step.learnResource.url}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-block rounded-full bg-black/5 px-4 py-2 text-sm font-semibold text-ink transition hover:bg-black/10"
+          >
+            Watch lesson ↗
+          </a>
+        </div>
+      ) : null}
       {technique ? (
         <div className="mt-4 space-y-3 text-sm leading-7 text-black/72">
           <p>
@@ -826,7 +1209,7 @@ function LearnStep({ step, onComplete }: { step: SessionStep; onComplete: () => 
         onClick={onComplete}
         className="mt-5 rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-85"
       >
-        Continue →
+        {step.learnResource && !hasStaticContent ? "Mark complete →" : "Continue →"}
       </button>
     </div>
   );

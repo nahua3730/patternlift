@@ -16,10 +16,6 @@ type TechniqueSeed = {
   quickTipsCn: string[];
   coachMoves: string[];
   signalMatchers: string[];
-  // Real problems from PatternLift's own catalog that use this technique.
-  // Empty when the catalog genuinely has no clean match yet - never a
-  // forced/loose fit just to fill the field.
-  representativeProblemIds: string[];
 };
 
 export const techniqueLibrary = [
@@ -57,7 +53,6 @@ export const techniqueLibrary = [
       "Contrast one-pass hashing with sorting or nested loops."
     ],
     signalMatchers: ["duplicate", "anagram", "complement", "lookup", "set", "frequency", "hash"],
-    representativeProblemIds: ["two-sum", "contains-duplicate", "official-group-anagrams"]
   },
   {
     id: "stack",
@@ -93,7 +88,6 @@ export const techniqueLibrary = [
       "Contrast generic stack usage with monotonic-stack specialization."
     ],
     signalMatchers: ["parentheses", "stack", "warmer", "next greater", "fleet", "undo", "latest"],
-    representativeProblemIds: ["valid-parentheses", "official-min-stack", "official-evaluate-reverse-polish-notation"]
   },
   {
     id: "intervals",
@@ -129,7 +123,6 @@ export const techniqueLibrary = [
       "Contrast merge-style interval handling with greedy removal logic."
     ],
     signalMatchers: ["interval", "overlap", "merge", "insert interval", "erase", "meeting", "range"],
-    representativeProblemIds: ["merge-intervals", "insert-interval", "non-overlapping-intervals"]
   },
   {
     id: "framework-thinking",
@@ -165,7 +158,6 @@ export const techniqueLibrary = [
       "Steer attention toward traversal, state, and repeated work."
     ],
     signalMatchers: ["prompt", "array", "graph", "tree", "search", "state"],
-    representativeProblemIds: []
   },
   {
     id: "recursion-perspective",
@@ -201,7 +193,6 @@ export const techniqueLibrary = [
       "Force the learner to state what a call returns."
     ],
     signalMatchers: ["tree", "recursive", "subtree", "linked list", "dfs", "backtrack"],
-    representativeProblemIds: []
   },
   {
     id: "two-pointers",
@@ -245,7 +236,6 @@ export const techniqueLibrary = [
       "cycle",
       "remove duplicate"
     ],
-    representativeProblemIds: ["three-sum", "official-two-sum-ii-input-array-is-sorted", "valid-palindrome"]
   },
   {
     id: "sliding-window",
@@ -290,7 +280,6 @@ export const techniqueLibrary = [
       "at most",
       "at least"
     ],
-    representativeProblemIds: ["longest-substring-no-repeat", "minimum-window-substring", "official-permutation-in-string"]
   },
   {
     id: "binary-search",
@@ -335,7 +324,6 @@ export const techniqueLibrary = [
       "search",
       "koko"
     ],
-    representativeProblemIds: ["binary-search", "koko-bananas", "official-search-in-rotated-sorted-array"]
   },
   {
     id: "bfs",
@@ -379,7 +367,6 @@ export const techniqueLibrary = [
       "word ladder",
       "nearest"
     ],
-    representativeProblemIds: ["binary-tree-level-order", "rotting-oranges", "open-the-lock"]
   },
   {
     id: "dfs-backtracking",
@@ -424,7 +411,6 @@ export const techniqueLibrary = [
       "path",
       "choices"
     ],
-    representativeProblemIds: ["subsets", "combination-sum", "word-search"]
   },
   {
     id: "dynamic-programming",
@@ -469,7 +455,6 @@ export const techniqueLibrary = [
       "coins",
       "rob"
     ],
-    representativeProblemIds: ["house-robber", "official-climbing-stairs", "coin-change"]
   },
   {
     id: "greedy",
@@ -512,7 +497,6 @@ export const techniqueLibrary = [
       "schedule",
       "erase overlap"
     ],
-    representativeProblemIds: ["jump-game", "best-time-stock", "official-gas-station"]
   },
   {
     id: "divide-conquer",
@@ -555,7 +539,6 @@ export const techniqueLibrary = [
       "split",
       "combine"
     ],
-    representativeProblemIds: ["official-median-of-two-sorted-arrays"]
   },
   {
     id: "binary-tree-recursion",
@@ -597,7 +580,6 @@ export const techniqueLibrary = [
       "balanced tree",
       "invert"
     ],
-    representativeProblemIds: ["max-depth-tree", "official-invert-binary-tree", "official-balanced-binary-tree"]
   },
   {
     id: "prefix-sum",
@@ -641,7 +623,6 @@ export const techniqueLibrary = [
       "prefix",
       "except self"
     ],
-    representativeProblemIds: ["official-product-of-array-except-self"]
   },
   {
     id: "difference-array",
@@ -684,7 +665,6 @@ export const techniqueLibrary = [
       "decrement",
       "batch update"
     ],
-    representativeProblemIds: []
   },
   {
     id: "monotonic-stack",
@@ -728,7 +708,6 @@ export const techniqueLibrary = [
       "circular array",
       "car fleet"
     ],
-    representativeProblemIds: ["daily-temperatures", "car-fleet", "official-largest-rectangle-in-histogram"]
   },
   {
     id: "monotonic-queue",
@@ -770,7 +749,6 @@ export const techniqueLibrary = [
       "window max",
       "window min"
     ],
-    representativeProblemIds: ["official-sliding-window-maximum"]
   },
   {
     id: "heap",
@@ -813,7 +791,6 @@ export const techniqueLibrary = [
       "merge k",
       "smallest pair"
     ],
-    representativeProblemIds: ["top-k-frequent-elements", "k-closest-points", "official-kth-largest-element-in-an-array"]
   },
   {
     id: "complexity",
@@ -856,7 +833,6 @@ export const techniqueLibrary = [
       "optimize",
       "efficient"
     ],
-    representativeProblemIds: []
   },
   {
     id: "union-find",
@@ -900,7 +876,6 @@ export const techniqueLibrary = [
       "province",
       "graph valid tree"
     ],
-    representativeProblemIds: ["official-redundant-connection", "official-number-of-connected-components-in-an-undirected-graph", "official-graph-valid-tree"]
   },
   {
     id: "trie",
@@ -936,7 +911,6 @@ export const techniqueLibrary = [
       "Contrast it with a plain hash set when prefix structure isn't actually needed."
     ],
     signalMatchers: ["trie", "prefix", "autocomplete", "word search", "word dictionary"],
-    representativeProblemIds: ["official-implement-trie-prefix-tree", "official-design-add-and-search-words-data-structure", "official-word-search-ii"]
   },
   {
     id: "topological-sort",
@@ -980,7 +954,6 @@ export const techniqueLibrary = [
       "in-degree",
       "alien dictionary"
     ],
-    representativeProblemIds: ["course-schedule", "official-course-schedule-ii", "official-alien-dictionary"]
   },
   {
     id: "graph-shortest-path",
@@ -1023,7 +996,6 @@ export const techniqueLibrary = [
       "weighted graph",
       "minimum cost path"
     ],
-    representativeProblemIds: ["network-delay-time", "official-cheapest-flights-within-k-stops"]
   },
   {
     id: "minimum-spanning-tree",
@@ -1059,7 +1031,6 @@ export const techniqueLibrary = [
       "Point out the union-find dependency for Kruskal's implementation."
     ],
     signalMatchers: ["minimum spanning tree", "mst", "connect all points", "prim", "kruskal"],
-    representativeProblemIds: ["official-min-cost-to-connect-all-points"]
   },
   {
     id: "bit-manipulation",
@@ -1095,7 +1066,6 @@ export const techniqueLibrary = [
       "Push the learner to explain what each bit represents before coding."
     ],
     signalMatchers: ["xor", "single number", "bit", "parity", "and (n - 1)", "missing number"],
-    representativeProblemIds: ["official-single-number", "official-number-of-1-bits", "official-sum-of-two-integers"]
   },
   {
     id: "fast-slow-pointers",
@@ -1131,7 +1101,6 @@ export const techniqueLibrary = [
       "Have the learner explain the meeting-point math in their own words."
     ],
     signalMatchers: ["cycle", "middle node", "fast pointer", "slow pointer", "tortoise", "linked list cycle"],
-    representativeProblemIds: ["linked-list-cycle", "remove-nth-from-end"]
   },
   {
     id: "design-data-structure",
@@ -1167,7 +1136,6 @@ export const techniqueLibrary = [
       "Push the learner to justify why a single structure can't satisfy every requirement alone."
     ],
     signalMatchers: ["design", "lru", "lfu", "implement", "o(1) get", "cache", "twitter"],
-    representativeProblemIds: ["official-lru-cache", "official-design-twitter", "official-find-median-from-data-stream"]
   },
   {
     id: "knapsack-dp",
@@ -1203,7 +1171,6 @@ export const techniqueLibrary = [
       "Check the capacity-loop direction explicitly once code is written."
     ],
     signalMatchers: ["knapsack", "subset sum", "coin change", "partition equal", "target sum"],
-    representativeProblemIds: ["partition-equal-subset-sum", "coin-change", "official-target-sum"]
   },
   {
     id: "state-machine-dp",
@@ -1239,7 +1206,6 @@ export const techniqueLibrary = [
       "Check that each extra constraint maps to a specific state or dimension, not a patch on the recurrence."
     ],
     signalMatchers: ["buy and sell stock", "cooldown", "transaction fee", "hold", "state machine"],
-    representativeProblemIds: ["best-time-stock", "official-best-time-to-buy-and-sell-stock-with-cooldown"]
   },
   {
     id: "interval-dp",
@@ -1275,7 +1241,6 @@ export const techniqueLibrary = [
       "Check the fill order of the DP table explicitly - this is where interval DP bugs usually hide."
     ],
     signalMatchers: ["palindromic subsequence", "matrix chain", "burst balloon", "interval dp", "merge stones"],
-    representativeProblemIds: ["official-burst-balloons"]
   },
   {
     id: "tree-dp",
@@ -1311,7 +1276,6 @@ export const techniqueLibrary = [
       "Distinguish tree DP from plain binary tree recursion by asking whether multiple mutually exclusive states are being tracked."
     ],
     signalMatchers: ["house robber iii", "tree dp", "binary tree cameras", "diameter", "subtree state"],
-    representativeProblemIds: ["official-diameter-of-binary-tree", "official-binary-tree-maximum-path-sum"]
   },
   {
     id: "grid-traversal",
@@ -1347,7 +1311,6 @@ export const techniqueLibrary = [
       "Push the learner to define the boundary/visited check before writing the recursion or queue loop."
     ],
     signalMatchers: ["grid", "island", "matrix", "flood fill", "rotting oranges", "connected region"],
-    representativeProblemIds: ["number-of-islands", "rotting-oranges", "official-pacific-atlantic-water-flow"]
   },
   {
     id: "bitmask-dp",
@@ -1383,7 +1346,6 @@ export const techniqueLibrary = [
       "Ask the learner to define exactly what each bit in the mask represents."
     ],
     signalMatchers: ["bitmask dp", "state compression", "traveling salesman", "visit every city", "assign each"],
-    representativeProblemIds: []
   },
   {
     id: "digit-dp",
@@ -1419,7 +1381,6 @@ export const techniqueLibrary = [
       "Ask the learner to define the tight-flag transition explicitly before coding."
     ],
     signalMatchers: ["digit dp", "count numbers", "digit sum", "numbers up to n"],
-    representativeProblemIds: []
   },
   {
     id: "game-theory-dp",
@@ -1455,7 +1416,6 @@ export const techniqueLibrary = [
       "Point out the overlap with interval DP when the state is a subarray/substring range."
     ],
     signalMatchers: ["stone game", "predict the winner", "optimal play", "two players", "game theory"],
-    representativeProblemIds: []
   },
   {
     id: "kmp-string-matching",
@@ -1491,7 +1451,6 @@ export const techniqueLibrary = [
       "Check that the learner can explain what the failure function represents before debugging their code."
     ],
     signalMatchers: ["kmp", "pattern matching", "strstr", "prefix function", "shortest palindrome"],
-    representativeProblemIds: []
   },
   {
     id: "segment-tree-bit",
@@ -1527,7 +1486,6 @@ export const techniqueLibrary = [
       "Ask whether a Binary Indexed Tree's simpler scope (prefix sum + point update) is enough before reaching for a full segment tree."
     ],
     signalMatchers: ["segment tree", "binary indexed tree", "fenwick", "range sum query mutable", "range update query"],
-    representativeProblemIds: []
   },
   {
     id: "simulation",
@@ -1563,7 +1521,6 @@ export const techniqueLibrary = [
       "Push for isolating each rule into its own clearly-named step."
     ],
     signalMatchers: ["simulate", "spiral", "rotate matrix", "game state", "step by step"],
-    representativeProblemIds: ["official-spiral-matrix", "official-rotate-image", "official-set-matrix-zeroes"]
   },
   {
     id: "math-geometry",
@@ -1599,7 +1556,6 @@ export const techniqueLibrary = [
       "Have the learner work a small example by hand to surface the underlying pattern."
     ],
     signalMatchers: ["prime", "gcd", "modular", "rotate matrix", "spiral matrix", "geometry", "happy number"],
-    representativeProblemIds: ["official-happy-number", "official-pow-x-n", "official-rotate-image"]
   }
 ] as const satisfies readonly TechniqueSeed[];
 

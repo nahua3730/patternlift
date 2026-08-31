@@ -3,6 +3,7 @@ import type { ResponseFunctionToolCall } from "openai/resources/responses/respon
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { createId, dbExecute } from "@/lib/db";
+import { getRepCounts } from "@/lib/rep-counts";
 import {
   allProblems,
   getOfficialProblemRoadmapMeta,
@@ -29,6 +30,8 @@ import {
   type PreparationGoal,
   type WeekdayMinutes
 } from "@/lib/study-plan";
+import { buildGuidedPlan } from "@/lib/guided-curriculum";
+import { carlPilotDays } from "@/lib/curricula/carl";
 
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -69,7 +72,35 @@ export async function POST(request: Request) {
     // (weeksFromDeadline, expandWeeklyPlanToDays) needs no changes.
     studyDurationDays?: number;
     weekdayMinutes?: Partial<WeekdayMinutes>;
+    // Pilot Foundation: "guided" skips AI/fallback weekly-plan generation
+    // entirely and adapts a static external curriculum instead. Only one
+    // guided curriculum exists for the pilot ("carl") - not a generic
+    // selector.
+    planKind?: "generated" | "guided";
+    guidedCurriculum?: "carl";
   };
+
+  if (body.planKind === "guided") {
+    const runId = createId("study-plan");
+    const dailyMinutes = typeof body.dailyMinutes === "number" && body.dailyMinutes > 0 ? body.dailyMinutes : 60;
+    const plan: CurriculumPlan = buildGuidedPlan(carlPilotDays, {
+      planId: runId,
+      dailyMinutes,
+      headline: "Carl's 代码随想录 Guided Plan",
+      rationale: "Your own curriculum, executed day by day - PatternLift adapts it, it doesn't replace it."
+    });
+
+    await dbExecute(
+      `
+        INSERT INTO study_plan_runs
+          (id, user_id, status, model, source, plan_kind, input_json, output_json, tool_trace_json)
+        VALUES (?, ?, 'proposed', ?, 'guided', 'guided', ?, ?, ?)
+      `,
+      [runId, user.id, "guided:carl", JSON.stringify({ guidedCurriculum: "carl", dailyMinutes }), JSON.stringify(plan), JSON.stringify([])]
+    );
+
+    return NextResponse.json({ runId, source: "guided", plan, toolTrace: [] });
+  }
 
   const deadlineWeeksFromDays =
     typeof body.studyDurationDays === "number" && body.studyDurationDays > 0
@@ -129,12 +160,27 @@ export async function POST(request: Request) {
   }
 
   const coveredWeekly = ensureFullPatternCoverage(weeklyPlan);
+  // Bug 3 fix: only an explicit "N days" answer gets trimmed to exactly N -
+  // an interview-date-driven plan has no single learner-typed day count to
+  // trim to, so it keeps the full week-aligned length as before.
+  const requestedDays =
+    typeof body.studyDurationDays === "number" && body.studyDurationDays > 0
+      ? Math.round(body.studyDurationDays)
+      : undefined;
+  // Phase 2A: which problems this learner has any persisted history with
+  // (attempts or roadmap marks), so Transfer selection can prefer a
+  // genuinely unseen problem over one they've already attempted before.
+  const repCounts = await getRepCounts(user.id);
+  const attemptedProblemIds = new Set(Object.keys(repCounts));
   const plan: CurriculumPlan = expandWeeklyPlanToDays(
     coveredWeekly,
     DEFAULT_TRACK,
     coachStyleForExperience(answers.experienceLevel),
     goal,
-    weekdayMinutes
+    weekdayMinutes,
+    requestedDays,
+    runId,
+    attemptedProblemIds
   );
 
   await dbExecute(

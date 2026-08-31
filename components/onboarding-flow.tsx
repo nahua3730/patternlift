@@ -13,7 +13,7 @@ import {
   type WeekdayMinutes
 } from "@/lib/study-plan";
 
-type Step = "goal" | "experience" | "duration" | "time" | "generating" | "reveal" | "error";
+type Step = "planKind" | "goal" | "experience" | "duration" | "time" | "generating" | "reveal" | "error";
 
 type Message = { id: string; speaker: "coach" | "user"; text: string };
 
@@ -54,7 +54,7 @@ const STUDY_MODE_LABEL: Record<string, string> = {
 
 export function OnboardingFlow({ hasExistingPlan = false }: { hasExistingPlan?: boolean }) {
   const router = useRouter();
-  const [step, setStep] = useState<Step>("goal");
+  const [step, setStep] = useState<Step>("planKind");
   const [messages, setMessages] = useState<Message[]>([
     ...(hasExistingPlan
       ? [
@@ -65,7 +65,11 @@ export function OnboardingFlow({ hasExistingPlan = false }: { hasExistingPlan?: 
           }
         ]
       : []),
-    { id: "q1", speaker: "coach", text: "What's your main goal right now?" }
+    {
+      id: "q0b",
+      speaker: "coach",
+      text: "How do you want to study?"
+    }
   ]);
   const [goal, setGoal] = useState<PreparationGoal | null>(null);
   const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel | null>(null);
@@ -79,9 +83,43 @@ export function OnboardingFlow({ hasExistingPlan = false }: { hasExistingPlan?: 
   const [result, setResult] = useState<GenerateResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [launching, setLaunching] = useState(false);
+  const [isGuidedAttempt, setIsGuidedAttempt] = useState(false);
 
   function pushMessage(message: Message) {
     setMessages((current) => [...current, message]);
+  }
+
+  function chooseRecommendedPlan() {
+    pushMessage({ id: "a-plankind-recommended", speaker: "user", text: "Recommended Plan" });
+    pushMessage({ id: "q1", speaker: "coach", text: "What's your main goal right now?" });
+    setStep("goal");
+  }
+
+  async function chooseGuidedCurriculum() {
+    pushMessage({ id: "a-plankind-guided", speaker: "user", text: "Guided Curriculum — Carl (代码随想录)" });
+    pushMessage({
+      id: "q-guided",
+      speaker: "coach",
+      text: "Loading Carl's plan — Day 1 starts with Arrays."
+    });
+    setStep("generating");
+    setError(null);
+    setIsGuidedAttempt(true);
+
+    try {
+      const response = await fetch("/api/curriculum-agent/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planKind: "guided", guidedCurriculum: "carl", dailyMinutes: 60 })
+      });
+      if (!response.ok) throw new Error("Unable to load Carl's plan right now.");
+      const payload = (await response.json()) as GenerateResponse;
+      setResult(payload);
+      setStep("reveal");
+    } catch (generateError) {
+      setError(generateError instanceof Error ? generateError.message : "Something went wrong.");
+      setStep("error");
+    }
   }
 
   function answerGoal(value: PreparationGoal, label: string) {
@@ -150,6 +188,7 @@ export function OnboardingFlow({ hasExistingPlan = false }: { hasExistingPlan?: 
     pushMessage({ id: "a-time", speaker: "user", text: summaryLabel });
     setStep("generating");
     setError(null);
+    setIsGuidedAttempt(false);
 
     try {
       const response = await fetch("/api/curriculum-agent/generate", {
@@ -326,12 +365,35 @@ export function OnboardingFlow({ hasExistingPlan = false }: { hasExistingPlan?: 
           {step === "error" ? (
             <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {error ?? "Something went wrong."}{" "}
-              <button type="button" className="ml-1 font-semibold underline" onClick={() => setStep("time")}>
+              <button
+                type="button"
+                className="ml-1 font-semibold underline"
+                onClick={() => (isGuidedAttempt ? chooseGuidedCurriculum() : setStep("time"))}
+              >
                 Try again
               </button>
             </div>
           ) : null}
         </div>
+
+        {step === "planKind" ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={chooseRecommendedPlan}
+              className="uiverse-chip px-4 py-2.5 text-sm font-semibold text-slate-700"
+            >
+              Recommended Plan — PatternLift builds one for me
+            </button>
+            <button
+              type="button"
+              onClick={() => void chooseGuidedCurriculum()}
+              className="uiverse-chip px-4 py-2.5 text-sm font-semibold text-slate-700"
+            >
+              Guided Curriculum — Carl (代码随想录)
+            </button>
+          </div>
+        ) : null}
 
         {step === "goal" ? (
           <div className="mt-4 flex flex-wrap gap-2">

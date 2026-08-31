@@ -142,6 +142,7 @@ async function runPostgresMigrations(sql: NeonClient) {
       status TEXT NOT NULL DEFAULT 'proposed',
       model TEXT NOT NULL,
       source TEXT NOT NULL,
+      plan_kind TEXT NOT NULL DEFAULT 'generated',
       input_json TEXT NOT NULL,
       output_json TEXT NOT NULL,
       tool_trace_json TEXT NOT NULL,
@@ -192,6 +193,22 @@ async function runPostgresMigrations(sql: NeonClient) {
       completed_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
     )`,
+    // Phase 2A: the authoritative structured record of a learner's blind
+    // pre-solve pattern prediction on a Transfer task - persisted
+    // independently from the eventual coding attempt. study_task_id is
+    // NOT NULL because a prediction only ever exists as part of a
+    // Transfer StudyTask.
+    `CREATE TABLE IF NOT EXISTS pattern_predictions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      study_task_id TEXT NOT NULL REFERENCES study_tasks(id) ON DELETE CASCADE,
+      problem_id TEXT NOT NULL,
+      predicted_pattern_id TEXT,
+      actual_pattern_id TEXT NOT NULL,
+      reasoning TEXT,
+      was_correct INTEGER NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
     "CREATE INDEX IF NOT EXISTS sessions_user_id_idx ON sessions(user_id)",
     "CREATE INDEX IF NOT EXISTS attempts_user_created_idx ON attempts(user_id, created_at DESC)",
     "CREATE INDEX IF NOT EXISTS review_items_user_due_idx ON review_items(user_id, due_at)",
@@ -200,6 +217,21 @@ async function runPostgresMigrations(sql: NeonClient) {
     "CREATE INDEX IF NOT EXISTS daily_checkins_user_date_idx ON daily_checkins(user_id, checkin_date DESC)",
     "CREATE INDEX IF NOT EXISTS problem_marks_user_problem_idx ON problem_marks(user_id, problem_id)",
     "CREATE INDEX IF NOT EXISTS study_tasks_plan_day_idx ON study_tasks(plan_run_id, day_number)",
+    "CREATE INDEX IF NOT EXISTS pattern_predictions_user_created_idx ON pattern_predictions(user_id, created_at DESC)",
+    // Preserve the first authoritative prediction if an older deployment
+    // already accumulated duplicates, then enforce immutability under
+    // concurrent POSTs at the database boundary.
+    `DELETE FROM pattern_predictions
+      WHERE id NOT IN (
+        SELECT id FROM (
+          SELECT id, ROW_NUMBER() OVER (
+            PARTITION BY user_id, study_task_id ORDER BY created_at ASC, id ASC
+          ) AS row_num
+          FROM pattern_predictions
+        ) ranked
+        WHERE row_num = 1
+      )`,
+    "CREATE UNIQUE INDEX IF NOT EXISTS pattern_predictions_user_task_unique_idx ON pattern_predictions(user_id, study_task_id)",
     // review_items predates the problem_id column - CREATE TABLE IF NOT EXISTS
     // above is a no-op against an already-existing table, so the column needs
     // its own idempotent ADD for deployments where the table already exists.
@@ -216,6 +248,17 @@ async function runPostgresMigrations(sql: NeonClient) {
     "ALTER TABLE attempts ADD COLUMN IF NOT EXISTS scaffold_level INTEGER",
     "ALTER TABLE attempts ADD COLUMN IF NOT EXISTS remediation_used TEXT",
     "ALTER TABLE attempts ADD COLUMN IF NOT EXISTS retry_succeeded INTEGER",
+    // Phase 2A: direct link back to the StudyTask this attempt belongs to
+    // (nullable - every pre-Phase-2A attempt simply leaves it null). Removes
+    // the ambiguity a (user_id, problem_id) lookup alone would have once
+    // the same problem can appear under more than one task/task-type.
+    "ALTER TABLE attempts ADD COLUMN IF NOT EXISTS study_task_id TEXT",
+    "CREATE INDEX IF NOT EXISTS attempts_study_task_idx ON attempts(study_task_id)",
+    // Pilot Foundation: which curriculum SOURCE produced this plan
+    // ("generated" | "guided") - distinct from the existing `source`
+    // column, which encodes how a generated plan was produced
+    // ("agent" | "fallback"). Never conflate the two.
+    "ALTER TABLE study_plan_runs ADD COLUMN IF NOT EXISTS plan_kind TEXT NOT NULL DEFAULT 'generated'",
   ];
 
   for (const statement of statements) {
@@ -279,6 +322,7 @@ function runSqliteMigrations(db: DatabaseSync) {
         status TEXT NOT NULL DEFAULT 'proposed',
         model TEXT NOT NULL,
         source TEXT NOT NULL,
+        plan_kind TEXT NOT NULL DEFAULT 'generated',
         input_json TEXT NOT NULL,
         output_json TEXT NOT NULL,
         tool_trace_json TEXT NOT NULL,
@@ -328,6 +372,29 @@ function runSqliteMigrations(db: DatabaseSync) {
         completed_at TEXT,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
+      CREATE TABLE IF NOT EXISTS pattern_predictions (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        study_task_id TEXT NOT NULL,
+        problem_id TEXT NOT NULL,
+        predicted_pattern_id TEXT,
+        actual_pattern_id TEXT NOT NULL,
+        reasoning TEXT,
+        was_correct INTEGER NOT NULL,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+      DELETE FROM pattern_predictions
+        WHERE id NOT IN (
+          SELECT id FROM (
+            SELECT id, ROW_NUMBER() OVER (
+              PARTITION BY user_id, study_task_id ORDER BY created_at ASC, id ASC
+            ) AS row_num
+            FROM pattern_predictions
+          ) ranked
+          WHERE row_num = 1
+        );
+      CREATE UNIQUE INDEX IF NOT EXISTS pattern_predictions_user_task_unique_idx
+        ON pattern_predictions(user_id, study_task_id);
     `);
 
     ensureSqliteColumn(db, "attempts", "user_id", "TEXT");
@@ -345,6 +412,8 @@ function runSqliteMigrations(db: DatabaseSync) {
     ensureSqliteColumn(db, "attempts", "scaffold_level", "INTEGER");
     ensureSqliteColumn(db, "attempts", "remediation_used", "TEXT");
     ensureSqliteColumn(db, "attempts", "retry_succeeded", "INTEGER");
+    ensureSqliteColumn(db, "attempts", "study_task_id", "TEXT");
+    ensureSqliteColumn(db, "study_plan_runs", "plan_kind", "TEXT NOT NULL DEFAULT 'generated'");
     ensureSqliteColumn(db, "review_items", "user_id", "TEXT");
     ensureSqliteColumn(db, "review_items", "problem_id", "TEXT");
     ensureSqliteColumn(db, "review_items", "due_at", "TEXT");

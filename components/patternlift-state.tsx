@@ -8,10 +8,10 @@ import {
   useState,
   type ReactNode
 } from "react";
-import { starterHistory } from "@/lib/product";
+import { starterHistory } from "@/lib/starter-history";
 import type { AttemptResult } from "@/components/practice-workspace";
 import type { PersistenceSnapshot } from "@/lib/persistence";
-import { getReviewSchedule } from "@/lib/mastery";
+import { getReviewSchedule } from "@/lib/review-schedule";
 
 export type HistoryItem = {
   id: string;

@@ -3,7 +3,8 @@ import type { AttemptResult } from "@/components/practice-workspace";
 import { getCurrentUser } from "@/lib/auth";
 import { createId, dbExecute, dbOne } from "@/lib/db";
 import { buildHistoryItem, buildReviewItem } from "@/lib/persistence";
-import { getReviewSchedule, retentionContextFor, type MasteryAttempt } from "@/lib/mastery";
+import { retentionContextFor, type MasteryAttempt } from "@/lib/mastery";
+import { getReviewSchedule } from "@/lib/review-schedule";
 import { loadRecentAttempts } from "@/lib/attempts-repo";
 import { diagnoseAttempt } from "@/lib/diagnosis";
 
@@ -118,8 +119,9 @@ export async function POST(request: Request) {
         highest_hint_level,
         scaffold_level,
         remediation_used,
-        retry_succeeded
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        retry_succeeded,
+        study_task_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
   , [
     createId("attempt"),
@@ -144,7 +146,10 @@ export async function POST(request: Request) {
     body.highestHintLevel ?? null,
     body.scaffoldLevel ?? null,
     body.remediationUsed && body.remediationUsed.length > 0 ? JSON.stringify(body.remediationUsed) : null,
-    retrySucceeded == null ? null : retrySucceeded ? 1 : 0
+    retrySucceeded == null ? null : retrySucceeded ? 1 : 0,
+    // Phase 2A: which StudyTask this attempt belongs to, when known -
+    // set by session-runner.tsx from the active SessionStep.studyTaskId.
+    body.studyTaskId ?? null
   ]);
 
   await dbExecute(`DELETE FROM review_items WHERE user_id = ? AND problem_title = ?`, [
