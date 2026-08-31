@@ -83,6 +83,24 @@ function buildGuidedDayTasks(planId: string, day: CarlDayDef, guaranteedMinutes:
     });
   }
 
+  // Carl Fidelity Pass: a curriculum-required problem PatternLift can't
+  // execute natively (yet). No problemId, no patternId - this must never
+  // become mastery/Recognition/Transfer evidence, only curriculum
+  // completion. Still Core, still participates in carryover, exactly like
+  // every other practice task here.
+  for (const external of day.externalProblems ?? []) {
+    raw.push({
+      id: nextId(),
+      type: "practice",
+      priority: "A",
+      patternId: null,
+      problemId: null,
+      title: external.title,
+      estimatedMinutes: MINUTES_PER_PROBLEM,
+      externalProblem: external
+    });
+  }
+
   return bucketTasks(raw, guaranteedMinutes).map((task) => ({ ...task }));
 }
 

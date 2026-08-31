@@ -1884,5 +1884,232 @@ export const problemCodeMap: Record<string, ProblemCodeConfig> = {
       { label: "Example 1", argsExpression: "[[[2,5,3],[1,8,4],[1,7,5]], [2,7,5]]", expectedExpression: "true" },
       { label: "Example 2", argsExpression: "[[[3,4,5],[4,5,6]], [3,2,5]]", expectedExpression: "false" }
     ]
+  },
+  // Carl / 代码随想录 Fidelity Pass, Batch 1 - every example below was
+  // verified: a correct reference solution passes every example, and a
+  // deliberately wrong solution fails at least one, run directly through
+  // runJavaScriptCode before this file was edited. See the Batch 1
+  // fidelity report for the verification transcript.
+  "official-remove-element": {
+    functionName: "removeElement",
+    starterCode: buildStarterCode("function removeElement(nums, val)", [
+      "Return the elements NOT equal to val, keeping their original relative order."
+    ]),
+    signature: { params: [{ name: "nums", type: "intArray" }, { name: "val", type: "int" }], returnType: "intArray" },
+    examples: [
+      { label: "Example 1", argsExpression: "[[3,2,2,3], 3]", expectedExpression: "[2,2]" },
+      { label: "Example 2", argsExpression: "[[0,1,2,2,3,0,4,2], 2]", expectedExpression: "[0,1,3,0,4]" }
+    ]
+  },
+  "official-squares-of-a-sorted-array": {
+    functionName: "sortedSquares",
+    starterCode: buildStarterCode("function sortedSquares(nums)", [
+      "nums is sorted but may include negatives.",
+      "Return the squares, sorted ascending."
+    ]),
+    signature: { params: [{ name: "nums", type: "intArray" }], returnType: "intArray" },
+    examples: [
+      { label: "Example 1", argsExpression: "[[-4,-1,0,3,10]]", expectedExpression: "[0,1,9,16,100]" },
+      { label: "Example 2", argsExpression: "[[-7,-3,2,3,11]]", expectedExpression: "[4,9,9,49,121]" }
+    ]
+  },
+  "official-spiral-matrix-ii": {
+    functionName: "generateMatrix",
+    starterCode: buildStarterCode("function generateMatrix(n)", [
+      "Fill an n x n matrix with 1..n^2 in spiral order."
+    ]),
+    signature: { params: [{ name: "n", type: "int" }], returnType: "intMatrix" },
+    examples: [
+      { label: "Example 1", argsExpression: "[3]", expectedExpression: "[[1,2,3],[8,9,4],[7,6,5]]" },
+      { label: "Example 2", argsExpression: "[1]", expectedExpression: "[[1]]" }
+    ]
+  },
+  "official-reverse-string": {
+    functionName: "reverseString",
+    starterCode: buildStarterCode("function reverseString(s)", ["Return s reversed."]),
+    signature: { params: [{ name: "s", type: "string" }], returnType: "string" },
+    examples: [
+      { label: "Example 1", argsExpression: "[\"hello\"]", expectedExpression: "\"olleh\"" },
+      { label: "Example 2", argsExpression: "[\"Hannah\"]", expectedExpression: "\"hannaH\"" }
+    ]
+  },
+  "official-reverse-string-ii": {
+    functionName: "reverseStr",
+    starterCode: buildStarterCode("function reverseStr(s, k)", [
+      "For every 2k characters, reverse the first k."
+    ]),
+    signature: { params: [{ name: "s", type: "string" }, { name: "k", type: "int" }], returnType: "string" },
+    examples: [
+      { label: "Example 1", argsExpression: "[\"abcdefg\", 2]", expectedExpression: "\"bacdfeg\"" },
+      { label: "Example 2", argsExpression: "[\"abcd\", 2]", expectedExpression: "\"bacd\"" }
+    ]
+  },
+  "official-replace-space": {
+    functionName: "replaceSpace",
+    starterCode: buildStarterCode("function replaceSpace(s)", ["Replace every space with \"%20\"."]),
+    signature: { params: [{ name: "s", type: "string" }], returnType: "string" },
+    examples: [
+      { label: "Example 1", argsExpression: "[\"We are happy.\"]", expectedExpression: "\"We%20are%20happy.\"" },
+      { label: "Example 2", argsExpression: "[\"Mr John Smith\"]", expectedExpression: "\"Mr%20John%20Smith\"" }
+    ]
+  },
+  "official-reverse-words-in-a-string": {
+    functionName: "reverseWords",
+    starterCode: buildStarterCode("function reverseWords(s)", [
+      "Trim/collapse whitespace, then reverse word order."
+    ]),
+    signature: { params: [{ name: "s", type: "string" }], returnType: "string" },
+    examples: [
+      { label: "Example 1", argsExpression: "[\"the sky is blue\"]", expectedExpression: "\"blue is sky the\"" },
+      { label: "Example 2", argsExpression: "[\"  hello world  \"]", expectedExpression: "\"world hello\"" }
+    ]
+  },
+  "official-left-rotate-string": {
+    functionName: "reverseLeftWords",
+    starterCode: buildStarterCode("function reverseLeftWords(s, n)", [
+      "Left-rotate s by n characters."
+    ]),
+    signature: { params: [{ name: "s", type: "string" }, { name: "n", type: "int" }], returnType: "string" },
+    examples: [
+      { label: "Example 1", argsExpression: "[\"abcdefg\", 2]", expectedExpression: "\"cdefgab\"" },
+      { label: "Example 2", argsExpression: "[\"lrloseumgh\", 6]", expectedExpression: "\"umghlrlose\"" }
+    ]
+  },
+  "official-str-str": {
+    functionName: "strStr",
+    starterCode: buildStarterCode("function strStr(haystack, needle)", [
+      "Return the index of needle's first occurrence in haystack, or -1."
+    ]),
+    signature: { params: [{ name: "haystack", type: "string" }, { name: "needle", type: "string" }], returnType: "int" },
+    examples: [
+      { label: "Example 1", argsExpression: "[\"sadbutsad\", \"sad\"]", expectedExpression: "0" },
+      { label: "Example 2", argsExpression: "[\"leetcode\", \"leeto\"]", expectedExpression: "-1" }
+    ]
+  },
+  "official-repeated-substring-pattern": {
+    functionName: "repeatedSubstringPattern",
+    starterCode: buildStarterCode("function repeatedSubstringPattern(s)", [
+      "Return true if s is built from one substring repeated."
+    ]),
+    signature: { params: [{ name: "s", type: "string" }], returnType: "bool" },
+    examples: [
+      { label: "Example 1", argsExpression: "[\"abab\"]", expectedExpression: "true" },
+      { label: "Example 2", argsExpression: "[\"aba\"]", expectedExpression: "false" },
+      { label: "Example 3", argsExpression: "[\"abcabcabcabc\"]", expectedExpression: "true" }
+    ]
+  },
+  "official-intersection-of-two-arrays": {
+    functionName: "intersection",
+    starterCode: buildStarterCode("function intersection(nums1, nums2)", [
+      "Return the unique values present in both arrays."
+    ]),
+    compareMode: "unordered-number-array",
+    signature: { params: [{ name: "nums1", type: "intArray" }, { name: "nums2", type: "intArray" }], returnType: "intArray" },
+    examples: [
+      { label: "Example 1", argsExpression: "[[1,2,2,1], [2,2]]", expectedExpression: "[2]" },
+      { label: "Example 2", argsExpression: "[[4,9,5], [9,4,9,8,4]]", expectedExpression: "[4,9]" }
+    ]
+  },
+  "official-4sum-ii": {
+    functionName: "fourSumCount",
+    starterCode: buildStarterCode("function fourSumCount(nums1, nums2, nums3, nums4)", [
+      "Count index tuples whose values from each array sum to 0."
+    ]),
+    signature: {
+      params: [
+        { name: "nums1", type: "intArray" },
+        { name: "nums2", type: "intArray" },
+        { name: "nums3", type: "intArray" },
+        { name: "nums4", type: "intArray" }
+      ],
+      returnType: "int"
+    },
+    examples: [
+      { label: "Example 1", argsExpression: "[[1,2],[-2,-1],[-1,2],[0,2]]", expectedExpression: "2" },
+      { label: "Example 2", argsExpression: "[[0],[0],[0],[0]]", expectedExpression: "1" }
+    ]
+  },
+  "official-ransom-note": {
+    functionName: "canConstruct",
+    starterCode: buildStarterCode("function canConstruct(ransomNote, magazine)", [
+      "Return true if ransomNote can be built from magazine's letters, each used once."
+    ]),
+    signature: { params: [{ name: "ransomNote", type: "string" }, { name: "magazine", type: "string" }], returnType: "bool" },
+    examples: [
+      { label: "Example 1", argsExpression: "[\"a\",\"b\"]", expectedExpression: "false" },
+      { label: "Example 2", argsExpression: "[\"aa\",\"ab\"]", expectedExpression: "false" },
+      { label: "Example 3", argsExpression: "[\"aa\",\"aab\"]", expectedExpression: "true" }
+    ]
+  },
+  "official-4sum": {
+    functionName: "fourSum",
+    starterCode: buildStarterCode("function fourSum(nums, target)", [
+      "Return every unique quadruplet summing to target."
+    ]),
+    compareMode: "unordered-nested-array",
+    signature: { params: [{ name: "nums", type: "intArray" }, { name: "target", type: "int" }], returnType: "nestedIntArray" },
+    examples: [
+      { label: "Example 1", argsExpression: "[[1,0,-1,0,-2,2], 0]", expectedExpression: "[[-2,-1,1,2],[-2,0,0,2],[-1,0,0,1]]" },
+      { label: "Example 2", argsExpression: "[[2,2,2,2,2], 8]", expectedExpression: "[[2,2,2,2]]" }
+    ]
+  },
+  "official-remove-linked-list-elements": {
+    functionName: "removeElements",
+    starterCode: buildStarterCode("function removeElements(head, val)", [
+      "Assume nodes look like { val, next } or null.",
+      "Remove every node whose val equals val, return the new head."
+    ]),
+    signature: { params: [{ name: "head", type: "linkedList" }, { name: "val", type: "int" }], returnType: "linkedList" },
+    examples: [
+      {
+        label: "Example 1",
+        argsExpression: "[(()=>[1,2,6,3,4,5,6].reduceRight((next,val)=>({val,next}),null))(), 6]",
+        expectedExpression: "(()=>[1,2,3,4,5].reduceRight((next,val)=>({val,next}),null))()"
+      },
+      { label: "Example 2", argsExpression: "[null, 1]", expectedExpression: "null" }
+    ]
+  },
+  "official-swap-nodes-in-pairs": {
+    functionName: "swapPairs",
+    starterCode: buildStarterCode("function swapPairs(head)", [
+      "Assume nodes look like { val, next } or null.",
+      "Swap every two adjacent nodes and return the new head."
+    ]),
+    signature: { params: [{ name: "head", type: "linkedList" }], returnType: "linkedList" },
+    examples: [
+      {
+        label: "Example 1",
+        argsExpression: "[(()=>[1,2,3,4].reduceRight((next,val)=>({val,next}),null))()]",
+        expectedExpression: "(()=>[2,1,4,3].reduceRight((next,val)=>({val,next}),null))()"
+      },
+      { label: "Example 2", argsExpression: "[null]", expectedExpression: "null" }
+    ]
+  },
+  "official-intersection-of-two-linked-lists": {
+    functionName: "getIntersectionNode",
+    starterCode: buildStarterCode("function getIntersectionNode(headA, headB)", [
+      "Assume nodes look like { val, next } or null.",
+      "Return the shared node where the two lists intersect, or null."
+    ]),
+    signature: { params: [{ name: "headA", type: "linkedList" }, { name: "headB", type: "linkedList" }], returnType: "linkedList" },
+    examples: [
+      {
+        label: "Example 1",
+        argsExpression:
+          "[(()=>{const tail={val:8,next:{val:4,next:{val:5,next:null}}};return{val:4,next:{val:1,next:tail}};})(), (()=>{const tail={val:8,next:{val:4,next:{val:5,next:null}}};return{val:5,next:{val:6,next:{val:1,next:tail}}};})()]",
+        expectedExpression: "{val:8,next:{val:4,next:{val:5,next:null}}}"
+      }
+    ]
+  },
+  "official-remove-all-adjacent-duplicates-in-string": {
+    functionName: "removeDuplicates",
+    starterCode: buildStarterCode("function removeDuplicates(s)", [
+      "Push characters onto a stack, popping when the top matches the next character."
+    ]),
+    signature: { params: [{ name: "s", type: "string" }], returnType: "string" },
+    examples: [
+      { label: "Example 1", argsExpression: "[\"abbaca\"]", expectedExpression: "\"ca\"" },
+      { label: "Example 2", argsExpression: "[\"azxxzy\"]", expectedExpression: "\"ay\"" }
+    ]
   }
 };

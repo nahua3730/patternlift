@@ -96,7 +96,8 @@ export async function GET() {
       estimatedMinutes: row.estimated_minutes,
       status: row.status,
       dayNumber: row.day_number,
-      learnResource: planTasksById.get(row.id)?.learnResource
+      learnResource: planTasksById.get(row.id)?.learnResource,
+      externalProblem: planTasksById.get(row.id)?.externalProblem
     }));
 
     return NextResponse.json(
@@ -225,7 +226,8 @@ export async function GET() {
           title: row.title,
           estimatedMinutes: row.estimated_minutes,
           status: row.status,
-          learnResource: planTasksById.get(row.id)?.learnResource
+          learnResource: planTasksById.get(row.id)?.learnResource,
+          externalProblem: planTasksById.get(row.id)?.externalProblem
         }))
       : synthesizeTasksFromLegacyDay(day).map((task) => ({ ...task, status: "pending" as const }));
 
@@ -268,6 +270,7 @@ export async function GET() {
     status: row.status,
     dayNumber: row.day_number,
     learnResource: planTasksById.get(row.id)?.learnResource,
+    externalProblem: planTasksById.get(row.id)?.externalProblem,
     reps: row.problem_id ? reps[row.problem_id] ?? 0 : undefined
   }));
   // Carryover claims up to a full day's guaranteed budget before it's
@@ -302,6 +305,7 @@ export async function GET() {
         estimatedMinutes: task.estimatedMinutes,
         status: task.status,
         learnResource: task.learnResource,
+        externalProblem: task.externalProblem,
         reps: task.problemId ? reps[task.problemId] ?? 0 : undefined
       };
       todayTasks.push(normal);

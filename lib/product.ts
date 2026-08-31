@@ -920,6 +920,239 @@ export const sampleProblems: AppProblem[] = [
     reviewQuestion:
       "Why can invalid triplets be ignored immediately without losing a possible solution?",
     contrastPatternId: "dynamic-programming"
+  },
+  // Carl / 代码随想录 Fidelity Pass, Batch 1 (Arrays, Linked List, Hash
+  // Table, String, Stack & Queue) - every entry below is a real, exact
+  // problem from Carl's own curated list (programmercarl.com/qita/12.list.html),
+  // added natively rather than left as a substitute or External Problem.
+  // Each has a verified problemCodeMap entry in lib/problem-code.ts (a
+  // correct reference solution passes every example, a deliberately wrong
+  // one fails at least one) - see the Batch 1 fidelity report for the
+  // verification transcript.
+  {
+    id: "official-remove-element",
+    category: "Arrays & Hashing",
+    title: "Remove Element",
+    difficulty: "Easy",
+    prompt:
+      "Given an array of integers and a value, remove every occurrence of that value and return the remaining elements in their original relative order.",
+    targetPatternId: "two-pointers",
+    recommendedClues: ["in-place array compaction", "keep or discard one element at a time"],
+    recommendedFirstStep: "Use a slow pointer to write kept elements while a fast pointer scans forward",
+    reviewQuestion:
+      "Why does the slow pointer only advance when the current element should be kept?",
+    contrastPatternId: "sliding-window"
+  },
+  {
+    id: "official-squares-of-a-sorted-array",
+    category: "Arrays & Hashing",
+    title: "Squares of a Sorted Array",
+    difficulty: "Easy",
+    prompt:
+      "Given an integer array sorted in non-decreasing order (which may include negatives), return an array of the squares of each number, sorted in non-decreasing order.",
+    targetPatternId: "two-pointers",
+    recommendedClues: ["sorted input with negatives", "largest values sit at both ends"],
+    recommendedFirstStep: "Compare from both ends inward and fill the result from the back",
+    reviewQuestion:
+      "Why can the largest square always be found by comparing only the two current endpoints?",
+    contrastPatternId: "binary-search"
+  },
+  {
+    id: "official-spiral-matrix-ii",
+    category: "Arrays & Hashing",
+    title: "Spiral Matrix II",
+    difficulty: "Medium",
+    prompt:
+      "Given a positive integer n, generate an n x n matrix filled with elements from 1 to n^2 in spiral order.",
+    targetPatternId: "two-pointers",
+    recommendedClues: ["shrinking boundary on every side", "consistent loop-invariant per edge"],
+    recommendedFirstStep: "Track top/bottom/left/right boundaries and fill one edge at a time",
+    reviewQuestion:
+      "Why does keeping the same open/closed convention on every edge prevent double-filling a corner?",
+    contrastPatternId: "intervals"
+  },
+  {
+    id: "official-reverse-string",
+    category: "Sliding Window",
+    title: "Reverse String",
+    difficulty: "Easy",
+    prompt: "Given a string, return it reversed.",
+    targetPatternId: "two-pointers",
+    recommendedClues: ["in-place reversal", "swap from both ends inward"],
+    recommendedFirstStep: "Swap the outermost characters and move both pointers inward",
+    reviewQuestion: "Why do the two pointers always meet after exactly length/2 swaps?",
+    contrastPatternId: "stack"
+  },
+  {
+    id: "official-reverse-string-ii",
+    category: "Sliding Window",
+    title: "Reverse String II",
+    difficulty: "Easy",
+    prompt:
+      "Given a string and an integer k, reverse the first k characters for every 2k characters counting from the start of the string.",
+    targetPatternId: "two-pointers",
+    recommendedClues: ["fixed-size chunks", "partial reversal within a window"],
+    recommendedFirstStep: "Step through the string in chunks of 2k, reversing only the first k of each",
+    reviewQuestion: "Why does the last chunk still reverse correctly even when it's shorter than 2k?",
+    contrastPatternId: "sliding-window"
+  },
+  {
+    id: "official-replace-space",
+    category: "Sliding Window",
+    title: "Replace Space (剑指 Offer 05)",
+    difficulty: "Easy",
+    prompt: "Given a string, replace every space character with \"%20\" and return the result.",
+    targetPatternId: "two-pointers",
+    recommendedClues: ["string grows when expanded in place", "fill from the back to avoid overwriting"],
+    recommendedFirstStep: "Figure out the final length first, then fill from the end backward",
+    reviewQuestion: "Why does filling from the back avoid overwriting characters you still need to read?",
+    contrastPatternId: "hashing"
+  },
+  {
+    id: "official-reverse-words-in-a-string",
+    category: "Sliding Window",
+    title: "Reverse Words in a String",
+    difficulty: "Medium",
+    prompt:
+      "Given a string, reverse the order of the words. Words are separated by whitespace, and the result should have a single space between words with no leading or trailing spaces.",
+    targetPatternId: "two-pointers",
+    recommendedClues: ["remove extra spaces first", "reverse the whole thing, then reverse each word back"],
+    recommendedFirstStep: "Trim and collapse whitespace, then reverse word order",
+    reviewQuestion: "Why does reversing the whole string and then reversing each word restore correct word order?",
+    contrastPatternId: "stack"
+  },
+  {
+    id: "official-left-rotate-string",
+    category: "Sliding Window",
+    title: "Left Rotate String (剑指 Offer 58-II)",
+    difficulty: "Easy",
+    prompt: "Given a string and an integer n, left-rotate the string by n characters and return the result.",
+    targetPatternId: "two-pointers",
+    recommendedClues: ["rotation as two slices recombined", "in-place three-reversal trick"],
+    recommendedFirstStep: "Split the string at index n and recombine the two pieces in swapped order",
+    reviewQuestion: "Why does swapping the two slices produce the same result as rotating character by character?",
+    contrastPatternId: "sliding-window"
+  },
+  {
+    id: "official-str-str",
+    category: "Sliding Window",
+    title: "Implement strStr()",
+    difficulty: "Easy",
+    prompt:
+      "Given two strings haystack and needle, return the index of the first occurrence of needle in haystack, or -1 if needle is not part of haystack.",
+    targetPatternId: "two-pointers",
+    recommendedClues: ["substring search", "partial-match table avoids rechecking"],
+    recommendedFirstStep: "Compare candidate starting positions, falling back efficiently on a mismatch",
+    reviewQuestion: "Why can a naive scan re-examine the same characters, and what does KMP avoid re-checking?",
+    contrastPatternId: "hashing"
+  },
+  {
+    id: "official-repeated-substring-pattern",
+    category: "Sliding Window",
+    title: "Repeated Substring Pattern",
+    difficulty: "Easy",
+    prompt: "Given a string, determine if it can be constructed by taking a substring of it and appending multiple copies of that substring together.",
+    targetPatternId: "two-pointers",
+    recommendedClues: ["self-concatenation trick", "string doubled and trimmed"],
+    recommendedFirstStep: "Check whether the string appears inside (s+s) with its first and last character removed",
+    reviewQuestion: "Why does removing the first and last character of the doubled string prevent a trivial false positive?",
+    contrastPatternId: "dynamic-programming"
+  },
+  {
+    id: "official-intersection-of-two-arrays",
+    category: "Arrays & Hashing",
+    title: "Intersection of Two Arrays",
+    difficulty: "Easy",
+    prompt: "Given two integer arrays, return an array of their unique common elements. The order of the result does not matter.",
+    targetPatternId: "hashing",
+    recommendedClues: ["membership check across two sets", "duplicates collapse to one"],
+    recommendedFirstStep: "Put one array in a set, then filter the other array against it",
+    reviewQuestion: "Why does converting the result to a set (not just filtering) avoid duplicate entries?",
+    contrastPatternId: "two-pointers"
+  },
+  {
+    id: "official-4sum-ii",
+    category: "Arrays & Hashing",
+    title: "4Sum II",
+    difficulty: "Medium",
+    prompt: "Given four integer arrays of the same length, return the number of tuples (i, j, k, l) such that nums1[i] + nums2[j] + nums3[k] + nums4[l] == 0.",
+    targetPatternId: "hashing",
+    recommendedClues: ["split into two pairwise sums", "complement lookup"],
+    recommendedFirstStep: "Precompute every pairwise sum from the first two arrays into a frequency map",
+    reviewQuestion: "Why does splitting four arrays into two pairs turn an O(n^4) search into an O(n^2) lookup?",
+    contrastPatternId: "two-pointers"
+  },
+  {
+    id: "official-ransom-note",
+    category: "Arrays & Hashing",
+    title: "Ransom Note",
+    difficulty: "Easy",
+    prompt: "Given two strings ransomNote and magazine, determine if ransomNote can be constructed using the letters from magazine, where each letter can only be used once.",
+    targetPatternId: "hashing",
+    recommendedClues: ["character frequency budget", "each source letter spent at most once"],
+    recommendedFirstStep: "Count available letters in magazine, then subtract as ransomNote consumes them",
+    reviewQuestion: "Why does a letter count going negative mean the ransom note is impossible to build?",
+    contrastPatternId: "two-pointers"
+  },
+  {
+    id: "official-4sum",
+    category: "Two Pointers",
+    title: "4Sum",
+    difficulty: "Medium",
+    prompt: "Given an array of integers and a target, return all unique quadruplets that sum to target.",
+    targetPatternId: "two-pointers",
+    recommendedClues: ["sort first, fix two, two-pointer the rest", "skip duplicates at every fixed level"],
+    recommendedFirstStep: "Sort the array, fix the first two numbers, then two-pointer the remaining range",
+    reviewQuestion: "Why must duplicates be skipped at every nesting level, not just the outermost one?",
+    contrastPatternId: "hashing"
+  },
+  {
+    id: "official-remove-linked-list-elements",
+    category: "Linked Lists",
+    title: "Remove Linked List Elements",
+    difficulty: "Easy",
+    prompt: "Given the head of a linked list and an integer val, remove all nodes with that value and return the new head.",
+    targetPatternId: "two-pointers",
+    recommendedClues: ["dummy head simplifies removing the first node", "unlink by skipping"],
+    recommendedFirstStep: "Add a dummy node before head, then walk the list unlinking matches",
+    reviewQuestion: "Why does a dummy head remove the need for a special case when the original head itself matches val?",
+    contrastPatternId: "dfs"
+  },
+  {
+    id: "official-swap-nodes-in-pairs",
+    category: "Linked Lists",
+    title: "Swap Nodes in Pairs",
+    difficulty: "Medium",
+    prompt: "Given the head of a linked list, swap every two adjacent nodes and return the head of the modified list.",
+    targetPatternId: "two-pointers",
+    recommendedClues: ["rewire three pointers per pair", "dummy head tracks the new order"],
+    recommendedFirstStep: "Use a dummy node before head, then rewire one pair of nodes at a time",
+    reviewQuestion: "Why does the traversal pointer need to land on the FIRST node of each swapped pair, not the second?",
+    contrastPatternId: "dfs"
+  },
+  {
+    id: "official-intersection-of-two-linked-lists",
+    category: "Linked Lists",
+    title: "Intersection of Two Linked Lists (面试题 02.07)",
+    difficulty: "Easy",
+    prompt: "Given the heads of two singly linked lists, return the node at which the two lists intersect, or null if they do not intersect.",
+    targetPatternId: "two-pointers",
+    recommendedClues: ["switch heads after reaching the end", "equalizes total distance traveled"],
+    recommendedFirstStep: "Walk both lists, and when one reaches the end, redirect it to the other list's head",
+    reviewQuestion: "Why does redirecting each pointer to the other list's head guarantee they meet at the intersection, not just at the same length?",
+    contrastPatternId: "hashing"
+  },
+  {
+    id: "official-remove-all-adjacent-duplicates-in-string",
+    category: "Stack",
+    title: "Remove All Adjacent Duplicates In String",
+    difficulty: "Easy",
+    prompt: "Given a string, repeatedly remove adjacent duplicate letters until none remain, and return the final string.",
+    targetPatternId: "stack",
+    recommendedClues: ["most recent character might cancel the next one", "cancel-on-match"],
+    recommendedFirstStep: "Push characters onto a stack, popping when the top matches the next character",
+    reviewQuestion: "Why does a stack naturally handle cascading cancellations that a single left-to-right pass would miss?",
+    contrastPatternId: "two-pointers"
   }
 ];
 

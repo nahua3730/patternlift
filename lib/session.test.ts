@@ -311,3 +311,41 @@ test("Guided curriculum: two Practice problems on one topic day can carry differ
   assert.equal(stepB!.patternId, "two-pointers");
   assert.notEqual(stepA!.patternId, stepB!.patternId, "one topic day must not collapse distinct problems onto one pattern");
 });
+
+// Carl Fidelity Pass: an externalProblem task (no native problemId) must
+// still produce a real, completable step - never silently dropped - and
+// that step must never carry a problemId (which would route it into
+// PracticeWorkspace and fabricate mastery/Recognition/Transfer evidence
+// for a problem PatternLift never actually graded).
+test("externalProblem: a Core practice task with no problemId still produces a step, and that step carries no problemId", () => {
+  const externalTask = coreTask({
+    id: "ext",
+    type: "practice",
+    patternId: null,
+    problemId: null,
+    externalProblem: { title: "Design Linked List", url: "https://leetcode.com/problems/design-linked-list/", source: "leetcode" }
+  });
+  const day = guidedDay([externalTask], "practice");
+  const session = buildDailySession(day, [], "guided");
+
+  const step = session.steps.find((s) => s.studyTaskId === "ext");
+  assert.ok(step, "an externalProblem task must not be silently dropped from the session");
+  assert.equal(step!.problemId, undefined, "an external step must never carry a problemId");
+  assert.deepEqual(step!.externalProblem, externalTask.externalProblem);
+});
+
+test("externalProblem: still produces a step even when it is the FIRST practice task of the day (the exact ordering bug this guards against)", () => {
+  const externalTask = coreTask({
+    id: "ext-first",
+    type: "practice",
+    patternId: null,
+    problemId: null,
+    externalProblem: { title: "Implement Queue using Stacks", url: "https://leetcode.com/problems/implement-queue-using-stacks/", source: "leetcode" }
+  });
+  const nativeTask = coreTask({ id: "native-second", type: "practice", patternId: "stack", problemId: "valid-parentheses" });
+  const day = guidedDay([externalTask, nativeTask], "practice");
+  const session = buildDailySession(day, [], "guided");
+
+  assert.ok(session.steps.some((s) => s.studyTaskId === "ext-first"), "the first practice task being external must not cause it to be dropped");
+  assert.ok(session.steps.some((s) => s.studyTaskId === "native-second"), "the second (native) task must still get its own step");
+});

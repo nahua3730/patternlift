@@ -31,6 +31,7 @@ export type NormalStudyTaskPayload = {
   // entry, so the UI can label its origin ("from Day 24").
   dayNumber?: number;
   learnResource?: { title: string; url: string; provider?: string };
+  externalProblem?: { title: string; url: string; source: "leetcode" | "kamacoder" | "other" };
   // Pilot Foundation: prior attempt/roadmap-mark count for this task's
   // problem, when it has one - lets the UI show "Solved before (xN)"
   // without a second round trip. Reuses getRepCounts, already computed for

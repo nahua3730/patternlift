@@ -236,15 +236,15 @@ function CarryoverTaskRow({
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        {task.learnResource ? (
+        {task.learnResource || task.externalProblem ? (
           <>
             <a
-              href={task.learnResource.url}
+              href={(task.learnResource ?? task.externalProblem)!.url}
               target="_blank"
               rel="noreferrer"
               className="rounded-full bg-black/5 px-3 py-2 text-xs font-semibold text-ink transition hover:bg-black/10"
             >
-              Watch lesson
+              {task.learnResource ? "Watch lesson" : "Open problem"}
             </a>
             <button
               type="button"
@@ -905,6 +905,51 @@ function BonusTaskRunner({
     [data]
   );
 
+  // Carl Fidelity Pass: an externalProblem Bonus task has no problemId by
+  // design (see ExternalProblem's own comment) - it must render its own
+  // open-externally + Mark Complete UI here too, not just in the
+  // sequential StepRenderer path. Checked before the problemId guard
+  // below, which would otherwise silently render nothing for it.
+  if (task.kind === "normal" && task.externalProblem) {
+    return (
+      <div className="grid gap-3">
+        <div className="uiverse-panel flex items-center justify-between p-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-ember">
+              Bonus · {TASK_TYPE_LABEL[task.type]}
+            </p>
+            <p className="mt-1 text-sm text-black/60">Extra practice - optional, no pressure.</p>
+          </div>
+          <button type="button" onClick={onExit} className="text-xs font-medium text-black/45 hover:text-ink">
+            ← Back to today
+          </button>
+        </div>
+        <div className="uiverse-panel p-6">
+          <p className="text-sm font-semibold uppercase tracking-wide text-ember">Curriculum problem</p>
+          <h2 className="mt-2 text-2xl font-semibold text-ink">{task.externalProblem.title}</h2>
+          <p className="mt-2 text-sm text-black/60">
+            Not yet native in PatternLift - solve it on {task.externalProblem.source === "leetcode" ? "LeetCode" : task.externalProblem.source === "kamacoder" ? "Kamacoder" : "the original site"}, then mark it complete here.
+          </p>
+          <a
+            href={task.externalProblem.url}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-4 inline-block rounded-full bg-black/5 px-4 py-2 text-sm font-semibold text-ink transition hover:bg-black/10"
+          >
+            Open problem ↗
+          </a>
+          <button
+            type="button"
+            onClick={onDone}
+            className="mt-5 block rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-85"
+          >
+            Mark complete →
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!task.problemId) return null;
 
   if (task.kind === "blind_transfer") {
@@ -1052,6 +1097,37 @@ function StepRenderer({
   }, [steps, step.id]);
 
   if (step.type === "recall" || step.type === "guided_problem" || step.type === "independent_problem") {
+    // Carl Fidelity Pass: a curriculum-required problem PatternLift can't
+    // execute natively yet - open it externally, complete via the same
+    // Mark Complete mechanism as a resource-only Learn step. Deliberately
+    // never reaches PracticeWorkspace: no problemId here means no
+    // codePassed/mastery/PatternPrediction/Transfer evidence is possible.
+    if (step.externalProblem) {
+      return (
+        <div className="uiverse-panel p-6">
+          <p className="text-sm font-semibold uppercase tracking-wide text-ember">Curriculum problem</p>
+          <h2 className="mt-2 text-2xl font-semibold text-ink">{step.externalProblem.title}</h2>
+          <p className="mt-2 text-sm text-black/60">
+            Not yet native in PatternLift - solve it on {step.externalProblem.source === "leetcode" ? "LeetCode" : step.externalProblem.source === "kamacoder" ? "Kamacoder" : "the original site"}, then mark it complete here.
+          </p>
+          <a
+            href={step.externalProblem.url}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-4 inline-block rounded-full bg-black/5 px-4 py-2 text-sm font-semibold text-ink transition hover:bg-black/10"
+          >
+            Open problem ↗
+          </a>
+          <button
+            type="button"
+            onClick={onComplete}
+            className="mt-5 block rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-85"
+          >
+            Mark complete →
+          </button>
+        </div>
+      );
+    }
     if (!step.problemId) return null;
     const mode = step.type === "recall" ? "recognize" : "practice";
     return (

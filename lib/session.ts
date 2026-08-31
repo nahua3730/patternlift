@@ -4,7 +4,7 @@ import type { TechniqueSkillVector, DimensionScore } from "@/lib/skill-vector";
 import type { ConfusionPair } from "@/lib/mastery";
 import type { FailureCategory } from "@/lib/diagnosis";
 import type { SupportPlan } from "@/lib/support-plan";
-import type { StudyTask, LearnResource } from "@/lib/study-plan";
+import type { StudyTask, LearnResource, ExternalProblem } from "@/lib/study-plan";
 
 // What the session orchestrator knows about the learner's standing on
 // TODAY's pattern - optional, so callers without this data (or patterns
@@ -91,6 +91,11 @@ export type SessionStep = {
   // even reached that problem. Undefined for generated plans (unchanged
   // behavior - patternLabel is already the right heading there).
   curriculumContext?: string;
+  // Carl Fidelity Pass: present only when this step's task has no native
+  // problemId - renders as open-externally + Mark Complete instead of
+  // PracticeWorkspace. Never co-occurs with problemId (see ExternalProblem's
+  // own comment for why).
+  externalProblem?: ExternalProblem;
   // Pilot Foundation: present only on a "learn" step whose task carries a
   // guided-curriculum lesson. Rendering shows a resource link + explicit
   // "Mark complete" instead of (or alongside) the static pattern intro.
@@ -233,20 +238,23 @@ export function buildDailySession(
   // instead of a single fixed "secondary" slot, so a 3rd/4th/5th Core task
   // gets a real, executable step instead of being silently dropped.
   const pushIndependentForTask = (task: StudyTask) => {
-    if (!task.problemId) return;
+    if (!task.problemId && !task.externalProblem) return;
     const taskPatternLabel = patternLabelFor(task.patternId);
-    const baseTitle = `On your own: ${problemTitleFor(task.problemId) ?? task.title}`;
+    const baseTitle = task.problemId
+      ? `On your own: ${problemTitleFor(task.problemId) ?? task.title}`
+      : `Curriculum problem: ${task.externalProblem?.title ?? task.title}`;
     steps.push({
       id: `independent-${task.id}`,
       type: "independent_problem",
       studyTaskId: task.id,
-      title: implementationFocus ? `${baseTitle} (focus: working code, not just the pattern)` : baseTitle,
+      title: task.problemId && implementationFocus ? `${baseTitle} (focus: working code, not just the pattern)` : baseTitle,
       estimatedMinutes: implementationFocus ? task.estimatedMinutes + 3 : task.estimatedMinutes,
-      problemId: task.problemId,
-      problemTitle: problemTitleFor(task.problemId),
+      problemId: task.problemId ?? undefined,
+      problemTitle: task.problemId ? problemTitleFor(task.problemId) : undefined,
       patternId: task.patternId ?? undefined,
       patternLabel: taskPatternLabel,
-      coachStyle: "optional"
+      coachStyle: "optional",
+      externalProblem: task.externalProblem
     });
   };
 
@@ -335,7 +343,12 @@ export function buildDailySession(
         )
       );
     } else if (day.studyMode === "recognize") {
-      const [firstPractice, ...restPractice] = practiceTasks;
+      // Only a task with a real problemId gets the "recognize" framing -
+      // an externalProblem-only task (no native problemId) must never be
+      // silently skipped just because it happened to be first; it falls
+      // through to pushIndependentForTask like every other practice task.
+      const firstPractice = practiceTasks.find((task) => task.problemId);
+      const restPractice = practiceTasks.filter((task) => task !== firstPractice);
       if (firstPractice?.problemId) {
         steps.push({
           id: `recognize-${firstPractice.id}`,
@@ -353,7 +366,8 @@ export function buildDailySession(
       pushContrast();
       restPractice.forEach(pushIndependentForTask);
     } else if (day.studyMode === "practice") {
-      const [firstPractice, ...restPractice] = practiceTasks;
+      const firstPractice = practiceTasks.find((task) => task.problemId);
+      const restPractice = practiceTasks.filter((task) => task !== firstPractice);
       if (firstPractice?.problemId) {
         steps.push({
           id: `guided-${firstPractice.id}`,

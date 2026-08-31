@@ -55,6 +55,20 @@ export type LearnResource = {
   provider?: string;
 };
 
+// Carl Fidelity Pass: a curriculum-required problem that PatternLift
+// cannot (yet, or structurally cannot) execute natively - a genuine
+// escape hatch, not the default way to represent a missing problem.
+// Deliberately has NO problemId anywhere near it: it must never enter
+// PracticeWorkspace, produce codePassed/mastery evidence, a
+// PatternPrediction, or a Transfer encounter. Completing it is
+// curriculum completion only, via the same Mark Complete affordance
+// learnResource already has.
+export type ExternalProblem = {
+  title: string;
+  url: string;
+  source: "leetcode" | "kamacoder" | "other";
+};
+
 export type StudyTask = {
   id: string;
   type: TaskType;
@@ -65,6 +79,7 @@ export type StudyTask = {
   title: string;
   estimatedMinutes: number;
   learnResource?: LearnResource;
+  externalProblem?: ExternalProblem;
 };
 
 // Deterministic, explainable, and goal-aware - not difficulty, not user

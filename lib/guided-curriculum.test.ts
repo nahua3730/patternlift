@@ -76,3 +76,28 @@ test("isPedagogicallyBlindTransfer accepts the guided CurriculumPlan shape witho
   const fakeTransferTask = { ...someDay.tasks![0], type: "transfer" as const };
   assert.doesNotThrow(() => isPedagogicallyBlindTransfer({ plan: result, day: someDay, task: fakeTransferTask }));
 });
+
+// Carl Fidelity Pass, Batch 1: every externalProblem task must have
+// patternId: null and problemId: null - it must be structurally
+// impossible for it to become mastery/Recognition/Transfer evidence.
+test("Batch 1: every externalProblem task has no problemId and no patternId (cannot fabricate evidence)", () => {
+  const result = plan();
+  const externalTasks = result.days.flatMap((day) => (day.tasks ?? []).filter((task) => task.externalProblem));
+  assert.ok(externalTasks.length > 0, "expected at least one externalProblem task in the Batch 1 data (707/232/225/142)");
+  for (const task of externalTasks) {
+    assert.equal(task.problemId, null);
+    assert.equal(task.patternId, null);
+  }
+});
+
+test("Batch 1: every native problemId referenced by Days 1-12 actually exists in the PatternLift catalog", () => {
+  const result = plan();
+  const batch1Days = result.days.filter((day) => day.dayNumber <= 12);
+  for (const day of batch1Days) {
+    for (const task of day.tasks ?? []) {
+      if (task.problemId) {
+        assert.ok(task.patternId, `Day ${day.dayNumber} task ${task.id} has problemId "${task.problemId}" but no resolvable patternId - likely a catalog id typo`);
+      }
+    }
+  }
+});
